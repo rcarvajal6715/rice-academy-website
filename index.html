@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>C2 Tennis Academy</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      font-family: Arial, sans-serif;
+    }
+    main {
+      flex: 1;
+    }
+    header, footer {
+      background-color: #0c3c78;
+      color: white;
+      text-align: center;
+      padding: 20px;
+      position: relative;
+    }
+    nav {
+      background-color: #092e5e;
+      display: flex;
+      justify-content: center;
+    }
+    nav a {
+      color: white;
+      padding: 14px 20px;
+      text-decoration: none;
+    }
+    nav a:hover {
+      background-color: #0f4fa0;
+    }
+    .hero {
+      background: url('Tennis background.png') no-repeat center center/cover;
+      color: white;
+      text-align: center;
+      padding: 200px 20px;
+      min-height: 600px;
+    }
+    .hero h1 {
+      font-size: 3.5em;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+      margin-bottom: 20px;
+    }
+    .hero p {
+      font-size: 1.5em;
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+    }
+    .auth-buttons button {
+      background-color: white;
+      color: #0c3c78;
+      border: none;
+      padding: 10px 20px;
+      margin-left: 10px;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .auth-buttons button:hover {
+      background-color: #0f4fa0;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div>
+      <h1>C2 Tennis Academy</h1>
+      <p>Developing Champions On and Off the Court</p>
+    </div>
+    <div class="auth-buttons" style="position: absolute; top: 20px; right: 20px;">
+      <a href="register.html"><button id="registerBtn">Register</button></a>
+      <a href="login.html"><button id="loginBtn">Login</button></a>
+      <button id="logoutBtn" style="display: none;">Logout</button>
+    </div>
+  </header>
+
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="about.html">About</a>
+    <a href="programs.html">Programs</a>
+    <a href="schedule.html">Schedule</a>
+    <a href="contact.html">Contact</a>
+  </nav>
+
+  <main>
+    <section class="hero">
+      <h1>Welcome to C2 Tennis Academy</h1>
+      <p>Where passion meets performance</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
+  </footer>
+
+  <script>
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+    }
+
+    const firstName = getCookie('userFirstName');
+    const greeting = document.createElement('div');
+    const registerBtn = document.getElementById('registerBtn');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    if (firstName) {
+      greeting.textContent = `Welcome, ${firstName}!`;
+      greeting.style.backgroundColor = '#0c3c78';
+      greeting.style.color = 'white';
+      greeting.style.padding = '10px';
+      greeting.style.textAlign = 'center';
+      greeting.style.fontWeight = 'bold';
+      document.body.insertBefore(greeting, document.body.firstChild);
+
+      registerBtn.style.display = 'none';
+      loginBtn.style.display = 'none';
+      logoutBtn.style.display = 'inline-block';
+    }
+
+    logoutBtn.addEventListener('click', () => {
+      document.cookie = "userFirstName=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      window.location.reload();
+    });
+  </script>
+
+</body>
+</html>
+
+
+

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Payment – Rice Tennis Academy</title>
+
+  <!-- Stripe.js -->
+  <script src="https://js.stripe.com/v3/"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; margin:0; padding:0; }
+    header, footer { background:#0c3c78; color:#fff; text-align:center; padding:20px; }
+    nav { background:#092e5e; display:flex; justify-content:center; }
+    nav a { color:white; padding:14px 20px; text-decoration:none; }
+    nav a:hover { background:#0f4fa0; }
+
+    main { padding:40px 20px; }
+    .card {
+      max-width:450px;
+      margin:0 auto;
+      background:#fff;
+      padding:30px;
+      border-radius:10px;
+      box-shadow:0 0 10px rgba(0,0,0,0.1);
+    }
+    .card h1 { margin-top:0; color:#0c3c78; }
+    label { display:block; margin-top:15px; font-weight:bold; }
+    input, select, button {
+      width:100%; padding:10px; margin-top:5px; box-sizing:border-box;
+    }
+    button {
+      background:#0c3c78; color:#fff; border:none; margin-top:20px; cursor:pointer;
+      font-size:1.1em;
+    }
+    button:hover { background:#0f4fa0; }
+
+    /* Stripe Element styling */
+    #card-element {
+      padding:10px;
+      border:1px solid #ccc;
+      border-radius:4px;
+      margin-top:5px;
+    }
+    #card-errors {
+      color: red;
+      margin-top:10px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Rice Tennis Academy</h1>
+    <p>Developing Champions On and Off the Court</p>
+  </header>
+
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="about.html">About</a>
+    <a href="programs.html">Programs</a>
+    <a href="schedule.html">Schedule</a>
+    <a href="contact.html">Contact</a>
+  </nav>
+
+  <main>
+    <div class="card">
+      <h1>Payment Information</h1>
+      <form id="payment-form">
+        <label for="email">Email</label>
+        <input type="email" id="email" required />
+
+        <label for="program">Program</label>
+        <select id="program" required>
+          <option value="private" data-amount="7000">Private Lessons — $70</option>
+          <option value="camp"    data-amount="3000">Summer Camp Group — $30</option>
+        </select>
+
+        <div id="coach-container" style="display:none;">
+          <label for="coach">Coach</label>
+          <select id="coach">
+            <option>Ricardo Carvajalino</option>
+            <option>Zachary Capone</option>
+            <option>Jacob Capone</option>
+          </select>
+        </div>
+
+        <label for="card-element">Credit or debit card</label>
+        <div id="card-element"><!-- Stripe Element will go here --></div>
+        <div id="card-errors" role="alert"></div>
+
+        <button type="submit">Submit Payment</button>
+      </form>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 Rice Tennis Academy. All rights reserved.</p>
+  </footer>
+
+  <script>
+    // 1) Initialize Stripe.js
+    const stripe = Stripe('pk_test_YOUR_PUBLISHABLE_KEY');
+
+    // 2) Set up Stripe Elements
+    const elements = stripe.elements();
+    const cardElement = elements.create('card', {
+      style: {
+        base: {
+          fontSize: '16px',
+          color: '#32325d',
+        }
+      }
+    });
+    cardElement.mount('#card-element');
+
+    // 3) Show/hide coach dropdown
+    const programEl = document.getElementById('program');
+    const coachDiv  = document.getElementById('coach-container');
+    programEl.addEventListener('change', () => {
+      coachDiv.style.display = (
+        programEl.value === 'private' ? 'block' : 'none'
+      );
+    });
+
+    // 4) Handle form submission
+    const form = document.getElementById('payment-form');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      // Gather fields
+      const email       = document.getElementById('email').value;
+      const programText = programEl.options[programEl.selectedIndex].text;
+      const amountCents = parseInt(
+        programEl.options[programEl.selectedIndex].dataset.amount, 10
+      );
+      const coach       = programEl.value === 'private'
+                         ? document.getElementById('coach').value
+                         : '';
+
+      // 5) Create PaymentIntent on the server
+      const { clientSecret, error: backendError } = await fetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({ email, program:programText, coach, amountCents })
+      }).then(r => r.json());
+
+      if (backendError) {
+        document.getElementById('card-errors').textContent = backendError;
+        return;
+      }
+
+      // 6) Confirm the card payment
+      const { paymentIntent, error } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: { email }
+        }
+      });
+
+      if (error) {
+        document.getElementById('card-errors').textContent = error.message;
+      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+        // Redirect to a success page:
+        window.location.href = 'thank-you.html';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Book a Session - C2 Tennis Academy</title>
+  <!-- Flatpickr CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    header, footer { background-color: #0c3c78; color: white; text-align: center; padding: 20px; }
+    nav { background-color: #092e5e; display: flex; justify-content: center; }
+    nav a { color: white; padding: 14px 20px; text-decoration: none; }
+    nav a:hover { background-color: #0f4fa0; }
+    section { padding: 40px 20px; }
+    .booking-container {
+      max-width: 500px; margin: auto; background: #fff; padding: 30px;
+      border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .booking-container h2 { margin-top: 0; color: #0c3c78; }
+    label { display: block; margin-top: 15px; font-weight: bold; }
+    input, select {
+      width: 100%; padding: 10px; margin-top: 5px; box-sizing: border-box;
+      border: 1px solid #ccc; border-radius: 5px;
+    }
+    button {
+      margin-top: 20px; width: 100%; padding: 12px; background-color: #0c3c78;
+      color: white; border: none; border-radius: 5px; font-size: 1rem;
+      cursor: pointer;
+    }
+    button:hover { background-color: #0f4fa0; }
+  </style>
+</head>
+<body>
+
+  <!-- Welcome banner if logged in -->
+  <script>
+    const firstName = document.cookie
+      .split('; ')
+      .find(r => r.startsWith('userFirstName='))
+      ?.split('=')[1];
+    if (firstName) {
+      const b = document.createElement('div');
+      b.textContent = `Welcome, ${decodeURIComponent(firstName)}!`;
+      b.style = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold';
+      document.body.insertBefore(b, document.body.firstChild);
+    }
+  </script>
+
+  <header>
+    <h1>C2 Tennis Academy</h1>
+    <p>Developing Champions On and Off the Court</p>
+  </header>
+
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="about.html">About</a>
+    <a href="programs.html">Programs</a>
+    <a href="schedule.html">Schedule</a>
+    <a href="contact.html">Contact</a>
+  </nav>
+
+  <section>
+    <div class="booking-container">
+      <h2>Book a Session</h2>
+      <form id="bookingForm">
+        <label for="email">Email</label>
+        <input type="email" id="email" required />
+
+        <label for="program">Program</label>
+        <select id="program" required>
+          <option value="">-- Select Program --</option>
+          <option value="Private Lessons">Private Lessons — $70</option>
+          <option value="Summer Camp / Group Lessons">Summer Camp / Group Lessons — $30</option>
+        </select>
+
+        <label for="coach" id="coachLabel" style="display:none;">Coach</label>
+        <select id="coach" style="display:none;">
+          <option value="">-- Select Coach --</option>
+          <option value="Ricardo Carvajalino">Ricardo Carvajalino</option>
+          <option value="Zachary Capone">Zachary Capone</option>
+          <option value="Jacob Capone">Jacob Capone</option>
+        </select>
+
+        <label for="date" id="dateLabel" style="display:none;">Preferred Date</label>
+        <input type="text" id="date" placeholder="Select a date" style="display:none;" readonly />
+
+        <label for="time" id="timeLabel" style="display:none;">Preferred Time</label>
+        <!-- Changed to dropdown showing available times -->
+        <select id="time" style="display:none;"></select>
+
+        <button type="submit">Pay &amp; Book</button>
+      </form>
+    </div>
+  </section>
+
+  <footer>
+    <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
+  </footer>
+
+  <!-- Flatpickr JS -->
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script>
+    // Helper: parse "h:mm A" to minutes since midnight
+    function parseTime(str) {
+      const [time, mer] = str.split(' ');
+      let [h,m] = time.split(':').map(Number);
+      if (mer === 'PM' && h<12) h+=12;
+      if (mer === 'AM' && h===12) h=0;
+      return h*60 + m;
+    }
+    // Helper: format minutes since midnight back to h:mm AM/PM
+    function fmtTime(mins) {
+      let h = Math.floor(mins/60), m = mins%60;
+      const mer = h>=12? 'PM':'AM';
+      if (h>12) h-=12;
+      if (h===0) h=12;
+      return `${h}:${m.toString().padStart(2,'0')} ${mer}`;
+    }
+
+    const availability = {
+      'Jacob Capone': { days:[4,5,6], times:{4:{min:'3:00 PM',max:'8:00 PM'},5:{min:'3:00 PM',max:'8:00 PM'},6:{min:'8:00 AM',max:'4:00 PM'}} },
+      'Zachary Capone': { days:[1,2,3,4,5,6], times:{default:{min:'9:00 AM',max:'7:00 PM'},6:{min:'9:00 AM',max:'5:00 PM'}} },
+      'Ricardo Carvajalino': { days:[1,2,3,4,5,6], times:{default:{min:'8:00 AM',max:'9:00 AM'},6:{min:'8:00 AM',max:'2:00 PM'}} }
+    };
+
+    const programEl = document.getElementById('program');
+    const coachEl   = document.getElementById('coach');
+    const coachLbl  = document.getElementById('coachLabel');
+    const dateEl    = document.getElementById('date');
+    const dateLbl   = document.getElementById('dateLabel');
+    const timeEl    = document.getElementById('time');
+    const timeLbl   = document.getElementById('timeLabel');
+    let datePicker = null;
+
+    programEl.addEventListener('change',()=>{
+      const isPriv = programEl.value==='Private Lessons';
+      coachEl.style.display=coachLbl.style.display=isPriv?'block':'none';
+      if (!isPriv && datePicker) { datePicker.destroy(); dateEl.style.display=dateLbl.style.display=timeEl.style.display=timeLbl.style.display='none'; timeEl.innerHTML=''; dateEl.value=''; }
+    });
+
+    coachEl.addEventListener('change',()=>{
+      if (!coachEl.value) return;
+      if (datePicker) datePicker.destroy();
+      dateEl.value=''; timeEl.innerHTML='';
+      dateLbl.style.display=dateEl.style.display='block';
+      timeLbl.style.display=timeEl.style.display='none';
+      const coach=coachEl.value, avail=availability[coach];
+      datePicker=flatpickr(dateEl,{ dateFormat:'Y-m-d', minDate:'today', disable:[ d=>!avail.days.includes(d.getDay()) ],
+        onChange:selected=>{
+          const d=selected[0], dow=d.getDay();
+          const slot=avail.times[dow]||avail.times.default;
+          const start=parseTime(slot.min), end=parseTime(slot.max);
+          timeEl.innerHTML='<option value="">-- Select Time --</option>';
+          for(let t=start; t+30<=end; t+=30){
+            const label=fmtTime(t);
+            const opt=document.createElement('option'); opt.value=label; opt.textContent=label;
+            timeEl.appendChild(opt);
+          }
+          timeLbl.style.display=timeEl.style.display='block';
+        }
+      });
+    });
+
+    document.getElementById('bookingForm').addEventListener('submit',async e=>{
+      e.preventDefault();
+      const email  =document.getElementById('email').value;
+      const program=programEl.value;
+      const coach  =coachEl.value||'';
+      const date   =dateEl.value;
+      const time   =timeEl.value;
+      const amountCents=program==='Private Lessons'?7000:3000;
+      try{
+        const res=await fetch('/api/create-payment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,program,coach,date,time,amountCents})});
+        if(!res.ok)throw new Error(await res.text());
+        const {url}=await res.json(); window.location.href=url;
+      }catch(err){console.error(err);alert('Payment failed. Please try again.');}
+    });
+  </script>
+</body>
+</html>
+
+
+
+
+

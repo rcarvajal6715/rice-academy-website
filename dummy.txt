@@ -1,0 +1,2 @@
+echo "Hello Cloud Build!" > dummy.txt
+

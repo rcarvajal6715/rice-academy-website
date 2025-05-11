@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>About - Rice Tennis Academy</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+        header, footer { background-color: #0c3c78; color: white; text-align: center; padding: 20px; }
+        nav { background-color: #092e5e; display: flex; justify-content: center; }
+        nav a { color: white; padding: 14px 20px; text-decoration: none; }
+        nav a:hover { background-color: #0f4fa0; }
+        section { padding: 40px 20px; }
+    
+        .coaches {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 30px;
+        }
+    
+        .coach-card {
+            text-align: center;
+            width: 180px;
+        }
+    
+        .coach-card img {
+            width: 160px;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+    
+</head>
+<body>
+
+    <script>
+        const firstName = document.cookie
+          .split('; ')
+          .find(row => row.startsWith('userFirstName='))
+          ?.split('=')[1];
+        if (firstName) {
+          const banner = document.createElement('div');
+          banner.textContent = `Welcome, ${decodeURIComponent(firstName)}!`;
+          banner.style.backgroundColor = '#0c3c78';
+          banner.style.color = 'white';
+          banner.style.padding = '10px';
+          banner.style.textAlign = 'center';
+          banner.style.fontWeight = 'bold';
+          document.body.insertBefore(banner, document.body.firstChild);
+        }
+      </script>
+      
+
+      <header>
+        <h1>C2 Tennis Academy</h1>
+        <p>Developing Champions On and Off the Court</p>
+      </header>
+
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="about.html">About</a>
+        <a href="programs.html">Programs</a>
+        <a href="schedule.html">Schedule</a>
+        <a href="contact.html">Contact</a>
+      </nav>
+
+      
+    <section id="about">
+        <h2>About Us</h2>
+        <p>Rice Tennis Academy is dedicated to helping players of all levels improve their game, gain confidence, and achieve their goals. Our experienced coaches are committed to providing high-quality instruction and personalized attention to each athlete.</p>
+    
+        <h2>Meet Our Team</h2>
+        <div class="coaches">
+            <div class="coach-card">
+                <img src="IMG_8202_2.JPG" alt="Matthew Abbey" style="width:160px; height:200px;">
+                <p>Matthew Abbey</p>
+            </div>
+            <div class="coach-card">
+                <img src="IMG_8205_2.JPG" alt="Marianno Guzman" style="width:160px; height:200px;">
+                <p>Marianno Guzman</p>
+            </div>
+            
+            <div class="coach-card">
+                <img src="IMG_8206_2.JPG" alt="Arturo Langle" style="width:160px; height:200px;">
+                <p>Arturo Langle</p>
+            </div>
+            
+            <div class="coach-card">
+                <img src="IMG_8207_2.JPG" alt="Ricardo Carvajalino" style="width:160px; height:200px;">
+                <p>Ricardo Carvajalino</p>
+            </div>            
+        </div>        
+    </section>
+
+    <footer>
+        <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
+    </footer>
+
+</body>
+</html>
+
+

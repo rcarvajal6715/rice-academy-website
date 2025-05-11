@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Register - Rice Tennis Academy</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background-color: #0c3c78;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+
+    form {
+      max-width: 400px;
+      margin: 30px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="password"] {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      box-sizing: border-box;
+    }
+
+    button {
+      width: 100%;
+      background-color: #0c3c78;
+      color: white;
+      padding: 14px;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    footer {
+      background-color: #0c3c78;
+      color: white;
+      text-align: center;
+      padding: 15px;
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>C2 Tennis Academy</h1>
+    <p>Developing Champions On and Off the Court</p>
+  </header>
+
+  <form action="/api/register" method="POST">
+    <input type="text" name="first_name" placeholder="First Name" required />
+    <input type="text" name="last_name" placeholder="Last Name" required />
+    <input type="email" name="email" placeholder="Email Address" required />
+    <input type="text" name="phone" placeholder="Phone Number" required />
+    <input type="text" name="username" placeholder="Username" required />
+    <input type="password" name="password" placeholder="Password" required />
+    <button type="submit">Register</button>
+  </form>
+
+  <footer>
+    &copy; 2025 C2 Tennis Academy. All rights reserved.
+  </footer>
+</body>
+</html>
+
+
+
+
+
+
+
+
+

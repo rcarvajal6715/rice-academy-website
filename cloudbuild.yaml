@@ -1,0 +1,3 @@
+steps:
+  - name: 'gcr.io/cloud-builders/gsutil'
+    args: ['cp', '/workspace/dummy.txt', 'gs://staging.direct-link-458819-c9.appspot.com/dummy.txt']

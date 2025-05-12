@@ -10,8 +10,18 @@ const PDFKit     = require('pdfkit');
 const nodemailer = require('nodemailer');
 
 const app    = express();
-const PORT   = process.env.PORT || 3000;
+const PORT   = process.env.PORT || 8080;
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+
+app.get('/test-db', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT NOW() AS time');
+    res.send(`✅ Database connected! Server time is: ${rows[0].time}`);
+  } catch (error) {
+    console.error('❌ Database connection error:', error);
+    res.status(500).send('Failed to connect to the database.');
+  }
+});
 
 // ─── MIDDLEWARE ────────────────────────────────────────────────────────────────
 // Serve your static frontend assets
@@ -21,13 +31,13 @@ app.use(express.urlencoded({ extended: true }));
 
 // ─── MYSQL POOL ────────────────────────────────────────────────────────────────
 const pool = mysql.createPool({
-  host:               process.env.DB_HOST,
-  user:               process.env.DB_USER,
-  password:           process.env.DB_PASSWORD,
-  database:           process.env.DB_NAME,
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
   waitForConnections: true,
-  connectionLimit:    10,
-  queueLimit:         0,
+  connectionLimit: 10,
+  queueLimit: 0,
 });
 
 // ─── AUTH & DATA ROUTES ────────────────────────────────────────────────────────
@@ -239,6 +249,10 @@ app.get('*', (req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
 });
+
+
+
+
 
 
 

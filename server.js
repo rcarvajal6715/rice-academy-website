@@ -1,177 +1,254 @@
-// server.js
 require('dotenv').config();
-
-const express    = require('express');
-const path       = require('path');
-const mysql      = require('mysql2/promise');
-const bcrypt     = require('bcrypt');
-const Stripe     = require('stripe');
-const PDFKit     = require('pdfkit');
+const express = require('express');
+const path = require('path');
+const { Pool } = require('pg');
+const bcrypt = require('bcrypt');
+const Stripe = require('stripe');
+const PDFKit = require('pdfkit');
 const nodemailer = require('nodemailer');
+const session = require('express-session');
 
-const app    = express();
-const PORT   = process.env.PORT || 8080;
+const app = express();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-app.get('/test-db', async (req, res) => {
-  try {
-    const [rows] = await pool.query('SELECT NOW() AS time');
-    res.send(`✅ Database connected! Server time is: ${rows[0].time}`);
-  } catch (error) {
-    console.error('❌ Database connection error:', error);
-    res.status(500).send('Failed to connect to the database.');
-  }
-});
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+  httpOnly: true,
+  secure: false,
+  sameSite: 'Lax',
+  maxAge: 86400000
+}
+}));
 
-// ─── MIDDLEWARE ────────────────────────────────────────────────────────────────
-// Serve your static frontend assets
-app.use(express.static(path.join(__dirname)));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname)));
 
-// ─── MYSQL POOL ────────────────────────────────────────────────────────────────
-const pool = mysql.createPool({
+
+const pool = new Pool({
   host: process.env.DB_HOST,
+  port: +process.env.DB_PORT,
+  database: process.env.DB_NAME,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
+  ssl: {
+    rejectUnauthorized: false,
+  },
 });
 
-// ─── AUTH & DATA ROUTES ────────────────────────────────────────────────────────
-
-// 1) User Registration
 app.post('/api/register', async (req, res) => {
-  const { first_name, last_name, email, phone, username, password } = req.body;
-  if (!first_name || !last_name || !email || !phone || !username || !password) {
-    return res.status(400).send('All fields are required.');
-  }
+  const { first_name, last_name, email, phone, username, password, students } = req.body;
+
+  const client = await pool.connect();
   try {
-    const hash = await bcrypt.hash(password, 10);
-    await pool.execute(
-      'INSERT INTO users (first_name,last_name,email,phone,username,password_hash) VALUES (?,?,?,?,?,?)',
-      [first_name, last_name, email, phone, username, hash]
+    await client.query('BEGIN');
+
+    const userInsert = await client.query(
+      `INSERT INTO users (first_name, last_name, email, phone, username, password)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id`,
+      [first_name, last_name, email, phone, username, password]
     );
-    res.status(200).send('Registration successful.');
+
+    const userId = userInsert.rows[0].id;
+
+    if (students && students.length) {
+      const studentInsertPromises = students.map(name =>
+        client.query(`INSERT INTO students (user_id, name) VALUES ($1, $2)`, [userId, name])
+      );
+      await Promise.all(studentInsertPromises);
+    }
+
+    await client.query('COMMIT');
+    res.send('Registration successful');
   } catch (err) {
-    console.error('Registration Error:', err);
-    res.status(500).send('Server error during registration.');
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).send('Registration failed');
+  } finally {
+    client.release();
   }
 });
 
-// 2) Login
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).send('Username and password required.');
-  }
+  if (!username || !password) return res.status(400).send('Missing credentials.');
   try {
-    const [rows] = await pool.execute(
-      'SELECT * FROM users WHERE username = ?',
-      [username]
-    );
-    if (
-      rows.length === 0 ||
-      !(await bcrypt.compare(password, rows[0].password_hash))
-    ) {
-      return res.status(401).send('Invalid username or password.');
+    const { rows } = await pool.query('SELECT * FROM users WHERE username = $1 OR email = $1', [username]);
+    if (!rows.length || !(await bcrypt.compare(password, rows[0].password_hash))) {
+      return res.status(401).send('Invalid credentials.');
     }
-    res.status(200).send(`Welcome, ${rows[0].first_name}`);
+
+    const isAdmin = rows[0].is_admin === true || rows[0].is_admin === 1;
+
+    req.session.user = {
+      id: rows[0].id,
+      username: rows[0].username,
+      isAdmin,
+      firstName: rows[0].first_name
+    };
+
+    res.status(200).json({ 
+  firstName: rows[0].first_name,
+  isAdmin,
+  isCoach: false  // ✅ Important for proper redirection logic on the frontend
+});
   } catch (err) {
-    console.error('Login Error:', err);
-    res.status(500).send('Server error during login.');
+    console.error(err);
+    res.status(500).send('Login error.');
   }
 });
 
-// 3) Legacy Class Signup
+app.post('/api/coach/login', async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    const { rows } = await pool.query('SELECT id, full_name, password_hash FROM coaches WHERE username = $1', [username]);
+    if (!rows.length || !(await bcrypt.compare(password, rows[0].password_hash))) {
+      return res.status(401).send('Invalid coach credentials.');
+    }
+    req.session.coachId = rows[0].id;
+    req.session.coachName = rows[0].full_name;
+    console.log('✅ Coach logged in:', rows[0].full_name);
+    res.json({ fullName: rows[0].full_name });
+  } catch (err) {
+    res.status(500).send('Server error during coach login.');
+  }
+});
+
+app.get('/api/my-lessons', async (req, res) => {
+  console.log('🎾 Coach session name:', req.session.coachName);
+
+  if (!req.session.coachId || !req.session.coachName) {
+    return res.status(401).send('Unauthorized');
+  }
+
+  try {
+    const { rows } = await pool.query(
+  'SELECT program, coach, date, time, student FROM bookings WHERE coach = $1 ORDER BY date DESC',
+  [req.session.coachName]
+);
+
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Failed to fetch lessons.');
+  }
+});
+
+app.get('/api/check-session', async (req, res) => {
+  if (req.session.coachId) {
+    return res.json({
+      loggedIn: true,
+      isCoach: true,
+      isAdmin: false,
+      firstName: req.session.coachName
+    });
+  }
+
+  if (req.session.user) {
+    return res.json({
+      loggedIn: true,
+      isAdmin: req.session.user.isAdmin || false,
+      isCoach: false,
+      firstName: req.session.user.firstName || 'User'
+    });
+  }
+
+  return res.json({ loggedIn: false });
+});
+
+app.post('/api/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.status(200).send('Logged out');
+  });
+});
+
+app.post('/api/admin/lessons', async (req, res) => {
+  console.log('🔍 Current session in /api/my-lessons:', req.session);
+  const { program, coach, date, time, student } = req.body;
+  try {
+    await pool.query(
+  'INSERT INTO bookings (email, program, coach, date, time, student, paid, session_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+  ['', program, coach, date, time, student, 0, null]
+);
+    res.status(200).send('Lesson added successfully');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error adding lesson');
+  }
+});
+
 app.post('/api/signup', async (req, res) => {
   const { name, email, program, preferred_date } = req.body;
-  if (!name || !email || !program || !preferred_date) {
-    return res.status(400).send('Missing required fields.');
-  }
   try {
-    await pool.execute(
-      'INSERT INTO class_signups (name,email,program,preferred_date) VALUES (?,?,?,?)',
-      [name, email, program, preferred_date]
-    );
+    await pool.query(
+  'INSERT INTO class_signups (name, email, program, preferred_date) VALUES ($1, $2, $3, $4)',
+  [name, email, program, preferred_date]
+);
     res.status(200).send('Class signup successful.');
   } catch (err) {
-    console.error('Signup Error:', err);
-    res.status(500).send('Signup failed: Database error.');
+    console.error(err);
+    res.status(500).send('Signup failed.');
   }
 });
 
-// 4) Contact Form (phone removed)
 app.post('/api/contact', async (req, res) => {
   const { first_name, last_name, email, message } = req.body;
   try {
-    await pool.execute(
-      'INSERT INTO contacts (first_name,last_name,email,message) VALUES (?,?,?,?)',
-      [first_name, last_name, email, message]
-    );
+    await pool.query(
+  'INSERT INTO contacts (first_name, last_name, email, message) VALUES ($1, $2, $3, $4)',
+  [first_name, last_name, email, message]
+);
     res.status(200).send('Message received.');
   } catch (err) {
-    console.error('Contact Error:', err);
-    res.status(500).send('Failed to submit contact form.');
+    res.status(500).send('Contact submission failed.');
   }
 });
 
-// ─── STRIPE PAYMENT & INVOICE ──────────────────────────────────────────────────
-
-// A) Create a Stripe Checkout session **and** insert into bookings
 const PRODUCTS = {
-  'Private Lessons': {
-    product:     'prod_SGqWZcPazEgan4',
-    unit_amount: 8000,
-  },
-  'Summer Camp / Group Lessons': {
-    product:     'prod_SGqXbV7zZkw33O',
-    unit_amount: 3000,
-  },
+  'Private Lessons':             { product: 'prod_SGqWZcPazEgan4', unit_amount: 8000 },
+  'Summer Camp / Group Lessons': { product: 'prod_SGqXbV7zZkw33O', unit_amount: 3000 },
+  'High Performance Training':   { product: 'prod_HIGH_PERF',     unit_amount: 10000 },
+  'Adult Clinics':               { product: 'prod_ADULT',         unit_amount: 5000 },
 };
 
 app.post('/api/create-payment', async (req, res) => {
-  const { email, program, coach, date, time } = req.body;
+  const { email, program, coach, date, time, student } = req.body;
   const entry = PRODUCTS[program];
-  if (!entry) {
-    return res.status(400).send('Unknown program selected.');
-  }
-
+  if (!entry) return res.status(400).send('Invalid program.');
   try {
-    const session = await stripe.checkout.sessions.create({
+    const sessionObj = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      customer_email:       email,
+      customer_email: email,
       line_items: [{
         price_data: {
-          currency:    'usd',
-          product:     entry.product,
-          unit_amount: entry.unit_amount,
+          currency: 'usd',
+          product: entry.product,
+          unit_amount: entry.unit_amount
         },
-        quantity: 1,
+        quantity: 1
       }],
-      mode:        'payment',
-      metadata:    { program, coach, date, time },
+      mode: 'payment',
+      metadata: { program, coach, date, time },
       success_url: `${req.protocol}://${req.get('host')}/success.html`,
-      cancel_url:  `${req.protocol}://${req.get('host')}/cancel.html`,
+      cancel_url: `${req.protocol}://${req.get('host')}/cancel.html`,
     });
 
-    await pool.execute(
-      `INSERT INTO bookings
-         (email, program, coach, date, time, session_id, paid)
-       VALUES (?,       ?,       ?,     ?,    ?,    ?,          0)`,
-      [email, program, coach || '', date, time, session.id]
-    );
+    await pool.query(
+  'INSERT INTO bookings (email, program, coach, date, time, session_id, paid, student) VALUES ($1, $2, $3, $4, $5, $6, 0, $7)',
+  [email, program, coach || '', date, time, sessionObj.id, student || '']
+);
 
-    res.json({ url: session.url });
+    res.json({ url: sessionObj.url });
   } catch (err) {
-    console.error('Payment Creation Error:', err);
+    console.error(err);
     res.status(500).send('Payment creation failed.');
   }
 });
 
-// B) Stripe webhook to mark booking paid & send invoice
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   let event;
   try {
@@ -181,89 +258,58 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
       process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (err) {
-    console.error('⚠️ Webhook signature mismatch.', err.message);
-    return res.sendStatus(400);
+    return res.status(400).send('Webhook error');
   }
 
   if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    await pool.execute(
-      'UPDATE bookings SET paid = 1 WHERE session_id = ?',
-      [session.id]
-    );
-    await sendInvoiceEmail(session.customer_email, session);
+    const sess = event.data.object;
+    await pool.query('UPDATE bookings SET paid = 1 WHERE session_id = $1', [sess.id]);
+    await sendInvoiceEmail(sess.customer_email, sess);
   }
+
   res.sendStatus(200);
 });
 
-// C) Generate and email a PDF invoice
 async function sendInvoiceEmail(toEmail, session) {
   const doc = new PDFKit();
   const buffers = [];
+
   doc.on('data', buffers.push.bind(buffers));
   doc.on('end', async () => {
     const pdfData = Buffer.concat(buffers);
     const transporter = nodemailer.createTransport({
-      host:   process.env.SMTP_HOST,
-      port:  +process.env.SMTP_PORT,
+      host: process.env.SMTP_HOST,
+      port: +process.env.SMTP_PORT,
       secure: false,
       auth: {
         user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
+        pass: process.env.SMTP_PASS,
       }
     });
     await transporter.sendMail({
-      from:    `"Rice Tennis Academy" <${process.env.SMTP_USER}>`,
-      to:      toEmail,
+      from: `"C2 Tennis Academy" <${process.env.SMTP_USER}>`,
+      to: toEmail,
       subject: `Invoice for ${session.metadata.program}`,
-      text:    'Thank you for your payment. Your invoice is attached.',
-      attachments: [{
-        filename: `invoice-${session.id}.pdf`,
-        content:  pdfData,
-      }]
+      text: 'Thank you for your payment. Your invoice is attached.',
+      attachments: [
+        { filename: `invoice-${session.id}.pdf`, content: pdfData }
+      ]
     });
-    console.log(`📧 Invoice sent to ${toEmail}`);
   });
 
-  // Build PDF
-  doc.fontSize(20).text('Rice Tennis Academy', { align: 'center' });
+  doc.fontSize(20).text('C2 Tennis Academy', { align: 'center' });
   doc.moveDown();
   doc.fontSize(14).text(`Invoice #${session.id}`);
   doc.text(`Date: ${new Date(session.created * 1000).toLocaleDateString()}`);
-  doc.moveDown();
   doc.text(`Program: ${session.metadata.program}`);
   doc.text(`Coach: ${session.metadata.coach || '—'}`);
   doc.text(`Date of session: ${session.metadata.date}`);
   doc.text(`Time: ${session.metadata.time}`);
   doc.text(`Amount: $${(session.amount_total / 100).toFixed(2)}`);
-  doc.moveDown(2);
-  doc.text('Thank you for your business!');
   doc.end();
 }
 
-// ─── FALLBACK & START ──────────────────────────────────────────────────────────
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Server running on http://0.0.0.0:${PORT}`);
 });
-
-app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
-});
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

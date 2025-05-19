@@ -4,6 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Register</title>
+
+  <meta name="description" content="C2 Tennis Academy in Texas offers elite tennis training, junior programs, and high-performance coaching using AI and video analysis.">
+  <meta name="keywords" content="C2 Tennis Academy, tennis lessons Texas, UTR tennis, junior tennis, adult clinics, tennis training academy">
+  <meta name="author" content="C2 Tennis Academy">
+  <meta property="og:title" content="C2 Tennis Academy | Elite Tennis Training in Texas">
+  <meta property="og:description" content="Boost your UTR with expert coaching, AI video feedback, and elite tennis programs at C2 Tennis Academy.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://c2tennisacademy.com/">
+
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -25,6 +35,9 @@
       top: 20px;
       right: 20px;
     }
+    button.add-student {
+  margin-bottom: 20px;
+}
     .auth-buttons a, .auth-buttons button {
       color: white;
       padding: 10px 15px;
@@ -49,6 +62,20 @@
       padding: 10px;
       margin: 10px 0;
     }
+nav {
+      background-color: #092e5e;
+      display: flex;
+      justify-content: center;
+    }
+    nav a {
+      color: white;
+      padding: 14px 20px;
+      text-decoration: none;
+    }
+    nav a:hover {
+      background-color: #0f4fa0;
+    }
+
     button {
       background-color: #0c3c78;
       color: white;
@@ -74,66 +101,92 @@
   <header>
     <h1>Rice Tennis Academy</h1>
     <p>Developing Champions On and Off the Court</p>
-    <div class="auth-buttons" id="nav-buttons">
-      <a href="register.html">Register</a>
-      <a href="login.html">Login</a>
-    </div>
   </header>
 
-  <form id="registerForm">
-    <h2>Register</h2>
-    <input type="text" id="first_name" placeholder="First Name" required />
-    <input type="text" id="last_name" placeholder="Last Name" required />
-    <input type="email" id="email" placeholder="Email Address" required />
-    <input type="text" id="phone" placeholder="Phone Number" required />
-    <input type="text" id="username" placeholder="Username" required />
-    <input type="password" id="password" placeholder="Password" required />
-    <button type="submit">Register</button>
-  </form>
+   <nav>
+  <a href="/index.html">Home</a>
+  <a href="/about.html">About</a>
+  <a href="/programs.html">Programs</a>
+  <a href="/schedule.html">Schedule</a>
+  <a href="/contact.html">Contact</a>
+</nav>
+
+ <form id="registerForm">
+  <h2>Register</h2>
+  <input type="text" id="first_name" placeholder="First Name" required />
+  <input type="text" id="last_name" placeholder="Last Name" required />
+  <input type="email" id="email" placeholder="Email Address" required />
+  <input type="text" id="phone" placeholder="Phone Number" required />
+  <input type="text" id="username" placeholder="Username" required />
+  <input type="password" id="password" placeholder="Password" required />
+
+  <div id="studentsContainer">
+    <label>Student Name(s):</label>
+    <input type="text" class="student-name" name="students[]" placeholder="Student Name (If applied)" />
+  </div>
+  <button type="button" class="add-student" onclick="addStudentField()">+ Add Another Student</button>
+
+<button type="submit">Register</button>
+</form>
 
   <footer>
     <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
   </footer>
 
   <script>
-    document.getElementById('registerForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
+  function addStudentField() {
+    const container = document.getElementById('studentsContainer');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.name = 'students[]';
+    input.classList.add('student-name');
+    input.placeholder = 'Student Name';
+    container.appendChild(input);
+  }
 
-      const data = {
-        first_name: document.getElementById('first_name').value,
-        last_name: document.getElementById('last_name').value,
-        email: document.getElementById('email').value,
-        phone: document.getElementById('phone').value,
-        username: document.getElementById('username').value,
-        password: document.getElementById('password').value,
-      };
+  document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
 
-      const res = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
+    const studentNodes = document.querySelectorAll('.student-name');
+    const studentNames = Array.from(studentNodes)
+      .map(input => input.value.trim())
+      .filter(name => name.length > 0);
 
-      const text = await res.text();
-      alert(text);
+    const data = {
+      first_name: document.getElementById('first_name').value,
+      last_name: document.getElementById('last_name').value,
+      email: document.getElementById('email').value,
+      phone: document.getElementById('phone').value,
+      username: document.getElementById('username').value,
+      password: document.getElementById('password').value,
+      students: studentNames
+    };
 
-      if (res.ok) {
-        document.cookie = `userFirstName=${encodeURIComponent(data.first_name)}; path=/`;
-        window.location.href = 'index.html';
-      }
+    const res = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
     });
 
-    // Hide buttons if logged in
-    const name = document.cookie.split('; ').find(row => row.startsWith('userFirstName='))?.split('=')[1];
-    if (name) {
-      document.getElementById('nav-buttons').innerHTML = '<button onclick="logout()">Logout</button>';
-    }
+    const text = await res.text();
+    alert(text);
 
-    function logout() {
-      document.cookie = 'userFirstName=; Max-Age=0; path=/';
-      window.location.reload();
+    if (res.ok) {
+      document.cookie = `userFirstName=${encodeURIComponent(data.first_name)}; path=/`;
+      window.location.href = 'index.html';
     }
-  </script>
+  });
+
+  function logout() {
+    document.cookie = 'userFirstName=; Max-Age=0; path=/';
+    window.location.reload();
+  }
+
+  const name = document.cookie.split('; ').find(row => row.startsWith('userFirstName='))?.split('=')[1];
+  if (name && document.getElementById('nav-buttons')) {
+    document.getElementById('nav-buttons').innerHTML = '<button onclick="logout()">Logout</button>';
+  }
+</script>
 </body>
 </html>
 

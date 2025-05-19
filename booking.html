@@ -4,11 +4,33 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Book a Session - C2 Tennis Academy</title>
+
+  <meta name="description" content="C2 Tennis Academy in Texas offers elite tennis training, junior programs, and high-performance coaching using AI and video analysis.">
+  <meta name="keywords" content="C2 Tennis Academy, tennis lessons Texas, UTR tennis, junior tennis, adult clinics, tennis training academy">
+  <meta name="author" content="C2 Tennis Academy">
+  <meta property="og:title" content="C2 Tennis Academy | Elite Tennis Training in Texas">
+  <meta property="og:description" content="Boost your UTR with expert coaching, AI video feedback, and elite tennis programs at C2 Tennis Academy.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://c2tennisacademy.com/">
+
+
   <!-- Flatpickr CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <style>
+
+    .flatpickr-day.week-highlight {
+  background: #0c3c78 !important;
+  color: white !important;
+  border-radius: 50%;
+}
     body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
-    header, footer { background-color: #0c3c78; color: white; text-align: center; padding: 20px; }
+    header, footer {
+  background-color: #0c3c78;
+  color: white;
+  text-align: center;
+  padding: 20px;
+  position: relative; /* ← add this */
+}
     nav { background-color: #092e5e; display: flex; justify-content: center; }
     nav a { color: white; padding: 14px 20px; text-decoration: none; }
     nav a:hover { background-color: #0f4fa0; }
@@ -29,6 +51,39 @@
       cursor: pointer;
     }
     button:hover { background-color: #0f4fa0; }
+
+    .auth-buttons button {
+      background-color: white;
+      color: #0c3c78;
+      border: none;
+      padding: 10px 20px;
+      margin-left: 10px;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .auth-buttons button:hover {
+      background-color: #0f4fa0;
+      color: white;
+    }
+    .coach-link-button {
+  background-color: #d8f352;
+  color: #0c3c78;
+  border: none;
+  padding: 10px 20px;
+  margin-left: 10px;
+  border-radius: 5px;
+  font-weight: bold;
+  font-family: inherit;
+  text-decoration: none;
+  display: inline-block;
+  transition: all 0.3s ease;
+}
+.coach-link-button:hover {
+  background-color: #c1da3b;
+  color: #0c3c78;
+}
   </style>
 </head>
 <body>
@@ -48,10 +103,14 @@
   </script>
 
   <header>
-    <h1>C2 Tennis Academy</h1>
-    <p>Developing Champions On and Off the Court</p>
+    <div>
+      <h1>C2 Tennis Academy</h1>
+      <p>Developing Champions On and Off the Court</p>
+    </div>
+    <div class="auth-buttons" style="position: absolute; top: 60px; right: 40px;">
+  <a href="about.html#meet-our-coaches" class="coach-link-button">Meet the Coaches</a>
+</div>
   </header>
-
   <nav>
     <a href="index.html">Home</a>
     <a href="about.html">About</a>
@@ -64,15 +123,20 @@
     <div class="booking-container">
       <h2>Book a Session</h2>
       <form id="bookingForm">
-        <label for="email">Email</label>
-        <input type="email" id="email" required />
+        <label for="student">Student Name</label>
+      <input type="text" id="student" placeholder="Enter student name" required />
 
         <label for="program">Program</label>
         <select id="program" required>
           <option value="">-- Select Program --</option>
-          <option value="Private Lessons">Private Lessons — $70</option>
-          <option value="Summer Camp / Group Lessons">Summer Camp / Group Lessons — $30</option>
+          <option value="Private Lessons">Private Lessons — $80</option>
+         <option value="Summer Camp Day pass">Summer Camp Day pass (Ages 13–17) — $30</option>
+          <option value="Summer Camp Week pass">Summer Camp Week pass — $130</option>
         </select>
+        <label for="campDay" id="campDayLabel" style="display:none;">Choose Camp Day</label>
+        <input type="text" id="campDay" placeholder="Select a weekday" style="display:none;" readonly />
+        <label for="weekStart" id="weekStartLabel" style="display:none;">Select Week Start (Monday only)</label>
+        <input type="text" id="weekStart" placeholder="Select a Monday" style="display:none;" readonly />
 
         <label for="coach" id="coachLabel" style="display:none;">Coach</label>
         <select id="coach" style="display:none;">
@@ -80,6 +144,8 @@
           <option value="Ricardo Carvajalino">Ricardo Carvajalino</option>
           <option value="Zachary Capone">Zachary Capone</option>
           <option value="Jacob Capone">Jacob Capone</option>
+          <option value="Matthew Abbey">Matthew Abbey</option>
+          <option value="Paula Carvajalino">Paula Carvajalino</option>
         </select>
 
         <label for="date" id="dateLabel" style="display:none;">Preferred Date</label>
@@ -119,12 +185,47 @@
     }
 
     const availability = {
-      'Jacob Capone': { days:[4,5,6], times:{4:{min:'3:00 PM',max:'8:00 PM'},5:{min:'3:00 PM',max:'8:00 PM'},6:{min:'8:00 AM',max:'4:00 PM'}} },
-      'Zachary Capone': { days:[1,2,3,4,5,6], times:{default:{min:'9:00 AM',max:'7:00 PM'},6:{min:'9:00 AM',max:'5:00 PM'}} },
-      'Ricardo Carvajalino': { days:[1,2,3,4,5,6], times:{default:{min:'8:00 AM',max:'9:00 AM'},6:{min:'8:00 AM',max:'2:00 PM'}} }
-    };
+  'Jacob Capone': {
+    days: [4, 5, 6],
+    times: {
+      4: { min: '3:00 PM', max: '8:00 PM' },
+      5: { min: '3:00 PM', max: '8:00 PM' },
+      6: { min: '8:00 AM', max: '4:00 PM' }
+    }
+  },
+  'Zachary Capone': {
+    days: [1, 2, 3, 4, 5, 6],
+    times: {
+      default: { min: '9:00 AM', max: '7:00 PM' },
+      6: { min: '9:00 AM', max: '5:00 PM' }
+    }
+  },
+  'Ricardo Carvajalino': {
+    days: [1, 2, 3, 4, 5, 6],
+    times: {
+      default: { min: '8:00 AM', max: '2:00 PM' },
+      6: { min: '8:00 AM', max: '2:00 PM' }
+    }
+  },
+  'Paula Carvajalino': {
+    days: [1, 2, 3, 4, 5],
+    times: {
+      default: { min: '9:00 AM', max: '7:00 PM' }
+    }
+  },
+  'Matthew Abbey': {
+    days: [1, 2, 3, 4, 5],
+    times: {
+      default: { min: '9:00 AM', max: '7:00 PM' }
+    }
+  }
+};
 
     const programEl = document.getElementById('program');
+    const campDayInput = document.getElementById('campDay');
+    const campDayLabel = document.getElementById('campDayLabel');
+    const weekStartInput = document.getElementById('weekStart');
+    const weekStartLabel = document.getElementById('weekStartLabel'); 
     const coachEl   = document.getElementById('coach');
     const coachLbl  = document.getElementById('coachLabel');
     const dateEl    = document.getElementById('date');
@@ -133,11 +234,79 @@
     const timeLbl   = document.getElementById('timeLabel');
     let datePicker = null;
 
-    programEl.addEventListener('change',()=>{
-      const isPriv = programEl.value==='Private Lessons';
-      coachEl.style.display=coachLbl.style.display=isPriv?'block':'none';
-      if (!isPriv && datePicker) { datePicker.destroy(); dateEl.style.display=dateLbl.style.display=timeEl.style.display=timeLbl.style.display='none'; timeEl.innerHTML=''; dateEl.value=''; }
+   programEl.addEventListener('change', () => {
+  const isPriv = programEl.value === 'Private Lessons';
+  const isCampDay = programEl.value === 'Summer Camp Day pass';
+  const isCampWeek = programEl.value === 'Summer Camp Week pass';
+
+  coachEl.style.display = coachLbl.style.display = isPriv ? 'block' : 'none';
+
+  if (datePicker) {
+    datePicker.destroy();
+    dateEl.style.display = dateLbl.style.display = timeEl.style.display = timeLbl.style.display = 'none';
+    timeEl.innerHTML = '';
+    dateEl.value = '';
+  }
+
+  // Show/hide Camp Day
+  if (isCampDay) {
+    campDayLabel.style.display = campDayInput.style.display = 'block';
+    flatpickr(campDayInput, {
+      dateFormat: 'Y-m-d',
+      minDate: 'today',
+      disable: [date => date.getDay() === 0 || date.getDay() === 6] // Disable weekends
     });
+  } else {
+    campDayLabel.style.display = campDayInput.style.display = 'none';
+    campDayInput.value = '';
+  }
+
+  // Show/hide Week Start
+  if (isCampWeek) {
+    weekStartLabel.style.display = weekStartInput.style.display = 'block';
+    flatpickr(weekStartInput, {
+  dateFormat: 'Y-m-d',
+  minDate: 'today',
+  disable: [date => date.getDay() !== 1], // Only Mondays
+  onChange: function(selectedDates, dateStr, instance) {
+    const monday = selectedDates[0];
+    const highlightedWeek = [];
+
+    const options = { month: 'long', day: 'numeric' };
+    const year = monday.getFullYear();
+
+    const friday = new Date(monday);
+    friday.setDate(monday.getDate() + 4);
+
+    // Format: Week of May 19 – May 23, 2025
+    const formattedLabel = `Week of ${monday.toLocaleDateString(undefined, options)} – ${friday.toLocaleDateString(undefined, options)}, ${year}`;
+
+    // Set user-friendly value in the input
+    instance.input.value = formattedLabel;
+
+    // Highlight Monday to Friday
+    for (let i = 0; i < 5; i++) {
+      const day = new Date(monday);
+      day.setDate(monday.getDate() + i);
+      highlightedWeek.push(day.toDateString());
+    }
+
+    const allDays = instance.calendarContainer.querySelectorAll('.flatpickr-day');
+    allDays.forEach(dayEl => {
+      const dateStr = new Date(dayEl.dateObj).toDateString();
+      if (highlightedWeek.includes(dateStr)) {
+        dayEl.classList.add('week-highlight');
+      } else {
+        dayEl.classList.remove('week-highlight');
+      }
+    });
+  }
+});
+  } else {
+    weekStartLabel.style.display = weekStartInput.style.display = 'none';
+    weekStartInput.value = '';
+  }
+});
 
     coachEl.addEventListener('change',()=>{
       if (!coachEl.value) return;
@@ -164,23 +333,33 @@
 
     document.getElementById('bookingForm').addEventListener('submit',async e=>{
       e.preventDefault();
-      const email  =document.getElementById('email').value;
+      const student = document.getElementById('student').value;
       const program=programEl.value;
       const coach  =coachEl.value||'';
-      const date   =dateEl.value;
+      let date;
+if (program === 'Summer Camp Week pass') {
+  date = weekStartInput.value;
+} else if (program === 'Summer Camp Day pass'){
+  date = campDayInput.value;
+} else {
+  date = dateEl.value;
+}
       const time   =timeEl.value;
       const amountCents=program==='Private Lessons'?7000:3000;
       try{
-        const res=await fetch('/api/create-payment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,program,coach,date,time,amountCents})});
-        if(!res.ok)throw new Error(await res.text());
-        const {url}=await res.json(); window.location.href=url;
-      }catch(err){console.error(err);alert('Payment failed. Please try again.');}
-    });
-  </script>
+        const res = await fetch('/api/create-payment', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ student, program, coach, date, time, amountCents })
+});
+if (!res.ok) throw new Error(await res.text());
+const { url } = await res.json();
+window.location.href = url;
+} catch (err) {
+  console.error(err);
+  alert('Payment failed. Please try again.');
+}
+});
+</script>
 </body>
 </html>
-
-
-
-
-

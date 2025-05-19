@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Portal - C2 Tennis Academy</title>
+
+  <meta name="description" content="C2 Tennis Academy in Texas offers elite tennis training, junior programs, and high-performance coaching using AI and video analysis.">
+  <meta name="keywords" content="C2 Tennis Academy, tennis lessons Texas, UTR tennis, junior tennis, adult clinics, tennis training academy">
+  <meta name="author" content="C2 Tennis Academy">
+  <meta property="og:title" content="C2 Tennis Academy | Elite Tennis Training in Texas">
+  <meta property="og:description" content="Boost your UTR with expert coaching, AI video feedback, and elite tennis programs at C2 Tennis Academy.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://c2tennisacademy.com/">
+
+  <style>
+    html, body { height: 100%; margin: 0; display: flex; flex-direction: column; font-family: Arial, sans-serif; }
+    header, footer { background-color: #0c3c78; color: white; text-align: center; padding: 20px; }
+    nav { background-color: #092e5e; display: flex; justify-content: center; }
+    nav a { color: white; padding: 14px 20px; text-decoration: none; }
+    nav a:hover { background-color: #0f4fa0; }
+    section { flex: 1; padding: 40px 20px; max-width: 1400px; width: 90%; margin: auto; background: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    h2 { color: #0c3c78; }
+    form { margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .full-width { grid-column: 1 / -1; }
+    label { display: block; font-weight: bold; color: #0c3c78; margin-bottom: 5px; }
+    input, select { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
+    button { grid-column: 1 / -1; padding: 12px 20px; background-color: #0c3c78; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+    button:hover { background-color: #0f4fa0; }
+    #student-name-container { display: none; grid-column: 1 / -1; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>C2 Tennis Academy</h1>
+    <p>Admin Portal: Welcome Admin</p>
+  </header>
+
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="about.html">About</a>
+    <a href="programs.html">Programs</a>
+    <a href="schedule.html">Schedule</a>
+    <a href="contact.html">Contact</a>
+  </nav>
+
+  <section>
+    <h2>Add / Edit Lesson</h2>
+    <form id="lesson-form">
+      <input type="hidden" id="lesson-id" />
+
+      <div class="full-width">
+        <label for="program">Program</label>
+        <select id="program" required>
+          <option value="" disabled selected>Choose a program</option>
+          <option value="Private Lessons">Private Lessons</option>
+          <option value="Summer Camp / Group Lessons">Summer Camp / Group Lessons</option>
+          <option value="High Performance Training">High Performance Training</option>
+          <option value="Adult Clinics">Adult Clinics</option>
+        </select>
+      </div>
+
+      <div id="student-name-container" style="display: none;" class="full-width">
+        <label for="student-name">Student Name</label>
+        <input type="text" id="student-name" placeholder="Enter student name for private lesson" />
+      </div>
+
+      <div>
+        <label for="coach">Coach</label>
+        <select id="coach" required>
+          <option value="" disabled selected>Choose a coach</option>
+          <option value="Ricardo Carvajalino">Ricardo Carvajalino</option>
+          <option value="Jacob Capone">Jacob Capone</option>
+          <option value="Zach Capone">Zach Capone</option>
+          <option value="Matthew Abbey">Matthew Abbey</option>
+        </select>
+      </div>
+      
+      
+
+      <div>
+        <label for="date">Date</label>
+        <input type="date" id="date" required />
+      </div>
+
+      <div>
+        <label for="time">Time</label>
+        <input type="time" id="time" required />
+      </div>
+
+      <button type="submit">Save Lesson</button>
+    </form>
+  </section>
+
+  <footer>
+    <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
+  </footer>
+
+  <script>
+    const programSelect = document.getElementById('program');
+    const studentContainer = document.getElementById('student-name-container');
+    const studentInput = document.getElementById('student-name');
+  
+    programSelect.addEventListener('change', () => {
+      if (programSelect.value === 'Private Lessons') {
+        studentContainer.style.display = 'block';
+        studentInput.required = true;
+      } else {
+        studentContainer.style.display = 'none';
+        studentInput.required = false;
+      }
+    });
+  
+    document.getElementById('lesson-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const id = document.getElementById('lesson-id').value;
+  
+      const payload = {
+        program: document.getElementById('program').value,
+        coach: document.getElementById('coach').value,
+        date: document.getElementById('date').value,
+        time: document.getElementById('time').value,
+        student: studentInput.value || ''
+      };
+  
+      const method = id ? 'PUT' : 'POST';
+      const url = id ? `/api/admin/lessons/${id}` : '/api/admin/lessons'; // ✅ fixed quote bug
+  
+      await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+  
+      document.getElementById('lesson-form').reset();
+      studentContainer.style.display = 'none';
+    });
+  </script>
+</body>
+</html>

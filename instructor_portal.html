@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Coach Portal - C2 Tennis Academy</title>
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 0; }
+    header, footer { background-color: #0c3c78; color: white; text-align: center; padding: 20px; }
+    nav { background-color: #092e5e; display: flex; justify-content: center; }
+    nav a { color: white; padding: 14px 20px; text-decoration: none; }
+    nav a:hover { background-color: #0f4fa0; }
+    section { padding: 40px 20px; max-width: 900px; margin: auto; background: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    h2 { color: #0c3c78; }
+
+    .card {
+      margin: 20px 0;
+      padding: 20px;
+      background: #e8f0fc;
+      border-left: 5px solid #0c3c78;
+    }
+    .label {
+      font-weight: bold;
+      color: #0c3c78;
+    }
+
+    select, textarea {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 10px;
+      padding: 10px 15px;
+      background-color: #0c3c78;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover { background-color: #0f4fa0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>C2 Tennis Academy</h1>
+    <p>Coach Portal: Welcome <span id="coach-name"></span></p>
+  </header>
+
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="programs.html">Programs</a>
+    <a href="schedule.html">Schedule</a>
+    <a href="booking.html">Book</a>
+    <a href="contact.html">Contact</a>
+    <a href="logout.html">Logout</a>
+  </nav>
+
+  <section>
+    <h2>Your Upcoming Lessons</h2>
+    <div id="lessons-cards"></div>
+
+    <h2>Submit Progress Update</h2>
+    <form id="progress-form">
+      <label for="student-select">Select Student:</label>
+      <select id="student-select">
+        <option value="" disabled selected>Choose a student</option>
+      </select>
+
+      <label for="feedback">Progress Summary:</label>
+      <textarea id="feedback" rows="5" placeholder="Write progress notes here..."></textarea>
+
+      <button type="submit">Submit</button>
+    </form>
+  </section>
+
+  <footer>
+    <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
+  </footer>
+
+  <script>
+    fetch('/api/my-lessons', { credentials: 'include' })
+      .then(res => {
+        console.log('📡 Called /api/my-lessons, response status:', res.status);
+        if (!res.ok) throw new Error('Unauthorized');
+        return res.json();
+      })
+      .then(lessons => {
+        console.log('📚 Lessons received:', lessons);
+  
+        const cardsContainer = document.getElementById('lessons-cards');
+        const studentSelect = document.getElementById('student-select');
+  
+        cardsContainer.innerHTML = ''; // clear previous
+        studentSelect.innerHTML = '<option value="" disabled selected>Choose a student</option>';
+  
+        if (!lessons.length) {
+          const p = document.createElement('p');
+          p.textContent = 'No upcoming lessons.';
+          cardsContainer.appendChild(p);
+          return;
+        }
+  
+        lessons.forEach(lesson => {
+  const formattedDate = new Date(lesson.date).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const formattedTime = (() => {
+    const [hourStr, minuteStr] = lesson.time.split(':');
+    let hour = parseInt(hourStr, 10);
+    const minute = minuteStr.padStart(2, '0');
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12 || 12;
+    return `${hour}:${minute} ${ampm}`;
+  })();
+
+  const card = document.createElement('div');
+  card.classList.add('card');
+  card.innerHTML = `
+    <h3>${lesson.program}</h3>
+    <p><span class="label">Student:</span> ${lesson.student || 'N/A'}</p>
+    <p><span class="label">Coach:</span> ${lesson.coach}</p>
+    <p><span class="label">Date:</span> ${formattedDate}</p>
+    <p><span class="label">Time:</span> ${formattedTime}</p>
+  `;
+  cardsContainer.appendChild(card);
+
+  if (lesson.student) {
+    const option = document.createElement('option');
+    option.value = lesson.student;
+    option.textContent = lesson.student;
+    studentSelect.appendChild(option);
+  }
+});
+      })
+      .catch(err => {
+        console.error('🚨 Error fetching lessons:', err);
+      });
+  </script>
+</body>
+</html>

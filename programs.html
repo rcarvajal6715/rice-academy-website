@@ -4,6 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Programs - Rice Tennis Academy</title>
+
+  <meta name="description" content="C2 Tennis Academy in Texas offers elite tennis training, junior programs, and high-performance coaching using AI and video analysis.">
+  <meta name="keywords" content="C2 Tennis Academy, tennis lessons Texas, UTR tennis, junior tennis, adult clinics, tennis training academy">
+  <meta name="author" content="C2 Tennis Academy">
+  <meta property="og:title" content="C2 Tennis Academy | Elite Tennis Training in Texas">
+  <meta property="og:description" content="Boost your UTR with expert coaching, AI video feedback, and elite tennis programs at C2 Tennis Academy.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://c2tennisacademy.com/">
+
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -12,11 +22,12 @@
     }
 
     header, footer {
-      background-color: #0c3c78;
-      color: white;
-      text-align: center;
-      padding: 20px;
-    }
+  background-color: #0c3c78;
+  color: white;
+  text-align: center;
+  padding: 20px;
+  position: relative; /* ✅ Needed for absolute positioning inside */
+}
 
     nav {
       background-color: #092e5e;
@@ -67,31 +78,50 @@
       font-style: italic;
       margin-top: 30px;
     }
+
+    .auth-buttons button {
+  background-color: white;
+  color: #0c3c78;
+  border: none;
+  padding: 10px 20px;
+  margin-left: 10px;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.auth-buttons button:hover {
+  background-color: #0f4fa0;
+  color: white;
+}
+
+    nav a.highlighted-nav {
+  background-color: #d8f352; /* Gold */
+  color: black;             /* Dark blue text */
+  font-weight: bold;
+  border-radius: 5px;
+  margin-left: 8px;
+}
+nav a.highlighted-nav:hover {
+  background-color: 4b8f01; /* Slightly darker gold */
+  color: black;
+}
   </style>
 </head>
 <body>
 
-  <script>
-    const firstName = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('userFirstName='))
-      ?.split('=')[1];
-    if (firstName) {
-      const banner = document.createElement('div');
-      banner.textContent = `Welcome, ${decodeURIComponent(firstName)}!`;
-      banner.style.backgroundColor = '#0c3c78';
-      banner.style.color = 'white';
-      banner.style.padding = '10px';
-      banner.style.textAlign = 'center';
-      banner.style.fontWeight = 'bold';
-      document.body.insertBefore(banner, document.body.firstChild);
-    }
-  </script>
+  
 
   <header>
+  <div>
     <h1>C2 Tennis Academy</h1>
     <p>Developing Champions On and Off the Court</p>
-  </header>
+  </div>
+  <div class="auth-buttons" style="position: absolute; top: 20px; right: 20px;" id="authContainer">
+    <a href="register.html"><button id="registerBtn">Register</button></a>
+    <a href="login.html"><button id="loginBtn">Login</button></a>
+  </div>
+</header>
 
   <nav>
     <a href="index.html">Home</a>
@@ -99,6 +129,7 @@
     <a href="programs.html">Programs</a>
     <a href="schedule.html">Schedule</a>
     <a href="contact.html">Contact</a>
+     <a href="booking.html" class="highlighted-nav">Book</a>
   </nav>
 
   <section>
@@ -112,7 +143,7 @@
     <div class="program">
       <img src="images/junior.jpg" alt="Junior Development Program" class="program-img">
       <div>
-        <h3>Junior Development (Ages 6–11)</h3>
+        <h3>Kids Camp (Ages 4–7)</h3>
         <p>This program is designed for beginners and young players developing basic tennis skills and coordination.</p>
         <p><strong>Schedule:</strong> Mondays & Wednesdays, 4:00 PM – 5:30 PM</p>
       </div>
@@ -123,7 +154,7 @@
       <div>
         <h3>High Performance Training (Ages 12–18)</h3>
         <p>For competitive players seeking to improve match play, strategy, and tournament readiness.</p>
-        <p><strong>Schedule:</strong> Tuesdays & Thursdays, 4:30 PM – 6:30 PM</p>
+        <p><strong>Schedule:</strong> To be determined</p>
       </div>
     </div>
 
@@ -141,20 +172,20 @@
       <div>
         <h3>Adult Clinics (Ages 18+)</h3>
         <p>Fun and social training sessions for adult players of all levels to improve technique and stay active.</p>
-        <p><strong>Schedule:</strong> Saturdays, 9:00 AM – 10:30 AM</p>
+        <p><strong>Schedule:</strong> To be determined</p>
       </div>
     </div>
 
     <div class="program">
-      <img src="images/camp.jpg" alt="Summer Camps" class="program-img">
+      <img src="images/camp.png" alt="Summer Camps" class="program-img">
       <div>
-        <h3>Summer Camps (Ages 7–17)</h3>
+        <h3>Summer Camps (Ages 13–17)</h3>
         <p>Week-long camps that focus on technical, physical, and mental aspects of the game. Includes match play and fitness.</p>
-        <p><strong>Dates:</strong> Weekly in June & July<br><strong>Time:</strong> Monday–Friday, 9:00 AM – 12:00 PM</p>
+        <p><strong>Dates:</strong> Weekly in June & July<br><strong>Time:</strong> Monday–Friday, 10:00 AM – 12:30 PM</p>
       </div>
     </div>
 
-    <p class="location"><strong>Location:</strong> All programs are held at <em>Colleyville City Park Tennis Courts</em>, Colleyville, TX.</p>
+    <p class="location"><strong>Location:</strong> All programs are held at <em>Colleyville Middle School Tennis Courts</em>, Colleyville, TX.</p>
 
    
   </section>
@@ -162,6 +193,49 @@
   <footer>
     <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
   </footer>
+
+  <script>
+    async function checkSession() {
+      try {
+        const res = await fetch('/api/check-session', { credentials: 'include' });
+        if (!res.ok) return;
+  
+        const data = await res.json();
+        if (data.loggedIn) {
+          const authContainer = document.getElementById('authContainer');
+          const portal = data.isAdmin ? 'admin.html'
+                       : data.isCoach ? 'instructor_portal.html'
+                       : 'parent_portal.html';
+  
+          authContainer.innerHTML = `
+            <a href="${portal}"><button>${data.isAdmin ? 'Admin Portal' : data.isCoach ? 'Instructor Portal' : 'Parent Portal'}</button></a>
+            <button onclick="logout()">Logout</button>
+          `;
+  
+          const greeting = document.createElement('div');
+          greeting.textContent = 'Welcome, ' + (data.firstName || 'User') + '!';
+          greeting.style.backgroundColor = '#0c3c78';
+          greeting.style.color = 'white';
+          greeting.style.padding = '10px';
+          greeting.style.textAlign = 'center';
+          greeting.style.fontWeight = 'bold';
+          document.body.insertBefore(greeting, document.body.firstChild);
+        }
+      } catch (err) {
+        console.error('Session check failed:', err);
+      }
+    }
+  
+    function logout() {
+  fetch('/api/logout', { method: 'POST', credentials: 'include' })
+    .then(() => {
+      document.cookie = "userFirstName=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      location.reload();
+    });
+}
+  
+    checkSession();
+  </script>
 
 </body>
 </html>

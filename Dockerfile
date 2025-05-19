@@ -1,18 +1,22 @@
-# Use official Node.js image
-FROM node:18
+# Use a slimmer Node.js base image
+FROM node:18-alpine
 
-# Create app directory
+# Set working directory
 WORKDIR /usr/src/app
 
-# Install dependencies
+# Copy package manifests and install only production deps
 COPY package*.json ./
-RUN npm install
+RUN npm ci --only=production
 
-# Copy the rest of the code
+# Copy the rest of your source
 COPY . .
 
-# Expose port from environment
+# Explicitly declare the PORT env var that Cloud Run injects
+ENV PORT=8080
+
+# Expose the listening port
 EXPOSE 8080
 
-# Run the server
-CMD ["node", "server.js"]
+# Start your server
+CMD ["npm", "start"]
+

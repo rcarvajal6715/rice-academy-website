@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const Stripe = require('stripe');
 const PDFKit = require('pdfkit');
 const nodemailer = require('nodemailer');

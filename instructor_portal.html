@@ -169,25 +169,26 @@ const formattedDate = lessonDate.toLocaleDateString(undefined, {
       });
   </script>
 
-  <script>
+<script>
   function deleteLesson(program, date, time, student) {
     if (!confirm("Are you sure you want to delete this lesson?")) return;
 
     fetch('/api/delete-lesson', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ program, date, time, student }),
-      credentials: 'include'
+      credentials: 'include',               // ← send session cookie
+      headers:    { 'Content-Type': 'application/json' },
+      body:       JSON.stringify({ program, date, time, student })
     })
-    .then(res => {
-      if (!res.ok) throw new Error('Failed to delete');
-      alert('Lesson deleted.');
-      location.reload();
-    })
-    .catch(err => {
-      console.error('Error deleting lesson:', err);
-      alert('Error deleting lesson.');
-    });
+      .then(res => {
+        if (!res.ok) throw new Error('Delete failed');
+        alert('Lesson deleted.');
+        // Remove the card from the DOM instead of full reload (optional)
+        location.reload();
+      })
+      .catch(err => {
+        console.error('Error deleting lesson:', err);
+        alert('Could not delete lesson.');
+      });
   }
 </script>
 

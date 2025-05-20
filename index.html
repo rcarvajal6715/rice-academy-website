@@ -125,47 +125,50 @@ nav a.highlighted-nav:hover {
   </footer>
 
   <script>
-    async function checkSession() {
-      try {
-        const res = await fetch('/api/check-session', { credentials: 'include' });
-        if (!res.ok) return;
+  async function checkSession() {
+    try {
+      const res = await fetch('/api/check-session', {
+        credentials: 'include'    // ← makes the browser send your session cookie
+      });
+      if (!res.ok) throw new Error('Not logged in');
 
-        const data = await res.json();
-        if (data.loggedIn) {
-          const authContainer = document.getElementById('authContainer');
-          const portal = data.isAdmin ? 'admin.html'
-             : data.isCoach ? 'instructor_portal.html'
-             : 'parent_portal.html';
+      const data = await res.json();  // ← parse the JSON only on OK
+      // …now use data.loggedIn / data.firstName / data.isAdmin etc…
+      const authContainer = document.getElementById('authContainer');
+      const portal = data.isAdmin
+        ? 'admin.html'
+        : data.isCoach
+          ? 'instructor_portal.html'
+          : 'parent_portal.html';
+      const portalName = data.isAdmin
+        ? 'Admin Portal'
+        : data.isCoach
+          ? 'Instructor Portal'
+          : 'Parent Portal';
 
-          const portalName = data.isAdmin ? 'Admin Portal'
-                  : data.isCoach ? 'Instructor Portal'
-                  : 'Parent Portal';
+      authContainer.innerHTML = `
+        <a href="${portal}"><button>${portalName}</button></a>
+        <button onclick="logout()">Logout</button>
+      `;
+      const greeting = document.createElement('div');
+      greeting.textContent = 'Welcome, ' + (data.firstName || 'User') + '!';
+      greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
+      document.body.insertBefore(greeting, document.body.firstChild);
 
-authContainer.innerHTML = `
-  <a href="${portal}"><button>${portalName}</button></a>
-  <button onclick="logout()">Logout</button>
-`;
-
-          const greeting = document.createElement('div');
-          greeting.textContent = 'Welcome, ' + (data.firstName || 'User') + '!';
-          greeting.style.backgroundColor = '#0c3c78';
-          greeting.style.color = 'white';
-          greeting.style.padding = '10px';
-          greeting.style.textAlign = 'center';
-          greeting.style.fontWeight = 'bold';
-          document.body.insertBefore(greeting, document.body.firstChild);
-        }
-      } catch (err) {
-        console.error('Session check failed:', err);
-      }
+    } catch (err) {
+      // not logged in or network error: silently stay in “login/register” state
+      console.log('Session check:', err.message);
     }
+  }
 
-    function logout() {
-      fetch('/api/logout', { method: 'POST', credentials: 'include' })
-        .then(() => location.reload());
-    }
+  function logout() {
+    fetch('/api/logout', {
+      method: 'POST',
+      credentials: 'include'
+    }).then(() => location.reload());
+  }
 
-    checkSession();
-  </script>
+  checkSession();
+</script>
 </body>
 </html>

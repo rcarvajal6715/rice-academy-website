@@ -171,13 +171,13 @@ app.post('/api/logout', (req, res) => {
 });
 
 app.post('/api/admin/lessons', async (req, res) => {
-  const { program, coach, date, time, student } = req.body; // ✅ define variables first
-  console.log('🎾 Adding lesson via admin for coach:', coach); // ✅ now you can use it
+  const { program, coachName, date, time, student } = req.body;
+  console.log('🎾 Adding lesson via admin for coach:', coachName);
 
   try {
     await pool.query(
       'INSERT INTO bookings (email, program, coach, date, time, student, paid, session_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-      ['', program, coach, date, time, student, false, null]
+      ['', program, coachName, date, time, student, false, null]
     );
     res.status(200).send('Lesson added successfully');
   } catch (err) {

@@ -148,8 +148,8 @@
   async function loadAllLessons() {
     try {
       const res = await fetch('/api/admin/lessons', {
-        credentials: 'include'
-      });
+  credentials: 'include'
+});
       if (!res.ok) throw new Error('Failed to load lessons');
 
       const lessons = await res.json();

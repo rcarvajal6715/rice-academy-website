@@ -236,11 +236,19 @@
     let datePicker = null;
 
    programEl.addEventListener('change', () => {
-  const isPriv = programEl.value === 'Private Lessons';
-  const isCampDay = programEl.value === 'Summer Camp Day pass';
-  const isCampWeek = programEl.value === 'Summer Camp Week pass';
+  const program = programEl.value;
 
-  coachEl.style.display = coachLbl.style.display = isPriv ? 'block' : 'none';
+  const isCampDay = program === 'Summer Camp / Group Lessons - Day Pass';
+  const isCampWeek = program === 'Summer Camp / Group Lessons - Week';
+  const showCoachAndDate = 
+    program === 'Private Lessons' ||
+    program === 'Test Program' ||
+    isCampDay ||
+    isCampWeek;
+
+coachEl.style.display = coachLbl.style.display =
+dateEl.style.display = dateLbl.style.display =
+showCoachAndDate ? 'block' : 'none';
 
   if (datePicker) {
     datePicker.destroy();
@@ -338,20 +346,19 @@
       const program=programEl.value;
       const coach  =coachEl.value||'';
       let date;
-if (program === 'Summer Camp Week pass') {
+if (program === 'Summer Camp / Group Lessons - Week') {
   date = weekStartInput.value;
-} else if (program === 'Summer Camp Day pass'){
+} else if (program === 'Summer Camp / Group Lessons - Day Pass') {
   date = campDayInput.value;
 } else {
   date = dateEl.value;
 }
       const time   =timeEl.value;
-      const amountCents=program==='Private Lessons'?7000:3000;
       try{
         const res = await fetch('/api/create-payment', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ student, program, coach, date, time, amountCents })
+  body: JSON.stringify({ student, program, coach, date, time })
 });
 if (!res.ok) throw new Error(await res.text());
 const { url } = await res.json();

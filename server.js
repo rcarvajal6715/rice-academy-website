@@ -10,6 +10,7 @@ const session = require('express-session');
 
 const app = express();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+app.set('trust proxy', 1);
 
 app.use((req, res, next) => {
   if (process.env.NODE_ENV === 'production' && req.headers['x-forwarded-proto'] !== 'https') {

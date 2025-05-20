@@ -7,14 +7,13 @@ const Stripe = require('stripe');
 const cors = require('cors');
 const PDFKit = require('pdfkit');
 const nodemailer = require('nodemailer');
+// at the top, after you require nodemailer:
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,         // Gmail’s SSL port
+  service: 'gmail',
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
+    user: process.env.GMAIL_USER,         // your Gmail address
+    pass: process.env.GMAIL_APP_PASSWORD  // the 16-char app password you just generated
+  }
 });
 const session = require('express-session');
 
@@ -386,7 +385,7 @@ app.post('/api/create-payment', async (req, res) => {
       if (rows[0]?.phone && rows[0]?.carrier_gateway) {
         const smsTo = `${rows[0].phone.replace(/\D/g, '')}@${rows[0].carrier_gateway}`;
         await transporter.sendMail({
-          from: `"C2 Tennis Academy" <${process.env.SMTP_USER}>`,
+          from: `"C2 Tennis Academy" <${process.env.GMAIL_USER}>`,
           to: smsTo,
           text: `New booking: ${student} | ${program} on ${date} at ${time}`
         });

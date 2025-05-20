@@ -371,20 +371,27 @@ app.post('/api/create-payment', async (req, res) => {
         [email, program, coach, date, time, student]
       );
 
-      // send coach an SMS
+      // fetch coach phone
       const { rows } = await pool.query(
         'SELECT phone FROM coaches WHERE full_name = $1',
         [coach]
       );
+
+      // debug
+      console.log('📱 Twilio from:', process.env.TWILIO_PHONE_NUMBER);
+      console.log('📱 Twilio to:', rows[0]?.phone);
+
+      // send coach an SMS
       if (rows.length && rows[0].phone) {
         await twilio.messages.create({
           from: process.env.TWILIO_PHONE_NUMBER,
           to:   rows[0].phone,
           body: `New booking: ${student} | ${program} on ${date} at ${time}`
         });
+      } else {
+        console.warn('⚠️ No phone found for coach:', coach);
       }
 
-      // no Stripe session URL needed
       return res.json({ url: '/success.html' });
     }
 
@@ -414,17 +421,25 @@ app.post('/api/create-payment', async (req, res) => {
       [email, program, coach, date, time, sessionObj.id, student]
     );
 
-    // send coach an SMS
+    // fetch coach phone
     const { rows } = await pool.query(
       'SELECT phone FROM coaches WHERE full_name = $1',
       [coach]
     );
+
+    // debug
+    console.log('📱 Twilio from:', process.env.TWILIO_PHONE_NUMBER);
+    console.log('📱 Twilio to:', rows[0]?.phone);
+
+    // send coach an SMS
     if (rows.length && rows[0].phone) {
       await twilio.messages.create({
         from: process.env.TWILIO_PHONE_NUMBER,
         to:   rows[0].phone,
-        body: `New booking: ${student} | ${program} on ${date} at ${time}`
+        body: `New paid booking: ${student} | ${program} on ${date} at ${time}`
       });
+    } else {
+      console.warn('⚠️ No phone found for coach:', coach);
     }
 
     // finally send back the Stripe checkout URL

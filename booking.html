@@ -127,10 +127,12 @@
       <input type="text" id="student" placeholder="Enter student name" required />
 
         <label for="program">Program</label>
-        <select id="program">
+        <select id="program" required>
+  <option value="">-- Select a Program --</option>
   <option value="Private Lessons">Private Lessons — $80</option>
-  <option value="Summer Camp / Group Lessons">Summer Camp / Group Lessons — $30</option>
-  <option value="High Performance Training">High Performance Training — $100</option>
+  <option value="Test Program">Test Program — $50</option>
+  <option value="Summer Camp / Group Lessons - Day Pass">Summer Camp Day Pass — $30</option>
+  <option value="Summer Camp / Group Lessons - Week">Summer Camp Week Pass — $130</option>
 </select>
         <label for="campDay" id="campDayLabel" style="display:none;">Choose Camp Day</label>
         <input type="text" id="campDay" placeholder="Select a weekday" style="display:none;" readonly />

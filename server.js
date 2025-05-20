@@ -127,47 +127,69 @@ app.post('/api/coach/login', async (req, res) => {
   }
 });
 
-app.get('/api/my-lessons', async (req, res) => {
-  console.log('🎾 Coach session name:', req.session.coachName);
+fetch('/api/my-lessons', { credentials: 'include' })
+  .then(res => {
+    if (!res.ok) throw new Error('Unauthorized');
+    return res.json();
+  })
+  .then(lessons => {
+    const cardsContainer = document.getElementById('lessons-cards');
+    const studentSelect = document.getElementById('student-select');
 
-  if (!req.session.coachId || !req.session.coachName) {
-    return res.status(401).send('Unauthorized');
-  }
+    cardsContainer.innerHTML = '';
+    studentSelect.innerHTML = '<option value="" disabled selected>Choose a student</option>';
 
-  try {
-    const { rows } = await pool.query(
-  'SELECT program, coach, date, time, student FROM bookings WHERE coach = $1 ORDER BY date DESC',
-  [req.session.coachName]
-);
+    if (!lessons.length) {
+      const p = document.createElement('p');
+      p.textContent = 'No upcoming lessons.';
+      cardsContainer.appendChild(p);
+      return;
+    }
 
-    res.json(rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Failed to fetch lessons.');
-  }
-});
+    lessons.forEach(lesson => {
+      const lessonDate = new Date(lesson.date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (lessonDate < today) return;
 
-app.get('/api/check-session', async (req, res) => {
-  if (req.session.coachId) {
-    return res.json({
-      loggedIn: true,
-      isCoach: true,
-      isAdmin: false,
-      firstName: req.session.coachName
+      const formattedDate = lessonDate.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+
+      const formattedTime = (() => {
+        const [hourStr, minuteStr] = lesson.time.split(':');
+        let hour = parseInt(hourStr, 10);
+        const minute = minuteStr.padStart(2, '0');
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        hour = hour % 12 || 12;
+        return `${hour}:${minute} ${ampm}`;
+      })();
+
+      const card = document.createElement('div');
+      card.classList.add('card');
+      card.innerHTML = `
+        <h3>${lesson.program}</h3>
+        <button class="delete-button" onclick="deleteLesson('${encodeURIComponent(lesson.program)}', '${lesson.date}', '${lesson.time}', '${lesson.student}')">Delete</button>
+        <p><span class="label">Student:</span> ${lesson.student || 'N/A'}</p>
+        <p><span class="label">Coach:</span> ${lesson.coach}</p>
+        <p><span class="label">Date:</span> ${formattedDate}</p>
+        <p><span class="label">Time:</span> ${formattedTime}</p>
+      `;
+      cardsContainer.appendChild(card);
+
+      if (lesson.student) {
+        const option = document.createElement('option');
+        option.value = lesson.student;
+        option.textContent = lesson.student;
+        studentSelect.appendChild(option);
+      }
     });
-  }
-
-  if (req.session.user) {
-    return res.json({
-      loggedIn: true,
-      isAdmin: req.session.user.isAdmin || false,
-      isCoach: false,
-      firstName: req.session.user.firstName || 'User'
-    });
-  }
-
-  return res.json({ loggedIn: false });
-});
+  })
+  .catch(err => {
+    console.error('🚨 Error fetching lessons:', err);
+  });
 
 app.post('/api/logout', (req, res) => {
   req.session.destroy(() => {
@@ -256,7 +278,7 @@ app.post('/api/create-payment', async (req, res) => {
     if (entry.unit_amount === 0) {
       await pool.query(
         'INSERT INTO bookings (email, program, coach, date, time, session_id, paid, student) VALUES ($1, $2, $3, $4, $5, NULL, true, $6)',
-        [email, program, coach || '', date, time, student || '']
+        [email, program, coach, date, time, student]
       );
       return res.json({ url: '/success.html' });  // ✅ redirect manually to success
     }

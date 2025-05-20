@@ -8,13 +8,13 @@ const cors = require('cors');
 const PDFKit = require('pdfkit');
 const nodemailer = require('nodemailer');
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: +process.env.SMTP_PORT,
-  secure: false,
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,         // Gmail’s SSL port
   auth: {
     user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  }
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
 });
 const session = require('express-session');
 

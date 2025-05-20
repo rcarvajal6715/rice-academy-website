@@ -61,12 +61,18 @@ app.use((req, res, next) => {
 });
 
  
-// ─── CORS: allow credentials for your front-end origin ─────────
+// ─── CORS: allow credentials from both React AND Admin HTML ─────────
 app.use(cors({
-  origin: 'http://localhost:3000',   // your front-end URL
-  credentials: true                  // allow session cookie
+  origin: [
+    'http://localhost:3000', // your React front-end
+    'http://localhost:8080'  // your Admin portal
+  ],
+  credentials: true,
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type']
 }));
-// app.use(session
+// enable preflight for all routes
+app.options('*', cors());
 
 app.use(session({
   secret: process.env.SESSION_SECRET,
@@ -74,8 +80,8 @@ app.use(session({
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',  // Only secure in production
-    sameSite: 'Lax',
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'Lax', // allows browser to send the cookie on same-site requests
     maxAge: 86400000
   }
 }));
@@ -186,16 +192,59 @@ app.post('/api/admin/lessons', async (req, res) => {
   }
 });
 
-app.get('/api/my-lessons', async (req, res) => {
-  const coachName = (req.session.coachName || '').trim();
 
-  if (!req.session.coachId || !coachName) {
+
+app.get('/api/admin/lessons', async (req, res) => {
+  if (!req.session.user?.isAdmin) {
+    return res.status(403).send('Forbidden');
+  }
+  try {
+    const { rows } = await pool.query(`
+      SELECT id, program, coach, date, time, student, paid
+      FROM bookings
+      ORDER BY date DESC, time DESC
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error('Error fetching all lessons:', err);
+    res.status(500).send('Error fetching lessons');
+  }
+});
+
+app.delete('/api/admin/lessons/:id', async (req, res) => {
+  if (!req.session.user?.isAdmin) {
+    return res.status(403).send('Forbidden');
+  }
+  try {
+    await pool.query('DELETE FROM bookings WHERE id = $1', [req.params.id]);
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('Error deleting booking:', err);
+    res.status(500).send('Error deleting booking');
+  }
+});
+
+
+app.get('/api/my-lessons', async (req, res) => {
+  // ensure this is a logged-in coach
+  if (!req.session.coachId) {
     return res.status(401).send('Unauthorized');
   }
 
+  const coachName = req.session.coachName.trim();
+
   try {
     const { rows } = await pool.query(
-      'SELECT program, coach, date, time, student FROM bookings WHERE LOWER(coach) = LOWER($1) ORDER BY date DESC',
+      `SELECT
+         id,        -- include the primary key so you can delete by it
+         program,
+         coach,
+         date,
+         time,
+         student
+       FROM bookings
+       WHERE LOWER(coach) = LOWER($1)
+       ORDER BY date DESC, time DESC`,
       [coachName]
     );
     res.json(rows);

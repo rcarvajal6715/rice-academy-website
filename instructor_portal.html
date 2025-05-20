@@ -147,13 +147,23 @@ const formattedDate = lessonDate.toLocaleDateString(undefined, {
   const card = document.createElement('div');
   card.classList.add('card');
   card.innerHTML = `
-    <h3>${lesson.program}</h3>
-     <button class="delete-button" onclick="deleteLesson('${encodeURIComponent(lesson.program)}', '${lesson.date}', '${lesson.time}', '${lesson.student}')">Delete</button>
-    <p><span class="label">Student:</span> ${lesson.student || 'N/A'}</p>
-    <p><span class="label">Coach:</span> ${lesson.coach}</p>
-    <p><span class="label">Date:</span> ${formattedDate}</p>
-    <p><span class="label">Time:</span> ${formattedTime}</p>
-  `;
+  <h3>${lesson.program}</h3>
+  <button
+    class="delete-button"
+    onclick="deleteLesson(
+      '${lesson.program.replace(/'/g, "\\'")}',
+      '${lesson.date}',
+      '${lesson.time}',
+      '${(lesson.student||'').replace(/'/g, "\\'")}'
+    )"
+  >
+    Delete
+  </button>
+  <p><span class="label">Student:</span> ${lesson.student || 'N/A'}</p>
+  <p><span class="label">Coach:</span> ${lesson.coach}</p>
+  <p><span class="label">Date:</span> ${formattedDate}</p>
+  <p><span class="label">Time:</span> ${formattedTime}</p>
+`;
   cardsContainer.appendChild(card);
 
   if (lesson.student) {

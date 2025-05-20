@@ -135,60 +135,76 @@
   </script>
 
   <script>
-    // Load and render all bookings
-    async function loadAllLessons() {
-      try {
-        const res = await fetch('/api/admin/lessons', { credentials: 'include' });
-        if (!res.ok) throw new Error(res.status + ': ' + await res.text());
-        const lessons = await res.json();
-        const c = document.getElementById('all-lessons-container');
-
-        if (!lessons.length) {
-          c.innerHTML = '<p>No lessons scheduled yet.</p>';
-          return;
-        }
-
-        let html = `
-          <table>
-            <thead>
-              <tr>
-                <th>Program</th><th>Coach</th><th>Date</th><th>Time</th><th>Student</th><th>Paid?</th><th>Actions</th>
-              </tr>
-            </thead><tbody>
-        `;
-        lessons.forEach(l => {
-          html += `
-            <tr>
-              <td>${l.program}</td>
-              <td>${l.coach}</td>
-              <td>${new Date(l.date).toLocaleDateString()}</td>
-              <td>${l.time}</td>
-              <td>${l.student || '—'}</td>
-              <td>${l.paid ? 'Yes' : 'No'}</td>
-              <td><button onclick="deleteAdminLesson(${l.id})">Delete</button></td>
-            </tr>
-          `;
-        });
-        html += '</tbody></table>';
-        c.innerHTML = html;
-      } catch (err) {
-        console.error('Load admin lessons error:', err);
-        document.getElementById('all-lessons-container')
-          .innerHTML = '<p style="color:red;">Could not load lessons.</p>';
-      }
+  // Load & render the admin lessons table
+  async function loadAllLessons() {
+    const res = await fetch('/api/admin/lessons', { credentials: 'include' });
+    if (!res.ok) {
+      document.getElementById('all-lessons-container')
+        .innerHTML = '<p style="color:red;">Could not load lessons.</p>';
+      return;
     }
-    window.addEventListener('DOMContentLoaded', loadAllLessons);
+    const lessons = await res.json();
+    const container = document.getElementById('all-lessons-container');
 
-    // Delete handler
-    async function deleteAdminLesson(id) {
-      if (!confirm('Delete this booking?')) return;
-      const res = await fetch(`/api/admin/lessons/${id}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
-      if (res.ok) loadAllLessons();
-      else alert('Delete failed: ' + await res.text());
+    if (lessons.length === 0) {
+      container.innerHTML = '<p>No lessons scheduled yet.</p>';
+      return;
     }
-  </script>
+
+    let html = `
+      <table style="width:100%; border-collapse:collapse; margin-top:10px;">
+        <thead>
+          <tr style="background:#0c3c78; color:white;">
+            <th style="padding:8px; border:1px solid #ddd;">Program</th>
+            <th style="padding:8px; border:1px solid #ddd;">Coach</th>
+            <th style="padding:8px; border:1px solid #ddd;">Date</th>
+            <th style="padding:8px; border:1px solid #ddd;">Time</th>
+            <th style="padding:8px; border:1px solid #ddd;">Student</th>
+            <th style="padding:8px; border:1px solid #ddd;">Paid?</th>
+            <th style="padding:8px; border:1px solid #ddd;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    lessons.forEach(les => {
+      const dateStr = new Date(les.date).toLocaleDateString();
+      const paidText = les.paid ? 'Yes' : 'No';
+      html += `
+        <tr data-id="${les.id}">
+          <td style="padding:8px; border:1px solid #ddd;">${les.program}</td>
+          <td style="padding:8px; border:1px solid #ddd;">${les.coach}</td>
+          <td style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
+          <td style="padding:8px; border:1px solid #ddd;">${les.time}</td>
+          <td style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
+          <td style="padding:8px; border:1px solid #ddd;">${paidText}</td>
+          <td style="padding:8px; border:1px solid #ddd;">
+            <button onclick="deleteAdminLesson(${les.id})">Delete</button>
+          </td>
+        </tr>
+      `;
+    });
+
+    html += `</tbody></table>`;
+    container.innerHTML = html;
+  }
+
+  // Call the delete endpoint, then refresh the table
+  async function deleteAdminLesson(id) {
+    if (!confirm('Are you sure you want to delete this lesson?')) return;
+    const res = await fetch(`/api/admin/lessons/${id}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    if (res.ok) {
+      loadAllLessons();
+    } else {
+      alert('Delete failed: ' + await res.text());
+    }
+  }
+
+  // Kick it off on page load
+  window.addEventListener('DOMContentLoaded', loadAllLessons);
+</script>
 </body>
 </html>

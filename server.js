@@ -219,16 +219,27 @@ app.post('/api/contact', async (req, res) => {
 
 const PRODUCTS = {
   'Private Lessons':             { product: 'prod_SGqWZcPazEgan4', unit_amount: 8000 },
-  'Summer Camp / Group Lessons': { product: 'prod_SGqXbV7zZkw33O', unit_amount: 3000 },
-  'High Performance Training':   { product: 'prod_HIGH_PERF',     unit_amount: 10000 },
-  'Adult Clinics':               { product: 'prod_ADULT',         unit_amount: 5000 },
+  'Summer Camp / Group Lessons - Day Pass': { product: 'prod_SGqXbV7zZkw33O', unit_amount: 3000 },
+  'Summer Camp / Group Lessons - Week':     { product: 'prod_SLLPWS9GEdr2zu', unit_amount: 13000 },
+  'Test Program':                { product: 'prod_SLLQnEM6GvCWTe', unit_amount: 0 },  // ✅ Add this line
 };
 
 app.post('/api/create-payment', async (req, res) => {
   const { email, program, coach, date, time, student } = req.body;
   const entry = PRODUCTS[program];
   if (!entry) return res.status(400).send('Invalid program.');
+
   try {
+    // Handle FREE program logic
+    if (entry.unit_amount === 0) {
+      await pool.query(
+        'INSERT INTO bookings (email, program, coach, date, time, session_id, paid, student) VALUES ($1, $2, $3, $4, $5, NULL, true, $6)',
+        [email, program, coach || '', date, time, student || '']
+      );
+      return res.json({ url: '/success.html' });  // ✅ redirect manually to success
+    }
+
+    // Stripe payment for paid programs
     const sessionObj = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       customer_email: email,
@@ -247,9 +258,9 @@ app.post('/api/create-payment', async (req, res) => {
     });
 
     await pool.query(
-  'INSERT INTO bookings (email, program, coach, date, time, session_id, paid, student) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-  [email, program, coach || '', date, time, sessionObj.id, false, student || '']
-);
+      'INSERT INTO bookings (email, program, coach, date, time, session_id, paid, student) VALUES ($1, $2, $3, $4, $5, $6, false, $7)',
+      [email, program, coach || '', date, time, sessionObj.id, student || '']
+    );
 
     res.json({ url: sessionObj.url });
   } catch (err) {

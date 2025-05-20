@@ -179,9 +179,9 @@ app.post('/api/admin/lessons', async (req, res) => {
   console.log('🔍 Current session in /api/my-lessons:', req.session);
   const { program, coach, date, time, student } = req.body;
   try {
-    await pool.query(
+   await pool.query(
   'INSERT INTO bookings (email, program, coach, date, time, student, paid, session_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-  ['', program, coach, date, time, student, 0, null]
+  ['', program, coach, date, time, student, false, null]
 );
     res.status(200).send('Lesson added successfully');
   } catch (err) {
@@ -247,8 +247,8 @@ app.post('/api/create-payment', async (req, res) => {
     });
 
     await pool.query(
-  'INSERT INTO bookings (email, program, coach, date, time, session_id, paid, student) VALUES ($1, $2, $3, $4, $5, $6, 0, $7)',
-  [email, program, coach || '', date, time, sessionObj.id, student || '']
+  'INSERT INTO bookings (email, program, coach, date, time, session_id, paid, student) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+  [email, program, coach || '', date, time, sessionObj.id, false, student || '']
 );
 
     res.json({ url: sessionObj.url });

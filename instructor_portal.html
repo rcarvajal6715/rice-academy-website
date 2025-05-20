@@ -100,7 +100,7 @@
   </footer>
 
   <script>
-    fetch('/api/my-lessons', { credentials: 'include' })
+    fetch('/api/admin/lessons', { credentials: 'include' })
       .then(res => {
         console.log('📡 Called /api/my-lessons, response status:', res.status);
         if (!res.ok) throw new Error('Unauthorized');

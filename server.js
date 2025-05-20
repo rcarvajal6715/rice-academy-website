@@ -190,6 +190,14 @@ app.post('/api/admin/lessons', async (req, res) => {
   }
 });
 
+app.get('/api/admin/lessons', (req, res) => {
+  if (!req.session || !req.session.isAdmin) return res.status(401).send('Unauthorized');
+  pool.query('SELECT * FROM bookings ORDER BY date ASC, time ASC', (err, result) => {
+    if (err) return res.status(500).send('Database error');
+    res.json(result.rows);
+  });
+});
+
 app.post('/api/signup', async (req, res) => {
   const { name, email, program, preferred_date } = req.body;
   try {

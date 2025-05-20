@@ -34,7 +34,9 @@ app.use(session({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(__dirname));
+app.use(express.static(__dirname, {
+  extensions: ['html']
+}));
 
 
 const pool = new Pool({
@@ -324,6 +326,13 @@ async function sendInvoiceEmail(toEmail, session) {
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get('/:page', (req, res) => {
+  const filePath = path.join(__dirname, `${req.params.page}.html`);
+  res.sendFile(filePath, err => {
+    if (err) res.status(404).send('Page not found');
+  });
 });
 
 const PORT = process.env.PORT || 8080;

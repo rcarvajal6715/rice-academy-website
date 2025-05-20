@@ -224,6 +224,20 @@ const PRODUCTS = {
   'Test Program':                { product: 'prod_SLLQnEM6GvCWTe', unit_amount: 0 },  // ✅ Add this line
 };
 
+app.post('/api/delete-lesson', async (req, res) => {
+  const { program, date, time, student } = req.body;
+  try {
+    await pool.query(
+      'DELETE FROM bookings WHERE program=$1 AND date=$2 AND time=$3 AND student=$4',
+      [program, date, time, student]
+    );
+    res.status(200).send('Lesson deleted');
+  } catch (err) {
+    console.error('Error deleting lesson:', err);
+    res.status(500).send('Failed to delete lesson');
+  }
+});
+
 app.post('/api/create-payment', async (req, res) => {
   const { email, program, coach, date, time, student } = req.body;
   const entry = PRODUCTS[program];

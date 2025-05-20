@@ -240,15 +240,12 @@
 
   const isCampDay = program === 'Summer Camp / Group Lessons - Day Pass';
   const isCampWeek = program === 'Summer Camp / Group Lessons - Week';
-  const showCoachAndDate = 
-    program === 'Private Lessons' ||
-    program === 'Test Program' ||
-    isCampDay ||
-    isCampWeek;
+  // Decide what fields to show based on program
+const showCoach = program === 'Private Lessons' || program === 'Test Program';
+const showDate = showCoach || isCampDay || isCampWeek;
 
-coachEl.style.display = coachLbl.style.display =
-dateEl.style.display = dateLbl.style.display =
-showCoachAndDate ? 'block' : 'none';
+coachEl.style.display = coachLbl.style.display = showCoach ? 'block' : 'none';
+dateEl.style.display = dateLbl.style.display = showDate ? 'block' : 'none';
 
   if (datePicker) {
     datePicker.destroy();

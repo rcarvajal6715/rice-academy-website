@@ -32,6 +32,24 @@
       border: 1px solid #ccc;
       box-sizing: border-box;
     }
+
+.delete-button {
+  background-color: white;
+  color: #c0392b; /* red color */
+  border: none;
+  padding: 10px 20px;
+  margin-left: 10px;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  float: right;
+}
+.delete-button:hover {
+  background-color: #c0392b;
+  color: white;
+}
+
     button {
       margin-top: 10px;
       padding: 10px 15px;
@@ -103,13 +121,19 @@
           cardsContainer.appendChild(p);
           return;
         }
-  
-        lessons.forEach(lesson => {
-  const formattedDate = new Date(lesson.date).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+
+  lessons.forEach(lesson => {
+  const lessonDate = new Date(lesson.date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // normalize time for comparison
+  if (lessonDate < today) return; // skip past lessons
+
+
+const formattedDate = lessonDate.toLocaleDateString(undefined, {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric'
+});
 
   const formattedTime = (() => {
     const [hourStr, minuteStr] = lesson.time.split(':');
@@ -124,6 +148,7 @@
   card.classList.add('card');
   card.innerHTML = `
     <h3>${lesson.program}</h3>
+     <button class="delete-button" onclick="deleteLesson('${encodeURIComponent(lesson.program)}', '${lesson.date}', '${lesson.time}', '${lesson.student}')">Delete</button>
     <p><span class="label">Student:</span> ${lesson.student || 'N/A'}</p>
     <p><span class="label">Coach:</span> ${lesson.coach}</p>
     <p><span class="label">Date:</span> ${formattedDate}</p>
@@ -143,5 +168,28 @@
         console.error('🚨 Error fetching lessons:', err);
       });
   </script>
+
+  <script>
+  function deleteLesson(program, date, time, student) {
+    if (!confirm("Are you sure you want to delete this lesson?")) return;
+
+    fetch('/api/delete-lesson', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ program, date, time, student }),
+      credentials: 'include'
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to delete');
+      alert('Lesson deleted.');
+      location.reload();
+    })
+    .catch(err => {
+      console.error('Error deleting lesson:', err);
+      alert('Error deleting lesson.');
+    });
+  }
+</script>
+
 </body>
 </html>

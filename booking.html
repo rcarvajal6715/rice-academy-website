@@ -244,15 +244,35 @@
 const showCoach = program === 'Private Lessons' || program === 'Test Program';
 const showDate = showCoach || isCampDay || isCampWeek;
 
-coachEl.style.display = coachLbl.style.display = showCoach ? 'block' : 'none';
-dateEl.style.display = dateLbl.style.display = showDate ? 'block' : 'none';
+coachEl.style.display = coachLbl.style.display =
+  (program === 'Private Lessons' || program === 'Test Program') ? 'block' : 'none';
+
+dateEl.style.display = dateLbl.style.display =
+  (program === 'Private Lessons' || program === 'Test Program') ? 'block' : 'none';
+
+timeEl.style.display = timeLbl.style.display =
+  (isCampDay || isCampWeek) ? 'block' : 'none';
 
   if (datePicker) {
-    datePicker.destroy();
-    dateEl.style.display = dateLbl.style.display = timeEl.style.display = timeLbl.style.display = 'none';
-    timeEl.innerHTML = '';
-    dateEl.value = '';
-  }
+  datePicker.destroy();
+  timeEl.style.display = timeLbl.style.display = 'none';
+  timeEl.innerHTML = '';
+  dateEl.value = '';
+}
+
+  timeEl.innerHTML = '<option value="">-- Select Time --</option>';
+[
+  '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM',
+  '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
+  '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM',
+  '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM',
+  '4:00 PM'
+].forEach(t => {
+  const opt = document.createElement('option');
+  opt.value = t;
+  opt.textContent = t;
+  timeEl.appendChild(opt);
+});
 
   // Show/hide Camp Day
   if (isCampDay) {

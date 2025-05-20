@@ -17,6 +17,7 @@
     "mysql2": "^3.14.1",
     "nodemailer": "^7.0.2",
     "pdfkit": "^0.17.1",
+    "pg": "^8.16.0",
     "stripe": "^18.1.0"
   },
   "devDependencies": {

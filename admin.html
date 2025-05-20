@@ -5,14 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin Portal - C2 Tennis Academy</title>
 
-  <meta name="description" content="C2 Tennis Academy in Texas offers elite tennis training, junior programs, and high-performance coaching using AI and video analysis.">
-  <meta name="keywords" content="C2 Tennis Academy, tennis lessons Texas, UTR tennis, junior tennis, adult clinics, tennis training academy">
-  <meta name="author" content="C2 Tennis Academy">
-  <meta property="og:title" content="C2 Tennis Academy | Elite Tennis Training in Texas">
-  <meta property="og:description" content="Boost your UTR with expert coaching, AI video feedback, and elite tennis programs at C2 Tennis Academy.">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://c2tennisacademy.com/">
-
   <style>
     html, body { height: 100%; margin: 0; display: flex; flex-direction: column; font-family: Arial, sans-serif; }
     header, footer { background-color: #0c3c78; color: white; text-align: center; padding: 20px; }
@@ -24,13 +16,17 @@
     form { margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .full-width { grid-column: 1 / -1; }
     label { display: block; font-weight: bold; color: #0c3c78; margin-bottom: 5px; }
-    input, select { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
-    button { grid-column: 1 / -1; padding: 12px 20px; background-color: #0c3c78; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+    input, select, button { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
+    button { background-color: #0c3c78; color: white; cursor: pointer; grid-column: 1 / -1; margin-top: 20px; }
     button:hover { background-color: #0f4fa0; }
-    #student-name-container { display: none; grid-column: 1 / -1; }
+    #student-name-container { display: none; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 8px; border:1px solid #ddd; }
+    thead th { background: #0c3c78; color: white; }
   </style>
 </head>
 <body>
+
   <header>
     <h1>C2 Tennis Academy</h1>
     <p>Admin Portal: Welcome Admin</p>
@@ -49,43 +45,43 @@
     <form id="lesson-form">
       <input type="hidden" id="lesson-id" />
 
+      <!-- Program -->
       <div class="full-width">
         <label for="program">Program</label>
         <select id="program" required>
           <option value="" disabled selected>Choose a program</option>
-          <option value="Private Lessons">Private Lessons</option>
-          <option value="Summer Camp / Group Lessons">Summer Camp / Group Lessons</option>
-          <option value="High Performance Training">High Performance Training</option>
-          <option value="Adult Clinics">Adult Clinics</option>
+          <option>Private Lessons</option>
+          <option>Summer Camp / Group Lessons</option>
+          <option>High Performance Training</option>
+          <option>Adult Clinics</option>
         </select>
       </div>
 
-
-
-
-      <div id="student-name-container" style="display: none;" class="full-width">
+      <!-- Student (for Private Lessons) -->
+      <div id="student-name-container" class="full-width">
         <label for="student-name">Student Name</label>
         <input type="text" id="student-name" placeholder="Enter student name for private lesson" />
       </div>
 
+      <!-- Coach -->
       <div>
         <label for="coach">Coach</label>
         <select id="coach" required>
           <option value="" disabled selected>Choose a coach</option>
-          <option value="Ricardo Carvajalino">Ricardo Carvajalino</option>
-          <option value="Jacob Capone">Jacob Capone</option>
-          <option value="Zach Capone">Zach Capone</option>
-          <option value="Matthew Abbey">Matthew Abbey</option>
+          <option>Ricardo Carvajalino</option>
+          <option>Jacob Capone</option>
+          <option>Zach Capone</option>
+          <option>Matthew Abbey</option>
         </select>
       </div>
-      
-      
 
+      <!-- Date -->
       <div>
         <label for="date">Date</label>
         <input type="date" id="date" required />
       </div>
 
+      <!-- Time -->
       <div>
         <label for="time">Time</label>
         <input type="time" id="time" required />
@@ -93,131 +89,105 @@
 
       <button type="submit">Save Lesson</button>
     </form>
-  </section>
 
-  <h2>All Scheduled Lessons</h2>
-  <div id="all-lessons-container"></div>
+    <!-- All Scheduled Lessons -->
+    <h2>All Scheduled Lessons</h2>
+    <div id="all-lessons-container"></div>
+  </section>
 
   <footer>
     <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
   </footer>
 
   <script>
-    const programSelect = document.getElementById('program');
-    const studentContainer = document.getElementById('student-name-container');
-    const studentInput = document.getElementById('student-name');
-  
-    programSelect.addEventListener('change', () => {
-      if (programSelect.value === 'Private Lessons') {
-        studentContainer.style.display = 'block';
-        studentInput.required = true;
-      } else {
-        studentContainer.style.display = 'none';
-        studentInput.required = false;
-      }
+    // Toggle student field
+    const programEl = document.getElementById('program');
+    const studentDiv = document.getElementById('student-name-container');
+    programEl.addEventListener('change', () => {
+      studentDiv.style.display = programEl.value === 'Private Lessons' ? 'block' : 'none';
     });
-  
+
+    // Submit new lesson
     document.getElementById('lesson-form').addEventListener('submit', async e => {
       e.preventDefault();
-      const id = document.getElementById('lesson-id').value;
-  
       const payload = {
-        program: document.getElementById('program').value,
-        coachName: document.getElementById('coach').value,  // ← send it as “coachName”
+        program: programEl.value,
+        coachName: document.getElementById('coach').value,
         date: document.getElementById('date').value,
         time: document.getElementById('time').value,
-        student: studentInput.value || ''
+        student: document.getElementById('student-name').value || ''
       };
-  
-      const method = id ? 'PUT' : 'POST';
-      const url = id ? `/api/admin/lessons/${id}` : '/api/admin/lessons'; // ✅ fixed quote bug
-  
-      await fetch(url, {
-        method,
+      const res = await fetch('/api/admin/lessons', {
+        method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-  
-      document.getElementById('lesson-form').reset();
-      studentContainer.style.display = 'none';
+      if (res.ok) {
+        alert('Lesson saved');
+        loadAllLessons();
+        e.target.reset();
+        studentDiv.style.display = 'none';
+      } else {
+        alert('Save failed: ' + await res.text());
+      }
     });
   </script>
 
   <script>
-  // Fetch and render every booking as a table
-  async function loadAllLessons() {
-    try {
-      const res = await fetch('/api/admin/lessons', {
-  credentials: 'include'
-});
-      if (!res.ok) throw new Error('Failed to load lessons');
+    // Load and render all bookings
+    async function loadAllLessons() {
+      try {
+        const res = await fetch('/api/admin/lessons', { credentials: 'include' });
+        if (!res.ok) throw new Error(res.status + ': ' + await res.text());
+        const lessons = await res.json();
+        const c = document.getElementById('all-lessons-container');
 
-      const lessons = await res.json();
-      const container = document.getElementById('all-lessons-container');
+        if (!lessons.length) {
+          c.innerHTML = '<p>No lessons scheduled yet.</p>';
+          return;
+        }
 
-      if (!lessons.length) {
-        container.innerHTML = '<p>No lessons scheduled yet.</p>';
-        return;
-      }
-
-      // Build a simple HTML table
-      let html = `
-        <table style="width:100%; border-collapse:collapse; margin-top:10px;">
-          <thead>
-            <tr style="background:#0c3c78; color:white;">
-              <th style="padding:8px; border:1px solid #ddd;">Program</th>
-              <th style="padding:8px; border:1px solid #ddd;">Coach</th>
-              <th style="padding:8px; border:1px solid #ddd;">Date</th>
-              <th style="padding:8px; border:1px solid #ddd;">Time</th>
-              <th style="padding:8px; border:1px solid #ddd;">Student</th>
-              <th style="padding:8px; border:1px solid #ddd;">Paid?</th>
-              <th style="padding:8px; border:1px solid #ddd;">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-      `;
-
-      lessons.forEach(les => {
-        const paidText = les.paid ? 'Yes' : 'No';
-        html += `
-          <tr>
-            <td style="padding:8px; border:1px solid #ddd;">${les.program}</td>
-            <td style="padding:8px; border:1px solid #ddd;">${les.coach}</td>
-            <td style="padding:8px; border:1px solid #ddd;">${new Date(les.date).toLocaleDateString()}</td>
-            <td style="padding:8px; border:1px solid #ddd;">${les.time}</td>
-            <td style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
-            <td style="padding:8px; border:1px solid #ddd;">${paidText}</td>
-            <td style="padding:8px; border:1px solid #ddd;">
-              <button onclick="deleteAdminLesson(${les.id})">Delete</button>
-            </td>
-          </tr>
+        let html = `
+          <table>
+            <thead>
+              <tr>
+                <th>Program</th><th>Coach</th><th>Date</th><th>Time</th><th>Student</th><th>Paid?</th><th>Actions</th>
+              </tr>
+            </thead><tbody>
         `;
-      });
-
-      html += `</tbody></table>`;
-      container.innerHTML = html;
-    } catch (err) {
-      console.error('Error loading admin lessons:', err);
-      document.getElementById('all-lessons-container')
-        .innerHTML = '<p style="color:red;">Could not load lessons.</p>';
+        lessons.forEach(l => {
+          html += `
+            <tr>
+              <td>${l.program}</td>
+              <td>${l.coach}</td>
+              <td>${new Date(l.date).toLocaleDateString()}</td>
+              <td>${l.time}</td>
+              <td>${l.student || '—'}</td>
+              <td>${l.paid ? 'Yes' : 'No'}</td>
+              <td><button onclick="deleteAdminLesson(${l.id})">Delete</button></td>
+            </tr>
+          `;
+        });
+        html += '</tbody></table>';
+        c.innerHTML = html;
+      } catch (err) {
+        console.error('Load admin lessons error:', err);
+        document.getElementById('all-lessons-container')
+          .innerHTML = '<p style="color:red;">Could not load lessons.</p>';
+      }
     }
-  }
+    window.addEventListener('DOMContentLoaded', loadAllLessons);
 
-  // Run it as soon as the page loads
-  window.addEventListener('DOMContentLoaded', loadAllLessons);
-</script>
- <script>
+    // Delete handler
     async function deleteAdminLesson(id) {
-      if (!confirm('Are you sure you want to delete this booking?')) return;
+      if (!confirm('Delete this booking?')) return;
       const res = await fetch(`/api/admin/lessons/${id}`, {
         method: 'DELETE',
         credentials: 'include'
       });
-      if (res.ok) {
-        loadAllLessons();      // refresh the table
-      } else {
-        alert('Delete failed: ' + (await res.text()));
-      }
+      if (res.ok) loadAllLessons();
+      else alert('Delete failed: ' + await res.text());
     }
   </script>
 </body>

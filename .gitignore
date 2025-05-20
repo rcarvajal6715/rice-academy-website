@@ -1,3 +1,5 @@
 .env
 *.json
 env.txt
+node_modules/
+.DS_Store

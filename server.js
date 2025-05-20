@@ -7,11 +7,16 @@ const Stripe = require('stripe');
 const cors = require('cors');
 const PDFKit = require('pdfkit');
 const nodemailer = require('nodemailer');
+const twilio      = require('twilio')(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+);
 const session = require('express-session');
 
 const app = express();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 app.set('trust proxy', 1);
+
 
 // ─── Initialize Postgres pool ─────────────────────────────
 const pool = new Pool({
@@ -282,10 +287,11 @@ app.post('/api/contact', async (req, res) => {
 });
 
 const PRODUCTS = {
-  'Private Lessons':             { product: 'prod_SGqWZcPazEgan4', unit_amount: 8000 },
-  'Summer Camp / Group Lessons - Day Pass': { product: 'prod_SGqXbV7zZkw33O', unit_amount: 3000 },
-  'Summer Camp / Group Lessons - Week':     { product: 'prod_SLLPWS9GEdr2zu', unit_amount: 13000 },
-  'Test Program':                { product: 'prod_SLLQnEM6GvCWTe', unit_amount: 0 },  // ✅ Add this line
+  'Tennis Private':        { product: 'prod_SLdhVg9OLZ9ZXg', unit_amount: 8000 },
+  'Summer Camp - Day Pass':  { product: 'prod_SLdiXatBCgPcdq', unit_amount: 3000 },
+  'Summer Camp - Week Pass': { product: 'prod_SLdiTQnw5R0ZRz', unit_amount: 13000 },
+  'Kids Camp - Day Pass':    { product: 'prod_SLdiVIknjyel8g', unit_amount: 4000 },
+  'Kids Camp - Week Pass':   { product: 'prod_SLdjv2pREH95vy', unit_amount: 11000 },
 };
 
 app.post('/api/delete-lesson', async (req, res) => {
@@ -299,6 +305,37 @@ app.post('/api/delete-lesson', async (req, res) => {
   } catch (err) {
     console.error('Error deleting lesson:', err);
     res.status(500).send('Failed to delete lesson');
+  }
+});
+
+app.post('/api/coach/lessons', async (req, res) => {
+  // make sure they’re logged in as a coach
+  if (!req.session.coachId) {
+    return res.status(401).send('Unauthorized');
+  }
+
+  const { program, date, time, student } = req.body;
+
+  try {
+    await pool.query(
+      `INSERT INTO bookings
+         (email, program, coach, date, time, student, paid, session_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        '',                            // no email on coach‐added lessons
+        program,
+        req.session.coachName,         // coach’s full_name from login
+        date,
+        time,
+        student || '',
+        false,                         // always unpaid
+        null                           // no Stripe session_id
+      ]
+    );
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('Error adding coach lesson:', err);
+    res.status(500).send('Error adding lesson');
   }
 });
 
@@ -320,21 +357,38 @@ app.get('/api/check-session', (req, res) => {
 });
 
 app.post('/api/create-payment', async (req, res) => {
-  const { email, program, coach, date, time, student } = req.body;
+  const { student, email, program, coach, date, time } = req.body;
   const entry = PRODUCTS[program];
   if (!entry) return res.status(400).send('Invalid program.');
 
   try {
-    // Handle FREE program logic
+    // 1️⃣ FREE program: just insert & notify coach
     if (entry.unit_amount === 0) {
       await pool.query(
-        'INSERT INTO bookings (email, program, coach, date, time, session_id, paid, student) VALUES ($1, $2, $3, $4, $5, NULL, true, $6)',
+        `INSERT INTO bookings 
+           (email, program, coach, date, time, session_id, paid, student) 
+         VALUES ($1,$2,$3,$4,$5,NULL,TRUE,$6)`,
         [email, program, coach, date, time, student]
       );
-      return res.json({ url: '/success.html' });  // ✅ redirect manually to success
+
+      // send coach an SMS
+      const { rows } = await pool.query(
+        'SELECT phone FROM coaches WHERE full_name = $1',
+        [coach]
+      );
+      if (rows.length && rows[0].phone) {
+        await twilio.messages.create({
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to:   rows[0].phone,
+          body: `New booking: ${student} | ${program} on ${date} at ${time}`
+        });
+      }
+
+      // no Stripe session URL needed
+      return res.json({ url: '/success.html' });
     }
 
-    // Stripe payment for paid programs
+    // 2️⃣ PAID program: create Stripe session
     const sessionObj = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       customer_email: email,
@@ -347,19 +401,37 @@ app.post('/api/create-payment', async (req, res) => {
         quantity: 1
       }],
       mode: 'payment',
-      metadata: { program, coach, date, time },
+      metadata: { student, program, coach, date, time },
       success_url: `${req.protocol}://${req.get('host')}/success.html`,
-      cancel_url: `${req.protocol}://${req.get('host')}/cancel.html`,
+      cancel_url:  `${req.protocol}://${req.get('host')}/cancel.html`
     });
 
+    // record the booking (paid=false for now)
     await pool.query(
-      'INSERT INTO bookings (email, program, coach, date, time, session_id, paid, student) VALUES ($1, $2, $3, $4, $5, $6, false, $7)',
-      [email, program, coach || '', date, time, sessionObj.id, student || '']
+      `INSERT INTO bookings 
+         (email, program, coach, date, time, session_id, paid, student) 
+       VALUES ($1,$2,$3,$4,$5,$6,FALSE,$7)`,
+      [email, program, coach, date, time, sessionObj.id, student]
     );
 
+    // send coach an SMS
+    const { rows } = await pool.query(
+      'SELECT phone FROM coaches WHERE full_name = $1',
+      [coach]
+    );
+    if (rows.length && rows[0].phone) {
+      await twilio.messages.create({
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to:   rows[0].phone,
+        body: `New booking: ${student} | ${program} on ${date} at ${time}`
+      });
+    }
+
+    // finally send back the Stripe checkout URL
     res.json({ url: sessionObj.url });
+
   } catch (err) {
-    console.error(err);
+    console.error('Payment creation failed.', err);
     res.status(500).send('Payment creation failed.');
   }
 });

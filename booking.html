@@ -127,13 +127,14 @@
       <input type="text" id="student" placeholder="Enter student name" required />
 
         <label for="program">Program</label>
-        <select id="program" required>
-  <option value="">-- Select a Program --</option>
-  <option value="Private Lessons">Private Lessons — $80</option>
-  <option value="Test Program">Test Program — $50</option>
-  <option value="Summer Camp / Group Lessons - Day Pass">Summer Camp Day Pass — $30</option>
-  <option value="Summer Camp / Group Lessons - Week">Summer Camp Week Pass — $130</option>
-</select>
+    <select id="program" name="program" required>
+        <option value="" disabled selected>Select a program</option>
+        <option value="Tennis Private">Tennis Private — $80</option>
+       <option value="Summer Camp - Day Pass">Summer Camp - Day Pass — $30</option>
+       <option value="Summer Camp - Week Pass">Summer Camp - Week Pass — $130</option>
+       <option value="Kids Camp - Day Pass">Kids Camp - Day Pass — $40</option>
+       <option value="Kids Camp - Week Pass">Kids Camp - Week Pass — $110</option>
+    </select>
         <label for="campDay" id="campDayLabel" style="display:none;">Choose Camp Day</label>
         <input type="text" id="campDay" placeholder="Select a weekday" style="display:none;" readonly />
         <label for="weekStart" id="weekStartLabel" style="display:none;">Select Week Start (Monday only)</label>
@@ -238,20 +239,20 @@
    programEl.addEventListener('change', () => {
   const program = programEl.value;
 
-  const isCampDay = program === 'Summer Camp / Group Lessons - Day Pass';
-  const isCampWeek = program === 'Summer Camp / Group Lessons - Week';
-  // Decide what fields to show based on program
-const showCoach = program === 'Private Lessons' || program === 'Test Program';
-const showDate = showCoach || isCampDay || isCampWeek;
+  program === 'Summer Camp - Day Pass'
+  program === 'Summer Camp - Week Pass'
+  // only Tennis Private gets coach & date fields
+  const showCoach  = program === 'Tennis Private';
 
-coachEl.style.display = coachLbl.style.display =
-  (program === 'Private Lessons' || program === 'Test Program') ? 'block' : 'none';
+  coachEl.style.display = showCoach ? 'block' : 'none';
+  coachLbl.style.display = showCoach ? 'block' : 'none';
 
-dateEl.style.display = dateLbl.style.display =
-  (program === 'Private Lessons' || program === 'Test Program') ? 'block' : 'none';
+  dateEl.style.display = showCoach ? 'block' : 'none';
+  dateLbl.style.display = showCoach ? 'block' : 'none';
 
-timeEl.style.display = timeLbl.style.display =
-  (isCampDay || isCampWeek) ? 'block' : 'none';
+  timeEl.style.display = (isCampDay || isCampWeek) ? 'block' : 'none';
+  timeLbl.style.display = (isCampDay || isCampWeek) ? 'block' : 'none';
+
 
   if (datePicker) {
   datePicker.destroy();

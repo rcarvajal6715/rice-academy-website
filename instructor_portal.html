@@ -93,7 +93,38 @@
 
       <button type="submit">Submit</button>
     </form>
+
+<h2>Add Lesson</h2>
+  <form id="coach-lesson-form">
+    <div>
+      <label for="coach-program">Program</label>
+      <select id="coach-program" required>
+        <option value="" disabled selected>Choose a program</option>
+        <option value="Tennis Private">Tennis Private</option>
+        <option value="Summer Camp - Day Pass">Summer Camp - Day Pass</option>
+        <option value="Summer Camp - Week Pass">Summer Camp - Week Pass</option>
+        <option value="Kids Camp - Day Pass">Kids Camp - Day Pass</option>
+        <option value="Kids Camp - Week Pass">Kids Camp - Week Pass</option>
+      </select>
+    </div>
+    <div id="coach-student-container" style="display:none; margin-top:10px;">
+      <label for="coach-student">Student Name</label>
+      <input type="text" id="coach-student" placeholder="Enter student name" />
+    </div>
+    <div style="margin-top:10px;">
+      <label for="coach-date">Date</label>
+      <input type="date" id="coach-date" required />
+    </div>
+    <div style="margin-top:10px;">
+      <label for="coach-time">Time</label>
+      <input type="time" id="coach-time" required />
+    </div>
+    <button type="submit" style="margin-top:20px;">Add Lesson</button>
+  </form>
+
   </section>
+
+
 
   <footer>
     <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
@@ -200,6 +231,40 @@ const formattedDate = lessonDate.toLocaleDateString(undefined, {
         alert('Could not delete lesson.');
       });
   }
+</script>
+
+<script>
+  // show student‐name when “Tennis Private” is selected
+  const coachProg  = document.getElementById('coach-program');
+  const coachStudC = document.getElementById('coach-student-container');
+  coachProg.addEventListener('change', () => {
+    coachStudC.style.display = coachProg.value === 'Tennis Private' ? 'block' : 'none';
+  });
+
+  // handle form submission
+  document.getElementById('coach-lesson-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const payload = {
+      program: coachProg.value,
+      date:    document.getElementById('coach-date').value,
+      time:    document.getElementById('coach-time').value,
+      student: document.getElementById('coach-student').value || ''
+    };
+    const res = await fetch('/api/coach/lessons', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      alert('Lesson added');
+      loadMyLessons();          // re‐use your existing function
+      e.target.reset();
+      coachStudC.style.display = 'none';
+    } else {
+      alert('Add failed: ' + await res.text());
+    }
+  });
 </script>
 
 </body>

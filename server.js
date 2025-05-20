@@ -11,16 +11,24 @@ const session = require('express-session');
 const app = express();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV === 'production' && req.headers['x-forwarded-proto'] !== 'https') {
+    return res.redirect('https://' + req.headers.host + req.url);
+  }
+  next();
+});
+
+
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
-  httpOnly: true,
-  secure: true,
-  sameSite: 'Lax',
-  maxAge: 86400000
-}
+    httpOnly: true,
+    secure: true,         // ✅ Only sent over HTTPS
+    sameSite: 'Lax',
+    maxAge: 86400000
+  }
 }));
 
 app.use(express.json());

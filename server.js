@@ -7,10 +7,15 @@ const Stripe = require('stripe');
 const cors = require('cors');
 const PDFKit = require('pdfkit');
 const nodemailer = require('nodemailer');
-const twilio      = require('twilio')(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: +process.env.SMTP_PORT,
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  }
+});
 const session = require('express-session');
 
 const app = express();
@@ -362,7 +367,7 @@ app.post('/api/create-payment', async (req, res) => {
   if (!entry) return res.status(400).send('Invalid program.');
 
   try {
-    // 1️⃣ FREE program: just insert & notify coach
+    // 1) FREE program
     if (entry.unit_amount === 0) {
       await pool.query(
         `INSERT INTO bookings 
@@ -371,31 +376,26 @@ app.post('/api/create-payment', async (req, res) => {
         [email, program, coach, date, time, student]
       );
 
-      // fetch coach phone
+      // → notify coach via email-to-SMS
       const { rows } = await pool.query(
-        'SELECT phone FROM coaches WHERE full_name = $1',
+        `SELECT phone, carrier_gateway
+           FROM coaches
+          WHERE full_name = $1`,
         [coach]
       );
-
-      // debug
-      console.log('📱 Twilio from:', process.env.TWILIO_PHONE_NUMBER);
-      console.log('📱 Twilio to:', rows[0]?.phone);
-
-      // send coach an SMS
-      if (rows.length && rows[0].phone) {
-        await twilio.messages.create({
-          from: process.env.TWILIO_PHONE_NUMBER,
-          to:   rows[0].phone,
-          body: `New booking: ${student} | ${program} on ${date} at ${time}`
+      if (rows[0]?.phone && rows[0]?.carrier_gateway) {
+        const smsTo = `${rows[0].phone.replace(/\D/g, '')}@${rows[0].carrier_gateway}`;
+        await transporter.sendMail({
+          from: `"C2 Tennis Academy" <${process.env.SMTP_USER}>`,
+          to: smsTo,
+          text: `New booking: ${student} | ${program} on ${date} at ${time}`
         });
-      } else {
-        console.warn('⚠️ No phone found for coach:', coach);
       }
 
       return res.json({ url: '/success.html' });
     }
 
-    // 2️⃣ PAID program: create Stripe session
+    // 2) PAID program: create Stripe session
     const sessionObj = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       customer_email: email,
@@ -413,7 +413,7 @@ app.post('/api/create-payment', async (req, res) => {
       cancel_url:  `${req.protocol}://${req.get('host')}/cancel.html`
     });
 
-    // record the booking (paid=false for now)
+    // record the booking
     await pool.query(
       `INSERT INTO bookings 
          (email, program, coach, date, time, session_id, paid, student) 
@@ -421,28 +421,23 @@ app.post('/api/create-payment', async (req, res) => {
       [email, program, coach, date, time, sessionObj.id, student]
     );
 
-    // fetch coach phone
+    // → notify coach via email-to-SMS
     const { rows } = await pool.query(
-      'SELECT phone FROM coaches WHERE full_name = $1',
+      `SELECT phone, carrier_gateway
+         FROM coaches
+        WHERE full_name = $1`,
       [coach]
     );
-
-    // debug
-    console.log('📱 Twilio from:', process.env.TWILIO_PHONE_NUMBER);
-    console.log('📱 Twilio to:', rows[0]?.phone);
-
-    // send coach an SMS
-    if (rows.length && rows[0].phone) {
-      await twilio.messages.create({
-        from: process.env.TWILIO_PHONE_NUMBER,
-        to:   rows[0].phone,
-        body: `New paid booking: ${student} | ${program} on ${date} at ${time}`
+    if (rows[0]?.phone && rows[0]?.carrier_gateway) {
+      const smsTo = `${rows[0].phone.replace(/\D/g, '')}@${rows[0].carrier_gateway}`;
+      await transporter.sendMail({
+        from: `"C2 Tennis Academy" <${process.env.SMTP_USER}>`,
+        to: smsTo,
+        text: `New booking: ${student} | ${program} on ${date} at ${time}`
       });
-    } else {
-      console.warn('⚠️ No phone found for coach:', coach);
     }
 
-    // finally send back the Stripe checkout URL
+    // return Stripe URL
     res.json({ url: sessionObj.url });
 
   } catch (err) {
@@ -460,15 +455,6 @@ async function sendInvoiceEmail(toEmail, session) {
   doc.on('data', buffers.push.bind(buffers));
   doc.on('end', async () => {
     const pdfData = Buffer.concat(buffers);
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: +process.env.SMTP_PORT,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      }
-    });
     await transporter.sendMail({
       from: `"C2 Tennis Academy" <${process.env.SMTP_USER}>`,
       to: toEmail,

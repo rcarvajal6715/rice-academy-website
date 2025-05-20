@@ -57,6 +57,9 @@
           <option value="Summer Camp / Group Lessons">Summer Camp / Group Lessons</option>
           <option value="High Performance Training">High Performance Training</option>
           <option value="Adult Clinics">Adult Clinics</option>
+
+            <h2>All Scheduled Lessons</h2>
+            <div id="all-lessons-container"></div>
         </select>
       </div>
 
@@ -136,5 +139,65 @@
       studentContainer.style.display = 'none';
     });
   </script>
+
+  <script>
+  // Fetch and render every booking as a table
+  async function loadAllLessons() {
+    try {
+      const res = await fetch('/api/admin/lessons', {
+        credentials: 'include'
+      });
+      if (!res.ok) throw new Error('Failed to load lessons');
+
+      const lessons = await res.json();
+      const container = document.getElementById('all-lessons-container');
+
+      if (!lessons.length) {
+        container.innerHTML = '<p>No lessons scheduled yet.</p>';
+        return;
+      }
+
+      // Build a simple HTML table
+      let html = `
+        <table style="width:100%; border-collapse:collapse; margin-top:10px;">
+          <thead>
+            <tr style="background:#0c3c78; color:white;">
+              <th style="padding:8px; border:1px solid #ddd;">Program</th>
+              <th style="padding:8px; border:1px solid #ddd;">Coach</th>
+              <th style="padding:8px; border:1px solid #ddd;">Date</th>
+              <th style="padding:8px; border:1px solid #ddd;">Time</th>
+              <th style="padding:8px; border:1px solid #ddd;">Student</th>
+              <th style="padding:8px; border:1px solid #ddd;">Paid?</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      lessons.forEach(les => {
+        const paidText = les.paid ? 'Yes' : 'No';
+        html += `
+          <tr>
+            <td style="padding:8px; border:1px solid #ddd;">${les.program}</td>
+            <td style="padding:8px; border:1px solid #ddd;">${les.coach}</td>
+            <td style="padding:8px; border:1px solid #ddd;">${new Date(les.date).toLocaleDateString()}</td>
+            <td style="padding:8px; border:1px solid #ddd;">${les.time}</td>
+            <td style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
+            <td style="padding:8px; border:1px solid #ddd;">${paidText}</td>
+          </tr>
+        `;
+      });
+
+      html += `</tbody></table>`;
+      container.innerHTML = html;
+    } catch (err) {
+      console.error('Error loading admin lessons:', err);
+      document.getElementById('all-lessons-container')
+        .innerHTML = '<p style="color:red;">Could not load lessons.</p>';
+    }
+  }
+
+  // Run it as soon as the page loads
+  window.addEventListener('DOMContentLoaded', loadAllLessons);
+</script>
 </body>
 </html>

@@ -127,69 +127,6 @@ app.post('/api/coach/login', async (req, res) => {
   }
 });
 
-fetch('/api/my-lessons', { credentials: 'include' })
-  .then(res => {
-    if (!res.ok) throw new Error('Unauthorized');
-    return res.json();
-  })
-  .then(lessons => {
-    const cardsContainer = document.getElementById('lessons-cards');
-    const studentSelect = document.getElementById('student-select');
-
-    cardsContainer.innerHTML = '';
-    studentSelect.innerHTML = '<option value="" disabled selected>Choose a student</option>';
-
-    if (!lessons.length) {
-      const p = document.createElement('p');
-      p.textContent = 'No upcoming lessons.';
-      cardsContainer.appendChild(p);
-      return;
-    }
-
-    lessons.forEach(lesson => {
-      const lessonDate = new Date(lesson.date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (lessonDate < today) return;
-
-      const formattedDate = lessonDate.toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-
-      const formattedTime = (() => {
-        const [hourStr, minuteStr] = lesson.time.split(':');
-        let hour = parseInt(hourStr, 10);
-        const minute = minuteStr.padStart(2, '0');
-        const ampm = hour >= 12 ? 'PM' : 'AM';
-        hour = hour % 12 || 12;
-        return `${hour}:${minute} ${ampm}`;
-      })();
-
-      const card = document.createElement('div');
-      card.classList.add('card');
-      card.innerHTML = `
-        <h3>${lesson.program}</h3>
-        <button class="delete-button" onclick="deleteLesson('${encodeURIComponent(lesson.program)}', '${lesson.date}', '${lesson.time}', '${lesson.student}')">Delete</button>
-        <p><span class="label">Student:</span> ${lesson.student || 'N/A'}</p>
-        <p><span class="label">Coach:</span> ${lesson.coach}</p>
-        <p><span class="label">Date:</span> ${formattedDate}</p>
-        <p><span class="label">Time:</span> ${formattedTime}</p>
-      `;
-      cardsContainer.appendChild(card);
-
-      if (lesson.student) {
-        const option = document.createElement('option');
-        option.value = lesson.student;
-        option.textContent = lesson.student;
-        studentSelect.appendChild(option);
-      }
-    });
-  })
-  .catch(err => {
-    console.error('🚨 Error fetching lessons:', err);
-  });
 
 app.post('/api/logout', (req, res) => {
   req.session.destroy(() => {
@@ -198,7 +135,7 @@ app.post('/api/logout', (req, res) => {
 });
 
 app.post('/api/admin/lessons', async (req, res) => {
-  console.log('🔍 Current session in /api/my-lessons:', req.session);
+  console.log('🎾 Adding lesson via admin for coach:', coach);
   const { program, coach, date, time, student } = req.body;
   try {
    await pool.query(
@@ -212,12 +149,23 @@ app.post('/api/admin/lessons', async (req, res) => {
   }
 });
 
-app.get('/api/admin/lessons', (req, res) => {
-  if (!req.session || !req.session.isAdmin) return res.status(401).send('Unauthorized');
-  pool.query('SELECT * FROM bookings ORDER BY date ASC, time ASC', (err, result) => {
-    if (err) return res.status(500).send('Database error');
-    res.json(result.rows);
-  });
+app.get('/api/my-lessons', async (req, res) => {
+  const coachName = (req.session.coachName || '').trim();
+
+  if (!req.session.coachId || !coachName) {
+    return res.status(401).send('Unauthorized');
+  }
+
+  try {
+    const { rows } = await pool.query(
+      'SELECT program, coach, date, time, student FROM bookings WHERE LOWER(coach) = LOWER($1) ORDER BY date DESC',
+      [coachName]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Failed to fetch lessons.');
+  }
 });
 
 app.post('/api/signup', async (req, res) => {

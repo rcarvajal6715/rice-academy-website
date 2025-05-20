@@ -4,6 +4,7 @@ const path = require('path');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const Stripe = require('stripe');
+const cors = require('cors');
 const PDFKit = require('pdfkit');
 const nodemailer = require('nodemailer');
 const session = require('express-session');
@@ -12,6 +13,46 @@ const app = express();
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 app.set('trust proxy', 1);
 
+// ─── Initialize Postgres pool ─────────────────────────────
+const pool = new Pool({
+  host:     process.env.DB_HOST,
+  port:    +process.env.DB_PORT,
+  database: process.env.DB_NAME,
+  user:     process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  ssl:      { rejectUnauthorized: false },
+});
+// ────────────────────────────────────────────────────────────
+
+
+app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      req.headers['stripe-signature'],
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
+  } catch (err) {
+    console.error('⚠️ Webhook signature verification failed.', err);
+    return res.status(400).send('Webhook error');
+  }
+
+  if (event.type === 'checkout.session.completed') {
+    const sess = event.data.object;
+    await pool.query('UPDATE bookings SET paid = 1 WHERE session_id = $1', [sess.id]);
+    await sendInvoiceEmail(sess.customer_email, sess);
+  }
+
+  res.sendStatus(200);
+});
+
+// ─── Parse JSON & URL-encoded bodies, serve .html files ─────────────────
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(__dirname, { extensions: ['html'] }));
+// ──────────────────────────────────────────────────────────────────────--
+
 app.use((req, res, next) => {
   if (process.env.NODE_ENV === 'production' && req.headers['x-forwarded-proto'] !== 'https') {
     return res.redirect('https://' + req.headers.host + req.url);
@@ -19,6 +60,13 @@ app.use((req, res, next) => {
   next();
 });
 
+ 
+// ─── CORS: allow credentials for your front-end origin ─────────
+app.use(cors({
+  origin: 'http://localhost:3000',   // your front-end URL
+  credentials: true                  // allow session cookie
+}));
+// app.use(session
 
 app.use(session({
   secret: process.env.SESSION_SECRET,
@@ -32,23 +80,6 @@ app.use(session({
   }
 }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(__dirname, {
-  extensions: ['html']
-}));
-
-
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: +process.env.DB_PORT,
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  ssl: {
-    rejectUnauthorized: false,
-  },
-});
 
 app.post('/api/register', async (req, res) => {
   const { first_name, last_name, email, phone, username, password, students } = req.body;
@@ -57,14 +88,17 @@ app.post('/api/register', async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    const userInsert = await client.query(
-      `INSERT INTO users (first_name, last_name, email, phone, username, password)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id`,
-      [first_name, last_name, email, phone, username, password]
-    );
+    // hash the password first
+const hash = await bcrypt.hash(password, 12);
 
-    const userId = userInsert.rows[0].id;
+const userInsert = await client.query(
+  `INSERT INTO users (first_name, last_name, email, phone, username, password_hash)
+   VALUES ($1, $2, $3, $4, $5, $6)
+   RETURNING id`,
+  [first_name, last_name, email, phone, username, hash]
+);
+
+const userId = userInsert.rows[0].id;
 
     if (students && students.length) {
       const studentInsertPromises = students.map(name =>
@@ -219,6 +253,23 @@ app.post('/api/delete-lesson', async (req, res) => {
   }
 });
 
+app.get('/api/check-session', (req, res) => {
+  if (req.session.user || req.session.coachId) {
+    // figure out which portal they get
+    const isCoach = !!req.session.coachId;
+    const isAdmin = req.session.user?.isAdmin || false;
+    const firstName = req.session.user?.firstName || null;
+    return res.json({
+      loggedIn: true,
+      isCoach,
+      isAdmin,
+      firstName
+    });
+  }
+  // not logged in
+  res.status(401).json({ loggedIn: false });
+});
+
 app.post('/api/create-payment', async (req, res) => {
   const { email, program, coach, date, time, student } = req.body;
   const entry = PRODUCTS[program];
@@ -264,26 +315,7 @@ app.post('/api/create-payment', async (req, res) => {
   }
 });
 
-app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  let event;
-  try {
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      req.headers['stripe-signature'],
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
-  } catch (err) {
-    return res.status(400).send('Webhook error');
-  }
 
-  if (event.type === 'checkout.session.completed') {
-    const sess = event.data.object;
-    await pool.query('UPDATE bookings SET paid = 1 WHERE session_id = $1', [sess.id]);
-    await sendInvoiceEmail(sess.customer_email, sess);
-  }
-
-  res.sendStatus(200);
-});
 
 async function sendInvoiceEmail(toEmail, session) {
   const doc = new PDFKit();

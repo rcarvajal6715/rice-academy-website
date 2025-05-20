@@ -171,6 +171,7 @@
               <th style="padding:8px; border:1px solid #ddd;">Time</th>
               <th style="padding:8px; border:1px solid #ddd;">Student</th>
               <th style="padding:8px; border:1px solid #ddd;">Paid?</th>
+              <th style="padding:8px; border:1px solid #ddd;">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -186,6 +187,9 @@
             <td style="padding:8px; border:1px solid #ddd;">${les.time}</td>
             <td style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
             <td style="padding:8px; border:1px solid #ddd;">${paidText}</td>
+            <td style="padding:8px; border:1px solid #ddd;">
+              <button onclick="deleteAdminLesson(${les.id})">Delete</button>
+            </td>
           </tr>
         `;
       });
@@ -202,5 +206,19 @@
   // Run it as soon as the page loads
   window.addEventListener('DOMContentLoaded', loadAllLessons);
 </script>
+ <script>
+    async function deleteAdminLesson(id) {
+      if (!confirm('Are you sure you want to delete this booking?')) return;
+      const res = await fetch(`/api/admin/lessons/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (res.ok) {
+        loadAllLessons();      // refresh the table
+      } else {
+        alert('Delete failed: ' + (await res.text()));
+      }
+    }
+  </script>
 </body>
 </html>

@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Book a Session - C2 Tennis Academy</title>
-
   <meta name="description" content="C2 Tennis Academy in Texas offers elite tennis training, junior programs, and high-performance coaching using AI and video analysis.">
   <meta name="keywords" content="C2 Tennis Academy, tennis lessons Texas, UTR tennis, junior tennis, adult clinics, tennis training academy">
   <meta name="author" content="C2 Tennis Academy">
@@ -175,6 +174,33 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
   <script>
+// 1) Your parseTime & fmtTime helpers
+function parseTime(str) {
+  const [time, mer] = str.split(' ');
+  let [h, m] = time.split(':').map(Number);
+  if (mer === 'PM' && h < 12) h += 12;
+  if (mer === 'AM' && h === 12) h = 0;
+  return h * 60 + m;
+}
+function fmtTime(mins) {
+  let h = Math.floor(mins / 60), m = mins % 60;
+  const mer = h >= 12 ? 'PM' : 'AM';
+  if (h > 12) h -= 12;
+  if (h === 0) h = 12;
+  return `${h}:${m.toString().padStart(2,'0')} ${mer}`;
+}
+
+// 2) Your availability map
+const availability = {
+  'Jacob Capone':        { days: [4,5,6], times: { 4:{min:'3:00 PM',max:'8:00 PM'},5:{min:'3:00 PM',max:'8:00 PM'},6:{min:'8:00 AM',max:'4:00 PM'} } },
+  'Zachary Capone':      { days: [1,2,3,4,5,6], times: { default:{min:'9:00 AM',max:'7:00 PM'},6:{min:'9:00 AM',max:'5:00 PM'} } },
+  'Ricardo Carvajalino': { days: [1,2,3,4,5,6], times: { default:{min:'8:00 AM',max:'2:00 PM'} } },
+  'Paula Carvajalino':   { days: [1,2,3,4,5], times: { default:{min:'9:00 AM',max:'7:00 PM'} } },
+  'Matthew Abbey':       { days: [1,2,3,4,5], times: { default:{min:'9:00 AM',max:'7:00 PM'} } }
+};
+</script>
+
+  <script>
   window.addEventListener('DOMContentLoaded', async () => {
     try {
       const res = await fetch('/api/check-session', {
@@ -261,38 +287,43 @@
   });
 </script>
 
-<script>
-document.getElementById('bookingForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  const student = document.getElementById('student').value;
-  const program = programEl.value;
-  const coach   = coachEl.value || '';
-  // pick the right date input
-  let date;
-  if (program === 'Summer Camp - Week Pass') {
-    date = weekStartInput.value;
-  } else if (program === 'Summer Camp - Day Pass') {
-    date = campDayInput.value;
-  } else {
-    date = dateEl.value;
-  }
-  const time  = timeEl.value;
-  const email = document.getElementById('email').value;
 
-  try {
-    const res = await fetch('/api/create-payment', {
-      method: 'POST',
-      headers:      { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ student, email, program, coach, date, time })
-    });
-    if (!res.ok) throw new Error(await res.text());
-    const { url } = await res.json();
-    window.location.href = url;
-  } catch (err) {
-    console.error(err);
-    alert('Payment failed. Please try again.');
-  }
+<script>
+coachEl.addEventListener('change', () => {
+  if (!coachEl.value) return;
+  // destroy any old instance
+  if (datePicker) datePicker.destroy();
+  // clear previous values
+  dateEl.value = '';
+  timeEl.innerHTML = '<option value="">-- Select Time --</option>';
+  // show the date & hide time until a date is picked
+  dateLbl.style.display = dateEl.style.display = 'block';
+  timeLbl.style.display = timeEl.style.display = 'none';
+
+  const avail = availability[coachEl.value];
+  datePicker = flatpickr(dateEl, {
+    dateFormat: 'Y-m-d',
+    minDate: 'today',
+    disable: d => !avail.days.includes(d.getDay()),
+    onChange(selectedDates) {
+      const d = selectedDates[0];
+      const dow = d.getDay();
+      const slot = avail.times[dow] || avail.times.default;
+      // rebuild your time dropdown…
+      timeEl.innerHTML = '<option value="">-- Select Time --</option>';
+      for (
+        let t = parseTime(slot.min);
+        t + 30 <= parseTime(slot.max);
+        t += 30
+      ) {
+        const opt = document.createElement('option');
+        opt.value = fmtTime(t);
+        opt.textContent = fmtTime(t);
+        timeEl.appendChild(opt);
+      }
+      timeLbl.style.display = timeEl.style.display = 'block';
+    }
+  });
 });
 </script>
 </body>

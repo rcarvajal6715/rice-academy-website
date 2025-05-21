@@ -202,20 +202,26 @@ const availability = {
 
   <script>
   window.addEventListener('DOMContentLoaded', async () => {
-    try {
-      const res = await fetch('/api/check-session', {
-        method: 'GET',
-        credentials: 'include'
-      });
-      if (res.ok) {
-        // if they’re logged in, hide the email field
-        const container = document.getElementById('email-container');
-        if (container) container.style.display = 'none';
+  try {
+    const res = await fetch('/api/check-session', {
+      method: 'GET',
+      credentials: 'include'
+    });
+    if (res.ok) {
+      const container = document.getElementById('email-container');
+      const emailInput = document.getElementById('email');
+      if (container) {
+        container.style.display = 'none';
+        // either remove required:
+        emailInput.required = false;
+        // —or— disable it so it's totally ignored by the form:
+        // emailInput.disabled = true;
       }
-    } catch (err) {
-      console.error('Session check failed:', err);
     }
-  });
+  } catch (err) {
+    console.error('Session check failed:', err);
+  }
+});
 </script>
 
   <script>

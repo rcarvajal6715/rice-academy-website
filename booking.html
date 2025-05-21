@@ -326,5 +326,37 @@ coachEl.addEventListener('change', () => {
   });
 });
 </script>
+
+<script>
+// 3) Attach your form submit listener *after* all your elems are defined:
+document.getElementById('bookingForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  console.log('💥 Submit hit');
+  const student = document.getElementById('student').value;
+  const program = programEl.value;
+  const coach   = coachEl.value || '';
+  let date;
+  if (program === 'Summer Camp - Week Pass')      date = weekStartInput.value;
+  else if (program === 'Summer Camp - Day Pass')  date = campDayInput.value;
+  else                                            date = dateEl.value;
+  const time  = timeEl.value;
+  const email = document.getElementById('email').value;
+
+  try {
+    const res = await fetch('/api/create-payment', {
+      method:      'POST',
+      headers:     { 'Content-Type':'application/json' },
+      credentials: 'include',
+      body:        JSON.stringify({ student, email, program, coach, date, time })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const { url } = await res.json();
+    window.location.href = url;
+  } catch (err) {
+    console.error('Payment error', err);
+    alert('Payment failed. Please try again.');
+  }
+});
+</script>
 </body>
 </html>

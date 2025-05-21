@@ -4,6 +4,14 @@ const path = require('path');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const Stripe = require('stripe');
+
+console.log(
+  '🔑 Stripe key:',
+  process.env.STRIPE_SECRET_KEY
+    ? process.env.STRIPE_SECRET_KEY.slice(0,8) + '…'
+    : '⚠️ MISSING'
+);
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 const cors = require('cors');
 const PDFKit = require('pdfkit');
 const nodemailer = require('nodemailer');
@@ -18,7 +26,6 @@ const transporter = nodemailer.createTransport({
 const session = require('express-session');
 
 const app = express();
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 app.set('trust proxy', 1);
 
 
@@ -73,8 +80,9 @@ app.use((req, res, next) => {
 // ─── CORS: allow credentials from both React AND Admin HTML ─────────
 app.use(cors({
   origin: [
-    'http://localhost:3000', // your React front-end
-    'http://localhost:8080'  // your Admin portal
+    'http://localhost:3000',                    // React front-end (dev)
+    'http://localhost:8080',                    // Admin portal (dev)
+    'https://rice-academy-website-1.onrender.com' // Your deployed site
   ],
   credentials: true,
   methods: ['GET','POST','PUT','DELETE','OPTIONS'],

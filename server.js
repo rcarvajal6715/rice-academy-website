@@ -11,8 +11,8 @@ const nodemailer = require('nodemailer');
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.GMAIL_USER,         // your Gmail address
-    pass: process.env.GMAIL_APP_PASSWORD  // the 16-char app password you just generated
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD
   }
 });
 const session = require('express-session');
@@ -146,6 +146,7 @@ app.post('/api/login', async (req, res) => {
 
     req.session.user = {
       id: rows[0].id,
+      email: rows[0].email,
       username: rows[0].username,
       isAdmin,
       firstName: rows[0].first_name
@@ -361,21 +362,33 @@ app.get('/api/check-session', (req, res) => {
 });
 
 app.post('/api/create-payment', async (req, res) => {
-  const { student, email, program, coach, date, time } = req.body;
+  // 1) Pull student, program, coach, date, time from the form
+  const { student, program, coach, date, time } = req.body;
+
+  // 2) Determine email: use form field if present, otherwise session
+  let email = req.body.email || (req.session.user && req.session.user.email);
+  if (!email) {
+    return res.status(400).send('Missing email address.');
+  }
+
+  // 3) Look up the product entry
   const entry = PRODUCTS[program];
-  if (!entry) return res.status(400).send('Invalid program.');
+  if (!entry) {
+    return res.status(400).send('Invalid program.');
+  }
 
   try {
-    // 1) FREE program
+    // ——— FREE program branch ———
     if (entry.unit_amount === 0) {
+      // a) Insert booking as paid
       await pool.query(
-        `INSERT INTO bookings 
-           (email, program, coach, date, time, session_id, paid, student) 
-         VALUES ($1,$2,$3,$4,$5,NULL,TRUE,$6)`,
+        `INSERT INTO bookings
+           (email, program, coach, date, time, session_id, paid, student)
+         VALUES ($1, $2, $3, $4, $5, NULL, TRUE, $6)`,
         [email, program, coach, date, time, student]
       );
 
-      // → notify coach via email-to-SMS
+      // b) Notify coach via email-to-SMS
       const { rows } = await pool.query(
         `SELECT phone, carrier_gateway
            FROM coaches
@@ -391,36 +404,38 @@ app.post('/api/create-payment', async (req, res) => {
         });
       }
 
+      // c) Send client to success page
       return res.json({ url: '/success.html' });
     }
 
-    // 2) PAID program: create Stripe session
+    // ——— PAID program branch ———
+    // a) Create Stripe Checkout session
     const sessionObj = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      customer_email: email,
+      customer_email:       email,
       line_items: [{
         price_data: {
-          currency: 'usd',
-          product: entry.product,
-          unit_amount: entry.unit_amount
+          currency:     'usd',
+          product:      entry.product,
+          unit_amount:  entry.unit_amount
         },
         quantity: 1
       }],
-      mode: 'payment',
-      metadata: { student, program, coach, date, time },
+      mode:       'payment',
+      metadata:   { student, program, coach, date, time },
       success_url: `${req.protocol}://${req.get('host')}/success.html`,
       cancel_url:  `${req.protocol}://${req.get('host')}/cancel.html`
     });
 
-    // record the booking
+    // b) Record the booking as unpaid until webhook marks it paid
     await pool.query(
-      `INSERT INTO bookings 
-         (email, program, coach, date, time, session_id, paid, student) 
-       VALUES ($1,$2,$3,$4,$5,$6,FALSE,$7)`,
+      `INSERT INTO bookings
+         (email, program, coach, date, time, session_id, paid, student)
+       VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7)`,
       [email, program, coach, date, time, sessionObj.id, student]
     );
 
-    // → notify coach via email-to-SMS
+    // c) Notify coach via email-to-SMS
     const { rows } = await pool.query(
       `SELECT phone, carrier_gateway
          FROM coaches
@@ -430,13 +445,13 @@ app.post('/api/create-payment', async (req, res) => {
     if (rows[0]?.phone && rows[0]?.carrier_gateway) {
       const smsTo = `${rows[0].phone.replace(/\D/g, '')}@${rows[0].carrier_gateway}`;
       await transporter.sendMail({
-        from: `"C2 Tennis Academy" <${process.env.SMTP_USER}>`,
+        from: `"C2 Tennis Academy" <${process.env.GMAIL_USER}>`,
         to: smsTo,
         text: `New booking: ${student} | ${program} on ${date} at ${time}`
       });
     }
 
-    // return Stripe URL
+    // d) Return the Stripe checkout URL
     res.json({ url: sessionObj.url });
 
   } catch (err) {

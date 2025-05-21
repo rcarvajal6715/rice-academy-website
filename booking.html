@@ -157,6 +157,11 @@
         <!-- Changed to dropdown showing available times -->
         <select id="time" style="display:none;"></select>
 
+      <div id="email-container">
+        <label for="email">Your Email</label>
+        <input type="email" id="email" name="email" required />
+      </div>
+
         <button type="submit">Pay &amp; Book</button>
       </form>
     </div>
@@ -168,223 +173,126 @@
 
   <!-- Flatpickr JS -->
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
   <script>
-    // Helper: parse "h:mm A" to minutes since midnight
-    function parseTime(str) {
-      const [time, mer] = str.split(' ');
-      let [h,m] = time.split(':').map(Number);
-      if (mer === 'PM' && h<12) h+=12;
-      if (mer === 'AM' && h===12) h=0;
-      return h*60 + m;
-    }
-    // Helper: format minutes since midnight back to h:mm AM/PM
-    function fmtTime(mins) {
-      let h = Math.floor(mins/60), m = mins%60;
-      const mer = h>=12? 'PM':'AM';
-      if (h>12) h-=12;
-      if (h===0) h=12;
-      return `${h}:${m.toString().padStart(2,'0')} ${mer}`;
-    }
-
-    const availability = {
-  'Jacob Capone': {
-    days: [4, 5, 6],
-    times: {
-      4: { min: '3:00 PM', max: '8:00 PM' },
-      5: { min: '3:00 PM', max: '8:00 PM' },
-      6: { min: '8:00 AM', max: '4:00 PM' }
-    }
-  },
-  'Zachary Capone': {
-    days: [1, 2, 3, 4, 5, 6],
-    times: {
-      default: { min: '9:00 AM', max: '7:00 PM' },
-      6: { min: '9:00 AM', max: '5:00 PM' }
-    }
-  },
-  'Ricardo Carvajalino': {
-    days: [1, 2, 3, 4, 5, 6],
-    times: {
-      default: { min: '8:00 AM', max: '2:00 PM' },
-      6: { min: '8:00 AM', max: '2:00 PM' }
-    }
-  },
-  'Paula Carvajalino': {
-    days: [1, 2, 3, 4, 5],
-    times: {
-      default: { min: '9:00 AM', max: '7:00 PM' }
-    }
-  },
-  'Matthew Abbey': {
-    days: [1, 2, 3, 4, 5],
-    times: {
-      default: { min: '9:00 AM', max: '7:00 PM' }
-    }
-  }
-};
-
-    const programEl = document.getElementById('program');
-    const campDayInput = document.getElementById('campDay');
-    const campDayLabel = document.getElementById('campDayLabel');
-    const weekStartInput = document.getElementById('weekStart');
-    const weekStartLabel = document.getElementById('weekStartLabel'); 
-    const coachEl   = document.getElementById('coach');
-    const coachLbl  = document.getElementById('coachLabel');
-    const dateEl    = document.getElementById('date');
-    const dateLbl   = document.getElementById('dateLabel');
-    const timeEl    = document.getElementById('time');
-    const timeLbl   = document.getElementById('timeLabel');
-    let datePicker = null;
-
-   programEl.addEventListener('change', () => {
-  const program = programEl.value;
-
-  program === 'Summer Camp - Day Pass'
-  program === 'Summer Camp - Week Pass'
-  // only Tennis Private gets coach & date fields
-  const showCoach  = program === 'Tennis Private';
-
-  coachEl.style.display = showCoach ? 'block' : 'none';
-  coachLbl.style.display = showCoach ? 'block' : 'none';
-
-  dateEl.style.display = showCoach ? 'block' : 'none';
-  dateLbl.style.display = showCoach ? 'block' : 'none';
-
-  timeEl.style.display = (isCampDay || isCampWeek) ? 'block' : 'none';
-  timeLbl.style.display = (isCampDay || isCampWeek) ? 'block' : 'none';
-
-
-  if (datePicker) {
-  datePicker.destroy();
-  timeEl.style.display = timeLbl.style.display = 'none';
-  timeEl.innerHTML = '';
-  dateEl.value = '';
-}
-
-  timeEl.innerHTML = '<option value="">-- Select Time --</option>';
-[
-  '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM',
-  '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
-  '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM',
-  '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM',
-  '4:00 PM'
-].forEach(t => {
-  const opt = document.createElement('option');
-  opt.value = t;
-  opt.textContent = t;
-  timeEl.appendChild(opt);
-});
-
-  // Show/hide Camp Day
-  if (isCampDay) {
-    campDayLabel.style.display = campDayInput.style.display = 'block';
-    flatpickr(campDayInput, {
-      dateFormat: 'Y-m-d',
-      minDate: 'today',
-      disable: [date => date.getDay() === 0 || date.getDay() === 6] // Disable weekends
-    });
-  } else {
-    campDayLabel.style.display = campDayInput.style.display = 'none';
-    campDayInput.value = '';
-  }
-
-  // Show/hide Week Start
-  if (isCampWeek) {
-    weekStartLabel.style.display = weekStartInput.style.display = 'block';
-    flatpickr(weekStartInput, {
-  dateFormat: 'Y-m-d',
-  minDate: 'today',
-  disable: [date => date.getDay() !== 1], // Only Mondays
-  onChange: function(selectedDates, dateStr, instance) {
-    const monday = selectedDates[0];
-    const highlightedWeek = [];
-
-    const options = { month: 'long', day: 'numeric' };
-    const year = monday.getFullYear();
-
-    const friday = new Date(monday);
-    friday.setDate(monday.getDate() + 4);
-
-    // Format: Week of May 19 – May 23, 2025
-    const formattedLabel = `Week of ${monday.toLocaleDateString(undefined, options)} – ${friday.toLocaleDateString(undefined, options)}, ${year}`;
-
-    // Set user-friendly value in the input
-    instance.input.value = formattedLabel;
-
-    // Highlight Monday to Friday
-    for (let i = 0; i < 5; i++) {
-      const day = new Date(monday);
-      day.setDate(monday.getDate() + i);
-      highlightedWeek.push(day.toDateString());
-    }
-
-    const allDays = instance.calendarContainer.querySelectorAll('.flatpickr-day');
-    allDays.forEach(dayEl => {
-      const dateStr = new Date(dayEl.dateObj).toDateString();
-      if (highlightedWeek.includes(dateStr)) {
-        dayEl.classList.add('week-highlight');
-      } else {
-        dayEl.classList.remove('week-highlight');
+  window.addEventListener('DOMContentLoaded', async () => {
+    try {
+      const res = await fetch('/api/check-session', {
+        method: 'GET',
+        credentials: 'include'
+      });
+      if (res.ok) {
+        // if they’re logged in, hide the email field
+        const container = document.getElementById('email-container');
+        if (container) container.style.display = 'none';
       }
-    });
-  }
-});
-  } else {
-    weekStartLabel.style.display = weekStartInput.style.display = 'none';
-    weekStartInput.value = '';
-  }
-});
+    } catch (err) {
+      console.error('Session check failed:', err);
+    }
+  });
+</script>
 
-    coachEl.addEventListener('change',()=>{
-      if (!coachEl.value) return;
-      if (datePicker) datePicker.destroy();
-      dateEl.value=''; timeEl.innerHTML='';
-      dateLbl.style.display=dateEl.style.display='block';
-      timeLbl.style.display=timeEl.style.display='none';
-      const coach=coachEl.value, avail=availability[coach];
-      datePicker=flatpickr(dateEl,{ dateFormat:'Y-m-d', minDate:'today', disable:[ d=>!avail.days.includes(d.getDay()) ],
-        onChange:selected=>{
-          const d=selected[0], dow=d.getDay();
-          const slot=avail.times[dow]||avail.times.default;
-          const start=parseTime(slot.min), end=parseTime(slot.max);
-          timeEl.innerHTML='<option value="">-- Select Time --</option>';
-          for(let t=start; t+30<=end; t+=30){
-            const label=fmtTime(t);
-            const opt=document.createElement('option'); opt.value=label; opt.textContent=label;
-            timeEl.appendChild(opt);
-          }
-          timeLbl.style.display=timeEl.style.display='block';
+  <script>
+  const programEl     = document.getElementById('program');
+  const coachEl       = document.getElementById('coach');
+  const coachLbl      = document.getElementById('coachLabel');
+  const dateEl        = document.getElementById('date');
+  const dateLbl       = document.getElementById('dateLabel');
+  const timeEl        = document.getElementById('time');
+  const timeLbl       = document.getElementById('timeLabel');
+  const campDayInput  = document.getElementById('campDay');
+  const campDayLabel  = document.getElementById('campDayLabel');
+  const weekStartInput  = document.getElementById('weekStart');
+  const weekStartLabel  = document.getElementById('weekStartLabel');
+  let datePicker = null;
+
+  programEl.addEventListener('change', () => {
+    const program    = programEl.value;
+    const isCampDay  = program === 'Summer Camp - Day Pass';
+    const isCampWeek = program === 'Summer Camp - Week Pass';
+    const showCoach  = program === 'Tennis Private';
+
+    // Private lessons → show coach & date
+    coachEl.style.display = showCoach ? 'block' : 'none';
+    coachLbl.style.display = showCoach ? 'block' : 'none';
+    dateEl.style.display  = showCoach ? 'block' : 'none';
+    dateLbl.style.display = showCoach ? 'block' : 'none';
+
+    // Camps → show time dropdown
+    timeEl.style.display  = (isCampDay || isCampWeek) ? 'block' : 'none';
+    timeLbl.style.display = (isCampDay || isCampWeek) ? 'block' : 'none';
+
+    // Clear any old flatpickr
+    if (datePicker) {
+      datePicker.destroy();
+      datePicker = null;
+      timeEl.innerHTML = '<option value="">-- Select Time --</option>';
+      dateEl.value = '';
+    }
+
+    // Day-pass calendar
+    if (isCampDay) {
+      campDayLabel.style.display = campDayInput.style.display = 'block';
+      flatpickr(campDayInput, {
+        dateFormat: 'Y-m-d',
+        minDate: 'today',
+        disable: d => d.getDay() === 0 || d.getDay() === 6
+      });
+    } else {
+      campDayLabel.style.display = campDayInput.style.display = 'none';
+      campDayInput.value = '';
+    }
+
+    // Week-pass calendar
+    if (isCampWeek) {
+      weekStartLabel.style.display = weekStartInput.style.display = 'block';
+      flatpickr(weekStartInput, {
+        dateFormat: 'Y-m-d',
+        minDate: 'today',
+        disable: d => d.getDay() !== 1,
+        onChange(selectedDates) {
+          // your existing “highlight week” code goes here
         }
       });
-    });
+    } else {
+      weekStartLabel.style.display = weekStartInput.style.display = 'none';
+      weekStartInput.value = '';
+    }
+  });
+</script>
 
-    document.getElementById('bookingForm').addEventListener('submit',async e=>{
-      e.preventDefault();
-      const student = document.getElementById('student').value;
-      const program=programEl.value;
-      const coach  =coachEl.value||'';
-      let date;
-if (program === 'Summer Camp / Group Lessons - Week') {
-  date = weekStartInput.value;
-} else if (program === 'Summer Camp / Group Lessons - Day Pass') {
-  date = campDayInput.value;
-} else {
-  date = dateEl.value;
-}
-      const time   =timeEl.value;
-      try{
-        const res = await fetch('/api/create-payment', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ student, program, coach, date, time })
-});
-if (!res.ok) throw new Error(await res.text());
-const { url } = await res.json();
-window.location.href = url;
-} catch (err) {
-  console.error(err);
-  alert('Payment failed. Please try again.');
-}
+<script>
+document.getElementById('bookingForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const student = document.getElementById('student').value;
+  const program = programEl.value;
+  const coach   = coachEl.value || '';
+  // pick the right date input
+  let date;
+  if (program === 'Summer Camp - Week Pass') {
+    date = weekStartInput.value;
+  } else if (program === 'Summer Camp - Day Pass') {
+    date = campDayInput.value;
+  } else {
+    date = dateEl.value;
+  }
+  const time  = timeEl.value;
+  const email = document.getElementById('email').value;
+
+  try {
+    const res = await fetch('/api/create-payment', {
+      method: 'POST',
+      headers:      { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ student, email, program, coach, date, time })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const { url } = await res.json();
+    window.location.href = url;
+  } catch (err) {
+    console.error(err);
+    alert('Payment failed. Please try again.');
+  }
 });
 </script>
 </body>

@@ -262,7 +262,9 @@ const availability = {
       flatpickr(campDayInput, {
         dateFormat: 'Y-m-d',
         minDate: 'today',
-        disable: d => d.getDay() === 0 || d.getDay() === 6
+        disable: [
+          d => d.getDay() === 0 || d.getDay() === 6
+          ]
       });
     } else {
       campDayLabel.style.display = campDayInput.style.display = 'none';
@@ -275,8 +277,10 @@ const availability = {
       flatpickr(weekStartInput, {
         dateFormat: 'Y-m-d',
         minDate: 'today',
-        disable: d => d.getDay() !== 1,
-        onChange(selectedDates) {
+        disable: [
+          d => d.getDay() !== 1
+           ],
+        onChange(selectedDates, dateStr, instance) {
           // your existing “highlight week” code goes here
         }
       });
@@ -304,7 +308,9 @@ coachEl.addEventListener('change', () => {
   datePicker = flatpickr(dateEl, {
     dateFormat: 'Y-m-d',
     minDate: 'today',
-    disable: d => !avail.days.includes(d.getDay()),
+    disable: [
+      d => !avail.days.includes(d.getDay())
+      ],
     onChange(selectedDates) {
       const d = selectedDates[0];
       const dow = d.getDay();

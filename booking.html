@@ -268,7 +268,9 @@ const availability = {
       flatpickr(campDayInput, {
   dateFormat: 'Y-m-d',
   minDate: 'today',
-  disable: d => d.getDay() === 0 || d.getDay() === 6
+  disable: [
+    d => d.getDay() === 0 || d.getDay() === 6
+  ]
 });
     } else {
       campDayLabel.style.display = campDayInput.style.display = 'none';
@@ -308,7 +310,9 @@ coachEl.addEventListener('change', () => {
   datePicker = flatpickr(dateEl, {
   dateFormat: 'Y-m-d',
   minDate: 'today',
-  disable: d => !avail.days.includes(d.getDay()),
+  disable: [
+  d => !avail.days.includes(d.getDay())
+],
   onChange(selectedDates) {
     const d = selectedDates[0];
     const dow = d.getDay();
@@ -328,38 +332,56 @@ coachEl.addEventListener('change', () => {
 </script>
 
 <script>
-  window.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('bookingForm').addEventListener('submit', async e => {
-      e.preventDefault();
-      console.log('💥 Submit hit');
-
-      const student = document.getElementById('student').value;
-      const program = programEl.value;
-      const coach   = coachEl.value || '';
-      let date;
-      if (program === 'Summer Camp - Week Pass')      date = weekStartInput.value;
-      else if (program === 'Summer Camp - Day Pass')  date = campDayInput.value;
-      else                                            date = dateEl.value;
-      const time  = timeEl.value;
-      const email = document.getElementById('email').value;
-
-      try {
-        const res = await fetch('/api/create-payment', {
-          method:      'POST',
-          headers:     { 'Content-Type':'application/json' },
-          credentials: 'include',
-          body:        JSON.stringify({ student, email, program, coach, date, time })
-        });
-        if (!res.ok) throw new Error(await res.text());
-        const { url } = await res.json();
-        window.location.href = url;
-      } catch (err) {
-        console.error('Payment error', err);
-        alert('Payment failed. Please try again.');
-      }
-    });
+window.addEventListener('DOMContentLoaded', async () => {
+  // 1) Check session & hide/un-require email if logged in
+ try {
+  const res = await fetch('/api/check-session', {
+    method: 'GET',
+    credentials: 'include'
   });
-</script>
+  if (res.ok) {
+    const container  = document.getElementById('email-container');
+    const emailInput = document.getElementById('email');
+    container.style.display = 'none';
+    // remove the required attribute so the hidden email field won’t block form validation
+    emailInput.removeAttribute('required');
+    // (no need for `emailInput.required = false;` here)
+  }
+} catch (err) {
+  console.error('Session check failed:', err);
+}
+
+  // 2) Attach your submit handler only once
+  document.getElementById('bookingForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    console.log('💥 Submit hit');
+
+    const student = document.getElementById('student').value;
+    const program = programEl.value;
+    const coach   = coachEl.value || '';
+    let date;
+    if (program === 'Summer Camp - Week Pass')      date = weekStartInput.value;
+    else if (program === 'Summer Camp - Day Pass')  date = campDayInput.value;
+    else                                            date = dateEl.value;
+    const time  = timeEl.value;
+    const email = document.getElementById('email').value;
+
+    try {
+      const res = await fetch('/api/create-payment', {
+        method:      'POST',
+        headers:     { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body:        JSON.stringify({ student, email, program, coach, date, time })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const { url } = await res.json();
+      window.location.href = url;
+    } catch (err) {
+      console.error('Payment error', err);
+      alert('Payment failed. Please try again.');
+    }
+  });
+});
 </script>
 </body>
 </html>

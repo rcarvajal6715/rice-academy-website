@@ -238,10 +238,13 @@ const availability = {
   const weekStartLabel  = document.getElementById('weekStartLabel');
   let datePicker = null;
 
+let campDayPicker = null;
+let weekStartPicker = null;
+
   programEl.addEventListener('change', () => {
     const program    = programEl.value;
-    const isCampDay  = program === 'Summer Camp - Day Pass';
-    const isCampWeek = program === 'Summer Camp - Week Pass';
+    const isCampDay  = program === 'Summer Camp - Day Pass' || program === 'Kids Camp - Day Pass';
+    const isCampWeek = program === 'Summer Camp - Week Pass' || program === 'Kids Camp - Week Pass';
     const showCoach  = program === 'Tennis Private';
 
     // Private lessons → show coach & date
@@ -251,8 +254,8 @@ const availability = {
     dateLbl.style.display = showCoach ? 'block' : 'none';
 
     // Camps → show time dropdown
-    timeEl.style.display  = (isCampDay || isCampWeek) ? 'block' : 'none';
-    timeLbl.style.display = (isCampDay || isCampWeek) ? 'block' : 'none';
+timeEl.style.display  = showCoach ? 'block' : 'none';
+timeLbl.style.display = showCoach ? 'block' : 'none';
 
     // Clear any old flatpickr
     if (datePicker) {
@@ -264,32 +267,57 @@ const availability = {
 
     // Day-pass calendar
     if (isCampDay) {
-      campDayLabel.style.display = campDayInput.style.display = 'block';
-      flatpickr(campDayInput, {
-  dateFormat: 'Y-m-d',
-  minDate: 'today',
-  disable: [
-    d => d.getDay() === 0 || d.getDay() === 6
-  ]
-});
-    } else {
-      campDayLabel.style.display = campDayInput.style.display = 'none';
-      campDayInput.value = '';
-    }
+  campDayLabel.style.display = campDayInput.style.display = 'block';
+
+  // Delay to ensure visibility before flatpickr binds
+  setTimeout(() => {
+    console.log('Initializing flatpickr for campDay');
+
+    flatpickr(campDayInput, {
+      dateFormat: 'Y-m-d',
+      minDate: 'today',
+      disable: [
+        // Summer Camp disables weekends
+        ...(program === 'Summer Camp - Day Pass' ? [
+          d => d.getDay() === 0 || d.getDay() === 6
+        ] : []),
+
+        // Kids Camp disables everything except Mon–Wed
+        ...(program === 'Kids Camp - Day Pass' ? [
+          d => d.getDay() < 1 || d.getDay() > 3
+        ] : [])
+      ]
+    });
+  }, 10);
+} else {
+  campDayLabel.style.display = campDayInput.style.display = 'none';
+  campDayInput.value = '';
+}
 
     // Week-pass calendar
-    if (isCampWeek) {
-      weekStartLabel.style.display = weekStartInput.style.display = 'block';
-      flatpickr(weekStartInput, {
-  dateFormat: 'Y-m-d',
-  minDate: 'today',
-  disable: d => d.getDay() !== 1,
-  onChange(selectedDates) { /* … */ }
-});
-    } else {
-      weekStartLabel.style.display = weekStartInput.style.display = 'none';
-      weekStartInput.value = '';
-    }
+if (isCampWeek) {
+  weekStartLabel.style.display = 'block';
+  weekStartInput.style.display = 'block';
+
+  // Ensure input is visible before attaching Flatpickr
+  setTimeout(() => {
+    console.log('Initializing flatpickr for weekStart');
+    
+    flatpickr(weekStartInput, {
+      dateFormat: 'Y-m-d',
+      minDate: 'today',
+      disable: [
+        (date) => date.getDay() !== 1 // Allow only Mondays
+      ],
+      clickOpens: true,
+      allowInput: false
+    });
+  }, 10);
+} else {
+  weekStartLabel.style.display = 'none';
+  weekStartInput.style.display = 'none';
+  weekStartInput.value = '';
+}
   });
 </script>
 

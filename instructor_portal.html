@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Coach Portal - C2 Tennis Academy</title>
@@ -12,55 +14,220 @@
     nav a:hover { background-color: #0f4fa0; }
     section { padding: 40px 20px; max-width: 900px; margin: auto; background: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
     h2 { color: #0c3c78; }
+    .card { margin: 20px 0; padding: 20px; background: #e8f0fc; border-left: 5px solid #0c3c78; }
+    .label { font-weight: bold; color: #0c3c78; }
+    select, textarea { width: 100%; padding: 10px; margin-top: 8px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
+    .delete-button { background-color: white; color: #c0392b; border: none; padding: 10px 20px; margin-left: 10px; border-radius: 5px; font-weight: bold; cursor: pointer; transition: all 0.3s ease; float: right; }
+    .delete-button:hover { background-color: #c0392b; color: white; }
+    button { margin-top: 10px; padding: 10px 15px; background-color: #0c3c78; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    button:hover { background-color: #0f4fa0; }
+    /* Calendar styling */
+    .offdays-section { margin-top: 50px; padding: 30px 20px 10px 20px; background: #eef7ff; border-radius: 10px; box-shadow: 0 0 5px rgba(0,0,0,0.06); }
+    #offday-calendar { margin: 0 auto 20px auto; max-width: 400px; }
+    .offday-badge { background: #e74c3c; color: white; padding: 2px 10px; border-radius: 20px; font-size: 0.9em; margin-right: 7px; }
+    .offday-list { list-style: none; padding: 0; }
+    .offday-list li { margin-bottom: 8px; }
 
-    .card {
-      margin: 20px 0;
-      padding: 20px;
-      background: #e8f0fc;
-      border-left: 5px solid #0c3c78;
-    }
-    .label {
-      font-weight: bold;
+    .inline-form { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap;}
+    .inline-form input[type="time"] { width: 110px; }
+    .remove-off-btn { background: #c0392b; color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-size: 0.95em; }
+    .remove-off-btn:hover { background: #e74c3c; }
+    .flatpickr-multi {
+      margin-bottom: 10px;
       color: #0c3c78;
+      font-weight: bold;
+      padding: 6px;
+      font-size: 1.1em;
     }
+      #coach-availability-calendar {
+    z-index: 1; /* Add this line */
+    position: relative; /* Add this line */
+  }
 
-    select, textarea {
-      width: 100%;
-      padding: 10px;
-      margin-top: 8px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
-    }
+  .modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+}
 
-.delete-button {
-  background-color: white;
-  color: #c0392b; /* red color */
+.modal-content {
+  position: relative;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  width: 300px;
+}
+
+.modal-content input[type="time"] {
+  display: block;
+  width: 100%;
+  margin: 10px 0;
+  padding: 8px;
+}
+
+.modal-content button {
+  margin: 5px;
+  padding: 8px 15px;
+}
+.toast { position: fixed; bottom: 20px; right: 20px; padding: 15px; background: #2ecc40; color: white; border-radius: 5px; }
+  .toast.error { background: #e74c3c; }
+  .quick-block { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
+ .time-input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+ .quick-durations { display: flex; gap: 10px; margin: 15px 0; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+.quick-block button {
+  background: #0c3c78;
+  color: white;
   border: none;
-  padding: 10px 20px;
-  margin-left: 10px;
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.quick-block button:hover {
+  background: #0f4fa0;
+}
+
+.quick-block input[type="date"] {
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+.time-block-section {
+  margin: 30px auto;
+  padding: 25px 30px;
+  background: #ffffff;
+  border-radius: 10px;
+  max-width: 880px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items: start;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.form-row div {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-row label {
+  margin-bottom: 5px;
+  font-weight: 600;
+  color: #333;
+}
+
+select, input[type="date"] {
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+select {
+  height: 38px; /* Match input height if needed */
+}
+label {
+  font-size: 0.95em;
+  margin-bottom: 5px;
+  display: block;
+}
+
+.form-row input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 15px;
+  background: #2ecc40;
+  color: white;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.toast.error {
+  background: #e74c3c;
+}
+#coach-availability-calendar {
+  min-height: 500px; /* Prevent collapse when empty */
+}
+.fc .past-day {
+  background-color: #f0f0f0 !important;
+  color: #999 !important;
+  pointer-events: none !important;
+}
+
+.fc .past-day a {
+  color: #999 !important;
+}
+
+.fc .past-day .fc-daygrid-day-number {
+  opacity: 0.7;
+}
+
+.fc .past-day:hover {
+  background-color: #f0f0f0 !important;
+}
+
+
+
+
+
+#time-block-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+#time-block-form .form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.full-width-button {
+  width: 100%;
+  padding: 10px;
+  background-color: #0c3c78;
+  color: white;
+  border: none;
   border-radius: 5px;
   font-weight: bold;
   cursor: pointer;
-  transition: all 0.3s ease;
-  float: right;
-}
-.delete-button:hover {
-  background-color: #c0392b;
-  color: white;
 }
 
-    button {
-      margin-top: 10px;
-      padding: 10px 15px;
-      background-color: #0c3c78;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    button:hover { background-color: #0f4fa0; }
+.full-width-button:hover {
+  background-color: #0f4fa0;
+}
+
+#time-block-date {
+  height: 20px;
+  font-size: 1rem;
+}
+#time-block-date {
+  height: 20px;
+  font-size: 1rem;
+  padding: 10px;
+  width: 95%; /* or set a specific width like 250px */
+}
   </style>
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet" />
 </head>
 <body>
   <header>
@@ -80,192 +247,421 @@
   <section>
     <h2>Your Upcoming Lessons</h2>
     <div id="lessons-cards"></div>
-
     <h2>Submit Progress Update</h2>
     <form id="progress-form">
       <label for="student-select">Select Student:</label>
       <select id="student-select">
         <option value="" disabled selected>Choose a student</option>
       </select>
-
       <label for="feedback">Progress Summary:</label>
       <textarea id="feedback" rows="5" placeholder="Write progress notes here..."></textarea>
-
       <button type="submit">Submit</button>
     </form>
 
-<h2>Add Lesson</h2>
-  <form id="coach-lesson-form">
-    <div>
-      <label for="coach-program">Program</label>
-      <select id="coach-program" required>
-        <option value="" disabled selected>Choose a program</option>
-        <option value="Tennis Private">Tennis Private</option>
-        <option value="Summer Camp - Day Pass">Summer Camp - Day Pass</option>
-        <option value="Summer Camp - Week Pass">Summer Camp - Week Pass</option>
-        <option value="Kids Camp - Day Pass">Kids Camp - Day Pass</option>
-        <option value="Kids Camp - Week Pass">Kids Camp - Week Pass</option>
-      </select>
-    </div>
-    <div id="coach-student-container" style="display:none; margin-top:10px;">
-      <label for="coach-student">Student Name</label>
-      <input type="text" id="coach-student" placeholder="Enter student name" />
-    </div>
-    <div style="margin-top:10px;">
-      <label for="coach-date">Date</label>
-      <input type="date" id="coach-date" required />
-    </div>
-    <div style="margin-top:10px;">
-      <label for="coach-time">Time</label>
-      <input type="time" id="coach-time" required />
-    </div>
-    <button type="submit" style="margin-top:20px;">Add Lesson</button>
-  </form>
+    <h2>Add Lesson</h2>
+    <form id="coach-lesson-form">
+      <div>
+        <label for="coach-program">Program</label>
+        <select id="coach-program" required>
+          <option value="" disabled selected>Choose a program</option>
+          <option value="Tennis Private">Tennis Private</option>
+          <option value="Summer Camp - Day Pass">Summer Camp - Day Pass</option>
+          <option value="Summer Camp - Week Pass">Summer Camp - Week Pass</option>
+          <option value="Kids Camp - Day Pass">Kids Camp - Day Pass</option>
+          <option value="Kids Camp - Week Pass">Kids Camp - Week Pass</option>
+        </select>
+      </div>
+      <div id="coach-student-container" style="display:none; margin-top:10px;">
+        <label for="coach-student">Student Name</label>
+        <input type="text" id="coach-student" placeholder="Enter student name" />
+      </div>
+      <div style="margin-top:10px;">
+        <label for="coach-date">Date</label>
+        <input type="date" id="coach-date" required />
+      </div>
+      <div style="margin-top:10px;">
+        <label for="coach-time">Time</label>
+        <input type="time" id="coach-time" required />
+      </div>
+      <button type="submit" style="margin-top:20px;">Add Lesson</button>
+    </form>
 
+      
+      
+  
   </section>
 
+  <div class="time-block-section">
+  <h3 style="color: #0c3c78;">Block Specific Time Slots</h3>
+  <form id="time-block-form">
+    <div class="form-group">
+      <label for="time-block-date">Date</label>
+     <input type="text" id="time-block-date" placeholder="Select a date" required>
+    </div>
+    <div class="form-group">
+      <label for="time-block-start">Start Time</label>
+      <select id="time-block-start" required>
+        <option value="">-- Select Time --</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="time-block-end">End Time</label>
+      <select id="time-block-end" required>
+        <option value="">-- Select Time --</option>
+      </select>
+    </div>
+    <button type="submit" class="full-width-button">Add Time Block</button>
+  </form>
+</div>
+  <div class="offdays-section">
+      <h2>Block Off Days / Times (You Are Unavailable)</h2>
+      <div id="coach-availability-calendar" style="margin:40px auto; max-width: 500px;"></div>
+      <button id="submit-offdays" style="display:block;margin:20px auto 0 auto;">Submit Off-Days</button>
+      <small>
+        Click on days in the calendar to mark yourself unavailable.<br>
+        Blocked days will show a <span style="color:#e74c3c;font-weight:bold;">❌</span>.<br>
+        Click again to unblock. Click "Submit Off-Days" to save.
+      </small>
+    </div>
 
 
   <footer>
     <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
   </footer>
-
-  <script>
-    fetch('/api/my-lessons', { credentials: 'include' })
-      .then(res => {
-        console.log('📡 Called /api/my-lessons, response status:', res.status);
-        if (!res.ok) throw new Error('Unauthorized');
-        return res.json();
-      })
-      .then(lessons => {
-        console.log('📚 Lessons received:', lessons);
   
+  <script>
+    // --------- Lessons & Progress Submission (untouched) ----------
+    fetch('/api/my-lessons', { credentials: 'include' })
+      .then(res => res.ok ? res.json() : Promise.reject('Unauthorized'))
+      .then(lessons => {
         const cardsContainer = document.getElementById('lessons-cards');
         const studentSelect = document.getElementById('student-select');
-  
-        cardsContainer.innerHTML = ''; // clear previous
+        cardsContainer.innerHTML = '';
         studentSelect.innerHTML = '<option value="" disabled selected>Choose a student</option>';
-  
         if (!lessons.length) {
           const p = document.createElement('p');
           p.textContent = 'No upcoming lessons.';
           cardsContainer.appendChild(p);
           return;
         }
+        lessons.forEach(lesson => {
+          const lessonDate = new Date(lesson.date);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          if (lessonDate < today) return;
+          const formattedDate = lessonDate.toLocaleDateString(undefined, {
+            year: 'numeric', month: 'long', day: 'numeric'
+          });
+          const formattedTime = (() => {
+            const [hourStr, minuteStr] = lesson.time.split(':');
+            let hour = parseInt(hourStr, 10);
+            const minute = minuteStr.padStart(2, '0');
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            hour = hour % 12 || 12;
+            return `${hour}:${minute} ${ampm}`;
+          })();
+          const card = document.createElement('div');
+          card.classList.add('card');
+          card.innerHTML = `
+            <h3>${lesson.program}</h3>
+            <button
+              class="delete-button"
+              onclick="deleteLesson(
+                '${lesson.program.replace(/'/g, "\\'")}',
+                '${lesson.date}',
+                '${lesson.time}',
+                '${(lesson.student||'').replace(/'/g, "\\'")}'
+              )"
+            >
+              Delete
+            </button>
+            <p><span class="label">Student:</span> ${lesson.student || 'N/A'}</p>
+            <p><span class="label">Coach:</span> ${lesson.coach}</p>
+            <p><span class="label">Date:</span> ${formattedDate}</p>
+            <p><span class="label">Time:</span> ${formattedTime}</p>
+          `;
+          cardsContainer.appendChild(card);
+          if (lesson.student) {
+            const option = document.createElement('option');
+            option.value = lesson.student;
+            option.textContent = lesson.student;
+            studentSelect.appendChild(option);
+          }
+        });
+      })
+      .catch(err => {
+        if (err !== 'Unauthorized') console.error('🚨 Error fetching lessons:', err);
+      });
 
-  lessons.forEach(lesson => {
-  const lessonDate = new Date(lesson.date);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // normalize time for comparison
-  if (lessonDate < today) return; // skip past lessons
+function populateTimeDropdowns() {
+  const times = [];
+  for (let hour = 8; hour <= 20; hour++) {
+    times.push(`${hour}:00`);
+    times.push(`${hour}:30`);
+  }
 
-
-const formattedDate = lessonDate.toLocaleDateString(undefined, {
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric'
-});
-
-  const formattedTime = (() => {
-    const [hourStr, minuteStr] = lesson.time.split(':');
-    let hour = parseInt(hourStr, 10);
-    const minute = minuteStr.padStart(2, '0');
+  const format = timeStr => {
+    const [h, m] = timeStr.split(':');
+    const hour = parseInt(h, 10);
     const ampm = hour >= 12 ? 'PM' : 'AM';
-    hour = hour % 12 || 12;
-    return `${hour}:${minute} ${ampm}`;
-  })();
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${m} ${ampm}`;
+  };
 
-  const card = document.createElement('div');
-  card.classList.add('card');
-  card.innerHTML = `
-  <h3>${lesson.program}</h3>
-  <button
-    class="delete-button"
-    onclick="deleteLesson(
-      '${lesson.program.replace(/'/g, "\\'")}',
-      '${lesson.date}',
-      '${lesson.time}',
-      '${(lesson.student||'').replace(/'/g, "\\'")}'
-    )"
-  >
-    Delete
-  </button>
-  <p><span class="label">Student:</span> ${lesson.student || 'N/A'}</p>
-  <p><span class="label">Coach:</span> ${lesson.coach}</p>
-  <p><span class="label">Date:</span> ${formattedDate}</p>
-  <p><span class="label">Time:</span> ${formattedTime}</p>
-`;
-  cardsContainer.appendChild(card);
+  const startSelect = document.getElementById('time-block-start');
+  const endSelect = document.getElementById('time-block-end');
 
-  if (lesson.student) {
-    const option = document.createElement('option');
-    option.value = lesson.student;
-    option.textContent = lesson.student;
-    studentSelect.appendChild(option);
-  }
-});
+  times.forEach(t => {
+    const startOpt = document.createElement('option');
+    startOpt.value = t;
+    startOpt.textContent = format(t);
+    startSelect.appendChild(startOpt);
+
+    const endOpt = document.createElement('option');
+    endOpt.value = t;
+    endOpt.textContent = format(t);
+    endSelect.appendChild(endOpt);
+  });
+}
+
+    function deleteLesson(program, date, time, student) {
+      if (!confirm("Are you sure you want to delete this lesson?")) return;
+      fetch('/api/delete-lesson', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ program, date, time, student })
       })
-      .catch(err => {
-        console.error('🚨 Error fetching lessons:', err);
+        .then(res => {
+          if (!res.ok) throw new Error('Delete failed');
+          alert('Lesson deleted.');
+          location.reload();
+        })
+        .catch(err => {
+          console.error('Error deleting lesson:', err);
+          alert('Could not delete lesson.');
+        });
+    }
+
+    const coachProg  = document.getElementById('coach-program');
+    const coachStudC = document.getElementById('coach-student-container');
+    coachProg.addEventListener('change', () => {
+      coachStudC.style.display = coachProg.value === 'Tennis Private' ? 'block' : 'none';
+    });
+    document.getElementById('coach-lesson-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const payload = {
+        program: coachProg.value,
+        date:    document.getElementById('coach-date').value,
+        time:    document.getElementById('coach-time').value,
+        student: document.getElementById('coach-student').value || ''
+      };
+      const res = await fetch('/api/coach/lessons', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
-  </script>
-
-<script>
-  function deleteLesson(program, date, time, student) {
-    if (!confirm("Are you sure you want to delete this lesson?")) return;
-
-    fetch('/api/delete-lesson', {
-      method: 'POST',
-      credentials: 'include',               // ← send session cookie
-      headers:    { 'Content-Type': 'application/json' },
-      body:       JSON.stringify({ program, date, time, student })
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('Delete failed');
-        alert('Lesson deleted.');
-        // Remove the card from the DOM instead of full reload (optional)
+      if (res.ok) {
+        alert('Lesson added');
         location.reload();
-      })
-      .catch(err => {
-        console.error('Error deleting lesson:', err);
-        alert('Could not delete lesson.');
-      });
-  }
+        coachStudC.style.display = 'none';
+      } else {
+        alert('Add failed: ' + await res.text());
+      }
+    });
+
+    
+
 </script>
 
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
 <script>
-  // show student‐name when “Tennis Private” is selected
-  const coachProg  = document.getElementById('coach-program');
-  const coachStudC = document.getElementById('coach-student-container');
-  coachProg.addEventListener('change', () => {
-    coachStudC.style.display = coachProg.value === 'Tennis Private' ? 'block' : 'none';
+
+  // Data storage
+  let blockedDays = []; // Stores dates as strings: ['2024-05-20', ...]
+  let timeBlocks = [];  // Stores {date: '2024-05-20', start: '09:00', end: '11:00'}
+  let originalData = { days: [], times: [] };
+  let calendar = null;
+// --------- Calendar & Availability Management ----------
+document.addEventListener('DOMContentLoaded', async function() {
+   populateTimeDropdowns();
+  
+   flatpickr("#time-block-date", {
+    dateFormat: "Y-m-d",
+    minDate: "today"
+  });
+  const calendarEl = document.getElementById('coach-availability-calendar');
+  const submitBtn = document.getElementById('submit-offdays');
+  const { formatDate } = FullCalendar;
+  
+  
+
+  // Initialize calendar
+  
+
+  if (!calendar) {
+    const events = getCalendarEvents();
+    calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'dayGridMonth',
+      height: 500,
+      dateClick: handleDateClick,
+      events: events,
+      dayCellClassNames: (args) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return args.date < today ? 'past-day' : '';
+      },
+      dayCellContent: (args) => {
+        const dateStr = args.date.toISOString().split('T')[0];
+        let html = args.dayNumberText;
+        if (blockedDays.includes(dateStr)) {
+          html += ' <span style="color:#e74c3c;font-weight:bold;">❌</span>';
+        }
+        return { html };
+      },
+      dayCellDidMount: (info) => {
+        const dateStr = info.date.toISOString().split('T')[0];
+        const isBlocked = blockedDays.includes(dateStr);
+        const hasTimeBlocks = timeBlocks.some(tb => tb.date === dateStr);
+
+        if (isBlocked) {
+          info.el.style.backgroundColor = '#ffeaea';
+        } else if (!hasTimeBlocks) {
+          info.el.style.backgroundColor = '#e8fbe8';
+        }
+      }
+    });
+     calendar.render();
+  } else {
+  calendar.removeAllEvents();
+  calendar.addEventSource(getCalendarEvents());
+  calendar.render();
+}
+
+
+
+
+
+  // Time block form handler
+  document.getElementById('time-block-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const date = document.getElementById('time-block-date').value;
+    const start = document.getElementById('time-block-start').value;
+    const end = document.getElementById('time-block-end').value;
+    
+    // Validation
+    if (blockedDays.includes(date)) {
+      alert('This day is fully blocked - unblock day first');
+      return;
+    }
+    if (start >= end) {
+      alert('End time must be after start time');
+      return;
+    }
+    
+    timeBlocks.push({ date, start, end });
+    renderCalendar();
+    e.target.reset();
   });
 
-  // handle form submission
-  document.getElementById('coach-lesson-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const payload = {
-      program: coachProg.value,
-      date:    document.getElementById('coach-date').value,
-      time:    document.getElementById('coach-time').value,
-      student: document.getElementById('coach-student').value || ''
-    };
-    const res = await fetch('/api/coach/lessons', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (res.ok) {
-      alert('Lesson added');
-      loadMyLessons();          // re‐use your existing function
-      e.target.reset();
-      coachStudC.style.display = 'none';
-    } else {
-      alert('Add failed: ' + await res.text());
+  // Save handler
+  submitBtn.addEventListener('click', async () => {
+    try {
+      const res = await fetch('/api/availability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          days: blockedDays,
+          times: timeBlocks
+        })
+      });
+      
+      if (res.ok) {
+        originalData = { days: [...blockedDays], times: [...timeBlocks] };
+        showToast('Availability saved!', 'success');
+      }
+    } catch (error) {
+      showToast('Failed to save changes', 'error');
+      console.error(error);
     }
   });
+
+  // Initial load
+  async function loadAvailability() {
+  try {
+    const res = await fetch('/api/availability');
+    const data = await res.json();
+    blockedDays = data.days || [];
+    timeBlocks = data.times || [];
+  } catch (error) {
+    blockedDays = [];
+    timeBlocks = [];
+  }
+  renderCalendar(); // Always render even if empty
+}
+  
+  loadAvailability();
+});
+
+// --------- Helper Functions ----------
+function showToast(message, type = 'success') {
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+function handleDateClick(info) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (info.date < today) {
+    showToast("Past dates cannot be modified", 'error');
+    return;
+  }
+
+  const dateStr = info.date.toISOString().split('T')[0];
+  const index = blockedDays.indexOf(dateStr);
+
+  if (index === -1) {
+    blockedDays.push(dateStr);
+    timeBlocks = timeBlocks.filter(tb => tb.date !== dateStr);
+  } else {
+    blockedDays.splice(index, 1);
+  }
+
+  renderCalendar();
+}
+
+function getCalendarEvents() {
+  return [
+    ...blockedDays.map(date => ({
+      start: date,
+      allDay: true,
+      display: 'background',
+      color: 'transparent'
+    })),
+    ...timeBlocks.map(tb => ({
+      title: 'Unavailable',
+      start: `${tb.date}T${tb.start}`,
+      end: `${tb.date}T${tb.end}`,
+      color: '#e74c3c'
+    }))
+  ];
+}
 </script>
 
+<script>
+  function renderCalendar() {
+    if (!calendar) return;
+    const events = getCalendarEvents();
+    calendar.removeAllEvents();
+    calendar.addEventSource(events);
+    calendar.refetchEvents();
+    calendar.render();
+  }
+</script>
 </body>
 </html>

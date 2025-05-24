@@ -41,6 +41,80 @@ const pool = new Pool({
 // ────────────────────────────────────────────────────────────
 
 
+// ---- Instructor Off-Days API ----
+// Requires: instructor_offdays table migrated into PostgreSQL before use
+
+// Get all off-days for a specific coach (for use in both portals)
+app.get('/api/instructor-offdays', async (req, res) => {
+  const coach = req.query.coach;
+  if (!coach) return res.status(400).send('Missing coach name');
+  // Optionally: Only allow viewing offdays for current coach if !isAdmin, but for now it's public for booking page
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, off_date, start_time, end_time, reason
+         FROM instructor_offdays
+         WHERE coach_name = $1
+         ORDER BY off_date, start_time`,
+      [coach]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('Fetch offdays error:', err);
+    res.status(500).send('Failed to fetch off-days');
+  }
+});
+
+// Add or update an off-day (if same (coach, date, time) exists, update it)
+// Auth: must be logged in as this coach (ensure req.session.coachName matches body.coach_name)
+app.post('/api/instructor-offdays', async (req, res) => {
+  if (!req.session.coachId || !req.session.coachName) {
+    return res.status(401).send('Coach not logged in');
+  }
+  const { off_date, start_time, end_time, reason } = req.body;
+  const coach_name = req.session.coachName;
+
+  if (!off_date) {
+    return res.status(400).send('Missing date');
+  }
+
+  try {
+    // Upsert: insert or replace if exists (by unique index)
+    await pool.query(
+      `INSERT INTO instructor_offdays (coach_name, off_date, start_time, end_time, reason)
+         VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (coach_name, off_date, start_time, end_time)
+         DO UPDATE SET reason = EXCLUDED.reason, created_at = CURRENT_TIMESTAMP`,
+      [coach_name, off_date, start_time || null, end_time || null, reason || null]
+    );
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('Add/update offday error:', err);
+    res.status(500).send('Save failed');
+  }
+});
+
+// Delete an off-day (coach can remove a block for a specific day or slot)
+app.delete('/api/instructor-offdays/:id', async (req, res) => {
+  if (!req.session.coachId || !req.session.coachName) {
+    return res.status(401).send('Coach not logged in');
+  }
+  const { id } = req.params;
+
+  try {
+    // Only delete if record belongs to this coach
+    const { rowCount } = await pool.query(
+      `DELETE FROM instructor_offdays WHERE id = $1 AND coach_name = $2`,
+      [id, req.session.coachName]
+    );
+    if (rowCount === 0) return res.status(403).send('Not your block, or not found');
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('Delete offday error:', err);
+    res.status(500).send('Delete failed');
+  }
+});
+
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   let event;
   try {
@@ -210,6 +284,40 @@ app.post('/api/admin/lessons', async (req, res) => {
   }
 });
 
+
+app.get('/api/availability', async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT coach_name, off_date AS date, start_time AS start, end_time AS end
+      FROM instructor_offdays
+    `);
+
+    // Split out days (for full-day blocks) and time ranges
+    const fullDayBlocks = new Set();
+    const timeBlocks = [];
+
+    for (const row of rows) {
+      if (!row.start && !row.end) {
+        fullDayBlocks.add(row.date.toISOString().split('T')[0]); // e.g., "2024-06-01"
+      } else {
+        timeBlocks.push({
+          coach: row.coach_name,
+          date:  row.date.toISOString().split('T')[0],
+          start: row.start,
+          end:   row.end
+        });
+      }
+    }
+
+    res.json({
+      days: [...fullDayBlocks],
+      times: timeBlocks
+    });
+  } catch (err) {
+    console.error('Error fetching availability:', err);
+    res.status(500).send('Failed to fetch availability');
+  }
+});
 
 
 app.get('/api/admin/lessons', async (req, res) => {

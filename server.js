@@ -285,37 +285,45 @@ app.post('/api/admin/lessons', async (req, res) => {
 });
 
 
-app.get('/api/availability', async (req, res) => {
+app.post('/api/availability', async (req, res) => {
+  if (!req.session.coachId || !req.session.coachName) {
+    return res.status(401).send('Coach not logged in');
+  }
+
+  const coachName = req.session.coachName;
+  const { days, times } = req.body;
+
   try {
-    const { rows } = await pool.query(`
-      SELECT coach_name, off_date AS date, start_time AS start, end_time AS end
-      FROM instructor_offdays
-    `);
+    const client = await pool.connect();
+    await client.query('BEGIN');
 
-    // Split out days (for full-day blocks) and time ranges
-    const fullDayBlocks = new Set();
-    const timeBlocks = [];
+    // Delete previous entries
+    await client.query('DELETE FROM instructor_offdays WHERE coach_name = $1', [coachName]);
 
-    for (const row of rows) {
-      if (!row.start && !row.end) {
-        fullDayBlocks.add(row.date.toISOString().split('T')[0]); // e.g., "2024-06-01"
-      } else {
-        timeBlocks.push({
-          coach: row.coach_name,
-          date:  row.date.toISOString().split('T')[0],
-          start: row.start,
-          end:   row.end
-        });
-      }
+    // Insert full day blocks
+    for (const date of days || []) {
+      await client.query(
+        'INSERT INTO instructor_offdays (coach_name, off_date) VALUES ($1, $2)',
+        [coachName, date]
+      );
     }
 
-    res.json({
-      days: [...fullDayBlocks],
-      times: timeBlocks
-    });
+    // Insert time blocks
+    for (const block of times || []) {
+      await client.query(
+        `INSERT INTO instructor_offdays (coach_name, off_date, start_time, end_time)
+         VALUES ($1, $2, $3, $4)`,
+        [coachName, block.date, block.start, block.end]
+      );
+    }
+
+    await client.query('COMMIT');
+    client.release();
+
+    res.status(200).send('Availability saved');
   } catch (err) {
-    console.error('Error fetching availability:', err);
-    res.status(500).send('Failed to fetch availability');
+    console.error('Save availability error:', err);
+    res.status(500).send('Failed to save availability');
   }
 });
 

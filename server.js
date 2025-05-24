@@ -285,47 +285,7 @@ app.post('/api/admin/lessons', async (req, res) => {
 });
 
 
-app.post('/api/availability', async (req, res) => {
-  if (!req.session.coachId || !req.session.coachName) {
-    return res.status(401).send('Coach not logged in');
-  }
 
-  const coachName = req.session.coachName;
-  const { days, times } = req.body;
-
-  try {
-    const client = await pool.connect();
-    await client.query('BEGIN');
-
-    // Delete previous entries
-    await client.query('DELETE FROM instructor_offdays WHERE coach_name = $1', [coachName]);
-
-    // Insert full day blocks
-    for (const date of days || []) {
-      await client.query(
-        'INSERT INTO instructor_offdays (coach_name, off_date) VALUES ($1, $2)',
-        [coachName, date]
-      );
-    }
-
-    // Insert time blocks
-    for (const block of times || []) {
-      await client.query(
-        `INSERT INTO instructor_offdays (coach_name, off_date, start_time, end_time)
-         VALUES ($1, $2, $3, $4)`,
-        [coachName, block.date, block.start, block.end]
-      );
-    }
-
-    await client.query('COMMIT');
-    client.release();
-
-    res.status(200).send('Availability saved');
-  } catch (err) {
-    console.error('Save availability error:', err);
-    res.status(500).send('Failed to save availability');
-  }
-});
 
 
 app.get('/api/admin/lessons', async (req, res) => {
@@ -402,6 +362,44 @@ app.post('/api/signup', async (req, res) => {
   }
 });
 
+app.post('/api/availability', async (req, res) => {
+  if (!req.session.coachId || !req.session.coachName) {
+    return res.status(401).send('Unauthorized');
+  }
+
+  const { days, times } = req.body;
+  const coachName = req.session.coachName;
+
+  try {
+    // 1. Clear existing entries
+    await pool.query('DELETE FROM instructor_offdays WHERE coach_name = $1', [coachName]);
+
+    // 2. Insert full-day blocks
+    const dayInserts = days.map(d =>
+      pool.query(
+        `INSERT INTO instructor_offdays (coach_name, off_date) VALUES ($1, $2)`,
+        [coachName, d]
+      )
+    );
+
+    // 3. Insert time blocks
+    const timeInserts = times.map(tb =>
+      pool.query(
+        `INSERT INTO instructor_offdays (coach_name, off_date, start_time, end_time)
+         VALUES ($1, $2, $3, $4)`,
+        [coachName, tb.date, tb.start, tb.end]
+      )
+    );
+
+    await Promise.all([...dayInserts, ...timeInserts]);
+
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('Error saving availability:', err);
+    res.status(500).send('Failed to save availability');
+  }
+});
+
 app.post('/api/contact', async (req, res) => {
   const { first_name, last_name, email, message } = req.body;
   try {
@@ -465,6 +463,41 @@ app.post('/api/coach/lessons', async (req, res) => {
   } catch (err) {
     console.error('Error adding coach lesson:', err);
     res.status(500).send('Error adding lesson');
+  }
+});
+
+app.get('/api/availability', async (req, res) => {
+  if (!req.session.coachId || !req.session.coachName) {
+    return res.status(401).send('Unauthorized');
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT coach_name, off_date, start_time, end_time
+       FROM instructor_offdays
+       WHERE coach_name = $1`,
+      [req.session.coachName]
+    );
+
+    const fullDayBlocks = [];
+    const timeBlocks = [];
+
+    for (const row of rows) {
+      if (!row.start_time && !row.end_time) {
+        fullDayBlocks.push(row.off_date.toISOString().split('T')[0]);
+      } else {
+        timeBlocks.push({
+          date: row.off_date.toISOString().split('T')[0],
+          start: row.start_time,
+          end: row.end_time
+        });
+      }
+    }
+
+    res.json({ days: fullDayBlocks, times: timeBlocks });
+  } catch (err) {
+    console.error('Error fetching availability:', err);
+    res.status(500).send('Failed to load availability');
   }
 });
 

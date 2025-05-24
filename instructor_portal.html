@@ -559,6 +559,11 @@ document.addEventListener('DOMContentLoaded', async function() {
       alert('End time must be after start time');
       return;
     }
+
+     if (timeBlocks.some(tb => tb.date === date && tb.start === start && tb.end === end)) {
+    showToast('This time block already exists.', 'error');
+    return;
+  }
     
     timeBlocks.push({ date, start, end });
     renderCalendar();
@@ -570,6 +575,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     try {
       const res = await fetch('/api/availability', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           days: blockedDays,
@@ -590,7 +596,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   // Initial load
   async function loadAvailability() {
   try {
-    const res = await fetch('/api/availability');
+    const res = await fetch('/api/availability', { credentials: 'include' });
     const data = await res.json();
     blockedDays = data.days || [];
     timeBlocks = data.times || [];
@@ -599,6 +605,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     timeBlocks = [];
   }
   renderCalendar(); // Always render even if empty
+   showToast('Availability loaded!', 'success');
 }
   
   loadAvailability();

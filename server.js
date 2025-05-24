@@ -286,6 +286,48 @@ app.post('/api/admin/lessons', async (req, res) => {
 
 
 
+app.get('/api/availability', async (req, res) => {
+  if (!req.session.coachId || !req.session.coachName) {
+    return res.status(401).send('Unauthorized');
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT coach_name, off_date, start_time, end_time
+       FROM instructor_offdays
+       WHERE coach_name = $1`,
+      [req.session.coachName]
+    );
+
+    console.log('📋 Raw availability rows:', rows);
+
+    const fullDayBlocks = [];
+    const timeBlocks = [];
+
+    for (const row of rows) {
+      if (!row.off_date) continue;
+
+      try {
+        if (!row.start_time && !row.end_time) {
+          fullDayBlocks.push(row.off_date.toISOString().split('T')[0]);
+        } else {
+          timeBlocks.push({
+            date: row.off_date.toISOString().split('T')[0],
+            start: row.start_time,
+            end: row.end_time
+          });
+        }
+      } catch (formatError) {
+        console.error('⚠️ Formatting error on row:', row, formatError);
+      }
+    }
+
+    res.json({ days: fullDayBlocks, times: timeBlocks });
+  } catch (err) {
+    console.error('❌ Availability processing failed:', err);
+    res.status(500).send('Failed to load availability');
+  }
+});
 
 
 app.get('/api/admin/lessons', async (req, res) => {
@@ -466,35 +508,6 @@ app.post('/api/coach/lessons', async (req, res) => {
   }
 });
 
-console.log('📋 Raw availability rows:', rows);
-
-try {
-  const fullDayBlocks = [];
-  const timeBlocks = [];
-
-  for (const row of rows) {
-    if (!row.off_date) continue;
-
-    try {
-      if (!row.start_time && !row.end_time) {
-        fullDayBlocks.push(row.off_date.toISOString().split('T')[0]);
-      } else {
-        timeBlocks.push({
-          date: row.off_date.toISOString().split('T')[0],
-          start: row.start_time,
-          end: row.end_time
-        });
-      }
-    } catch (formatError) {
-      console.error('⚠️ Formatting error on row:', row, formatError);
-    }
-  }
-
-  res.json({ days: fullDayBlocks, times: timeBlocks });
-} catch (err) {
-  console.error('❌ Availability processing failed:', err);
-  res.status(500).send('Failed to load availability');
-}
 
 app.get('/api/check-session', (req, res) => {
   if (req.session.user || req.session.coachId) {

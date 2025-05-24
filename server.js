@@ -466,23 +466,16 @@ app.post('/api/coach/lessons', async (req, res) => {
   }
 });
 
-app.get('/api/availability', async (req, res) => {
-  if (!req.session.coachId || !req.session.coachName) {
-    return res.status(401).send('Unauthorized');
-  }
+console.log('📋 Raw availability rows:', rows);
 
-  try {
-    const { rows } = await pool.query(
-      `SELECT coach_name, off_date, start_time, end_time
-       FROM instructor_offdays
-       WHERE coach_name = $1`,
-      [req.session.coachName]
-    );
+try {
+  const fullDayBlocks = [];
+  const timeBlocks = [];
 
-    const fullDayBlocks = [];
-    const timeBlocks = [];
+  for (const row of rows) {
+    if (!row.off_date) continue;
 
-    for (const row of rows) {
+    try {
       if (!row.start_time && !row.end_time) {
         fullDayBlocks.push(row.off_date.toISOString().split('T')[0]);
       } else {
@@ -492,14 +485,16 @@ app.get('/api/availability', async (req, res) => {
           end: row.end_time
         });
       }
+    } catch (formatError) {
+      console.error('⚠️ Formatting error on row:', row, formatError);
     }
-
-    res.json({ days: fullDayBlocks, times: timeBlocks });
-  } catch (err) {
-    console.error('Error fetching availability:', err);
-    res.status(500).send('Failed to load availability');
   }
-});
+
+  res.json({ days: fullDayBlocks, times: timeBlocks });
+} catch (err) {
+  console.error('❌ Availability processing failed:', err);
+  res.status(500).send('Failed to load availability');
+}
 
 app.get('/api/check-session', (req, res) => {
   if (req.session.user || req.session.coachId) {

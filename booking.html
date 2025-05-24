@@ -326,17 +326,6 @@ if (isCampWeek) {
   let blockedDays = [];
   let timeBlocks = [];
 
-fetch('/api/availability')
-  .then(res => res.json())
-  .then(data => {
-    blockedDays = data.days || [];
-    timeBlocks = data.times || [];
-  })
-  .catch(err => {
-    console.error('Failed to load availability:', err);
-    blockedDays = [];
-    timeBlocks = [];
-  });
 
   
 window.addEventListener('DOMContentLoaded', async () => {
@@ -358,52 +347,63 @@ window.addEventListener('DOMContentLoaded', async () => {
   console.error('Session check failed:', err);
 }
 
-coachEl.addEventListener('change', () => {
-    if (!coachEl.value) return;
+coachEl.addEventListener('change', async () => {
+  if (!coachEl.value) return;
 
-     if (datePicker) datePicker.destroy();
+  try {
+    const res = await fetch(`/api/public-availability?coach=${encodeURIComponent(coachEl.value)}`);
+    const data = await res.json();
+    blockedDays = data.days || [];
+    timeBlocks = data.times || [];
+  } catch (err) {
+    console.error('❌ Failed to fetch public availability:', err);
+    blockedDays = [];
+    timeBlocks = [];
+  }
 
-    dateEl.value = '';
-    timeEl.innerHTML = '<option value="">-- Select Time --</option>';
+  if (datePicker) datePicker.destroy();
 
-    dateLbl.style.display = dateEl.style.display = 'block';
-    timeLbl.style.display = timeEl.style.display = 'none';
+  dateEl.value = '';
+  timeEl.innerHTML = '<option value="">-- Select Time --</option>';
 
-    const avail = availability[coachEl.value];
+  dateLbl.style.display = dateEl.style.display = 'block';
+  timeLbl.style.display = timeEl.style.display = 'none';
 
-    datePicker = flatpickr(dateEl, {
-      dateFormat: 'Y-m-d',
-      minDate: 'today',
-      disable: [
-        d => !avail.days.includes(d.getDay()),
-        ...blockedDays.map(d => new Date(d))
-      ],
-      onChange(selectedDates) {
-        const d = selectedDates[0];
-        const dow = d.getDay();
-        const slot = avail.times[dow] || avail.times.default;
+  const avail = availability[coachEl.value];
 
-        timeEl.innerHTML = '<option value="">-- Select Time --</option>';
+  datePicker = flatpickr(dateEl, {
+    dateFormat: 'Y-m-d',
+    minDate: 'today',
+    disable: [
+      d => !avail.days.includes(d.getDay()),
+      ...blockedDays.map(d => new Date(d))
+    ],
+    onChange(selectedDates) {
+      const d = selectedDates[0];
+      const dow = d.getDay();
+      const slot = avail.times[dow] || avail.times.default;
 
-        const selectedDateStr = d.toISOString().split('T')[0];
-        const blockedTimesForDate = timeBlocks
-          .filter(tb => tb.date === selectedDateStr)
-          .map(tb => [parseTime(tb.start), parseTime(tb.end)]);
+      timeEl.innerHTML = '<option value="">-- Select Time --</option>';
 
-        for (let t = parseTime(slot.min); t + 30 <= parseTime(slot.max); t += 30) {
-          const isBlocked = blockedTimesForDate.some(([start, end]) => t >= start && t < end);
-          if (!isBlocked) {
-            const opt = document.createElement('option');
-            opt.value = fmtTime(t);
-            opt.textContent = fmtTime(t);
-            timeEl.appendChild(opt);
-          }
+      const selectedDateStr = d.toISOString().split('T')[0];
+      const blockedTimesForDate = timeBlocks
+        .filter(tb => tb.date === selectedDateStr)
+        .map(tb => [parseTime(tb.start), parseTime(tb.end)]);
+
+      for (let t = parseTime(slot.min); t + 30 <= parseTime(slot.max); t += 30) {
+        const isBlocked = blockedTimesForDate.some(([start, end]) => t >= start && t < end);
+        if (!isBlocked) {
+          const opt = document.createElement('option');
+          opt.value = fmtTime(t);
+          opt.textContent = fmtTime(t);
+          timeEl.appendChild(opt);
         }
-
-        timeLbl.style.display = timeEl.style.display = 'block';
       }
-    });
+
+      timeLbl.style.display = timeEl.style.display = 'block';
+    }
   });
+});
   // 2) Attach your submit handler only once
   document.getElementById('bookingForm').addEventListener('submit', async e => {
     e.preventDefault();

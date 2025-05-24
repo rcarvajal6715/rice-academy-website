@@ -508,6 +508,46 @@ app.post('/api/coach/lessons', async (req, res) => {
   }
 });
 
+app.get('/api/public-availability', async (req, res) => {
+  const coachName = req.query.coach;
+  if (!coachName) {
+    return res.status(400).send('Missing coach name');
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT coach_name, off_date, start_time, end_time
+       FROM instructor_offdays
+       WHERE coach_name = $1`,
+      [coachName]
+    );
+
+    const fullDayBlocks = [];
+    const timeBlocks = [];
+
+    for (const row of rows) {
+      if (!row.off_date) continue;
+      try {
+        if (!row.start_time && !row.end_time) {
+          fullDayBlocks.push(row.off_date.toISOString().split('T')[0]);
+        } else {
+          timeBlocks.push({
+            date: row.off_date.toISOString().split('T')[0],
+            start: row.start_time,
+            end: row.end_time
+          });
+        }
+      } catch (formatError) {
+        console.error('⚠️ Formatting error on row:', row, formatError);
+      }
+    }
+
+    res.json({ days: fullDayBlocks, times: timeBlocks });
+  } catch (err) {
+    console.error('❌ Public availability fetch failed:', err);
+    res.status(500).send('Failed to load availability');
+  }
+});
 
 app.get('/api/check-session', (req, res) => {
   if (req.session.user || req.session.coachId) {

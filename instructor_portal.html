@@ -186,9 +186,12 @@ label {
   background-color: #f0f0f0 !important;
 }
 
-
-
-
+.fc-day-blocked {
+  background-color: #ffcccc; /* Light red for blocked days */
+}
+.fc-day-available {
+  background-color: #e8fbe8; /* Light green for available days without time blocks */
+}
 
 #time-block-form {
   display: flex;
@@ -508,10 +511,27 @@ document.addEventListener('DOMContentLoaded', async function() {
       height: 500,
       dateClick: handleDateClick,
       events: events,
-      dayCellClassNames: (args) => {
+      dayCellClassNames: function(arg) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        return args.date < today ? 'past-day' : '';
+        const dateStr = arg.date.toISOString().split('T')[0];
+        const isBlocked = blockedDays.includes(dateStr); // Assumes 'blockedDays' is accessible in this scope
+        const hasTimeBlocks = timeBlocks.some(tb => tb.date === dateStr); // Assumes 'timeBlocks' is accessible
+        let classes = [];
+
+        if (arg.date < today && !arg.isToday) {
+          classes.push('past-day');
+        }
+
+        if (isBlocked) {
+          classes.push('fc-day-blocked');
+        } else {
+          // Only apply 'available' styling if it's not a past day and has no specific time blocks
+          if (!(arg.date < today && !arg.isToday) && !hasTimeBlocks) {
+            classes.push('fc-day-available');
+          }
+        }
+        return classes; // Return an array of class names
       },
       dayCellContent: (args) => {
         const dateStr = args.date.toISOString().split('T')[0];
@@ -520,18 +540,8 @@ document.addEventListener('DOMContentLoaded', async function() {
           html += ' <span style="color:#e74c3c;font-weight:bold;">❌</span>';
         }
         return { html };
-      },
-      dayCellDidMount: (info) => {
-        const dateStr = info.date.toISOString().split('T')[0];
-        const isBlocked = blockedDays.includes(dateStr);
-        const hasTimeBlocks = timeBlocks.some(tb => tb.date === dateStr);
-
-        if (isBlocked) {
-          info.el.style.backgroundColor = '#ffeaea';
-        } else if (!hasTimeBlocks) {
-          info.el.style.backgroundColor = '#e8fbe8';
-        }
       }
+      // dayCellDidMount callback removed
     });
      calendar.render();
   } else {
@@ -645,17 +655,12 @@ function handleDateClick(info) {
 
 function getCalendarEvents() {
   return [
-    ...blockedDays.map(date => ({
-      start: date,
-      allDay: true,
-      display: 'background',
-      color: 'transparent'
-    })),
+    // The ...blockedDays.map(...) section has been removed.
     ...timeBlocks.map(tb => ({
       title: 'Unavailable',
       start: `${tb.date}T${tb.start}`,
       end: `${tb.date}T${tb.end}`,
-      color: '#e74c3c'
+      color: '#e74c3c' // This is for specific timed blocks, not full day off.
     }))
   ];
 }

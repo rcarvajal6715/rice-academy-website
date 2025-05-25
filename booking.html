@@ -161,6 +161,11 @@
         <input type="email" id="email" name="email" required />
       </div>
 
+      <div id="phone-container">
+        <label for="phone">Your Phone Number</label>
+        <input type="tel" id="phone" name="phone" required />
+      </div>
+
         <button type="submit">Pay &amp; Book</button>
       </form>
     </div>
@@ -207,19 +212,43 @@ const availability = {
       method: 'GET',
       credentials: 'include'
     });
+    const emailContainer = document.getElementById('email-container');
+    const emailInput = document.getElementById('email');
+    const phoneContainer = document.getElementById('phone-container');
+    const phoneInput = document.getElementById('phone');
+
     if (res.ok) {
-      const container = document.getElementById('email-container');
-      const emailInput = document.getElementById('email');
-      if (container) {
-        container.style.display = 'none';
-        // either remove required:
+      // User is logged in
+      if (emailContainer) {
+        emailContainer.style.display = 'none';
         emailInput.required = false;
-        // —or— disable it so it's totally ignored by the form:
-        // emailInput.disabled = true;
+      }
+      if (phoneContainer) {
+        phoneContainer.style.display = 'none';
+        phoneInput.required = false;
+      }
+    } else {
+      // User is not logged in
+      if (emailContainer) {
+        emailContainer.style.display = 'block'; // Or ensure it's visible if hidden by default
+        emailInput.required = true;
+      }
+      if (phoneContainer) {
+        phoneContainer.style.display = 'block'; // Or ensure it's visible if hidden by default
+        phoneInput.required = true;
       }
     }
   } catch (err) {
     console.error('Session check failed:', err);
+    // Ensure fields are visible and required if session check fails
+    const emailContainer = document.getElementById('email-container');
+    const emailInput = document.getElementById('email');
+    const phoneContainer = document.getElementById('phone-container');
+    const phoneInput = document.getElementById('phone');
+    if (emailContainer) emailContainer.style.display = 'block';
+    if (emailInput) emailInput.required = true;
+    if (phoneContainer) phoneContainer.style.display = 'block';
+    if (phoneInput) phoneInput.required = true;
   }
 });
 </script>
@@ -335,16 +364,43 @@ window.addEventListener('DOMContentLoaded', async () => {
     method: 'GET',
     credentials: 'include'
   });
+  const emailContainer = document.getElementById('email-container');
+  const emailInput = document.getElementById('email');
+  const phoneContainer = document.getElementById('phone-container');
+  const phoneInput = document.getElementById('phone');
+
   if (res.ok) {
-    const container  = document.getElementById('email-container');
-    const emailInput = document.getElementById('email');
-    container.style.display = 'none';
-    // remove the required attribute so the hidden email field won’t block form validation
-    emailInput.removeAttribute('required');
-    // (no need for `emailInput.required = false;` here)
+    // User is logged in
+    if (emailContainer) {
+      emailContainer.style.display = 'none';
+      emailInput.removeAttribute('required');
+    }
+    if (phoneContainer) {
+      phoneContainer.style.display = 'none';
+      phoneInput.removeAttribute('required');
+    }
+  } else {
+    // User is not logged in - ensure fields are visible and required
+    if (emailContainer) {
+      emailContainer.style.display = 'block';
+      emailInput.setAttribute('required', 'required');
+    }
+    if (phoneContainer) {
+      phoneContainer.style.display = 'block';
+      phoneInput.setAttribute('required', 'required');
+    }
   }
 } catch (err) {
   console.error('Session check failed:', err);
+  // Fallback: ensure fields are visible and required if session check errors out
+  const emailContainer = document.getElementById('email-container');
+  const emailInput = document.getElementById('email');
+  const phoneContainer = document.getElementById('phone-container');
+  const phoneInput = document.getElementById('phone');
+  if (emailContainer) emailContainer.style.display = 'block';
+  if (emailInput) emailInput.setAttribute('required', 'required');
+  if (phoneContainer) phoneContainer.style.display = 'block';
+  if (phoneInput) phoneInput.setAttribute('required', 'required');
 }
 
 coachEl.addEventListener('change', async () => {
@@ -419,13 +475,14 @@ coachEl.addEventListener('change', async () => {
 
     const time  = timeEl.value;
     const email = document.getElementById('email').value;
+    const phone = document.getElementById('phone').value;
 
     try {
       const res = await fetch('/api/create-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ student, email, program, coach, date, time })
+        body: JSON.stringify({ student, email, phone, program, coach, date, time })
       });
 
       if (!res.ok) throw new Error(await res.text());

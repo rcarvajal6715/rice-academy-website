@@ -377,7 +377,8 @@ app.get('/api/my-lessons', async (req, res) => {
          coach,
          date,
          time,
-         student
+         student,
+         phone
        FROM bookings
        WHERE LOWER(coach) = LOWER($1)
        ORDER BY date DESC, time DESC`,
@@ -576,6 +577,22 @@ app.post('/api/create-payment', async (req, res) => {
     return res.status(400).send('Missing email address.');
   }
 
+  // Determine phone number
+  let phone = null;
+  if (req.session.user && req.session.user.id) {
+    try {
+      const userQuery = await pool.query('SELECT phone FROM users WHERE id = $1', [req.session.user.id]);
+      if (userQuery.rows.length > 0) {
+        phone = userQuery.rows[0].phone;
+      }
+    } catch (dbError) {
+      console.error('Error fetching user phone:', dbError);
+      // Not returning error to client, just proceed without phone if db error
+    }
+  } else {
+    phone = req.body.phone; // Expect phone in body if not logged in
+  }
+
   // 3) Look up the product entry
   const entry = PRODUCTS[program];
   if (!entry) {
@@ -588,9 +605,9 @@ app.post('/api/create-payment', async (req, res) => {
       // a) Insert booking as paid
       await pool.query(
         `INSERT INTO bookings
-           (email, program, coach, date, time, session_id, paid, student)
-         VALUES ($1, $2, $3, $4, $5, NULL, TRUE, $6)`,
-        [email, program, coach, date, time, student]
+           (email, phone, program, coach, date, time, session_id, paid, student)
+         VALUES ($1, $2, $3, $4, $5, $6, NULL, TRUE, $7)`,
+        [email, phone, program, coach, date, time, student]
       );
 
       // b) Notify coach via email-to-SMS
@@ -635,9 +652,9 @@ app.post('/api/create-payment', async (req, res) => {
     // b) Record the booking as unpaid until webhook marks it paid
     await pool.query(
       `INSERT INTO bookings
-         (email, program, coach, date, time, session_id, paid, student)
-       VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7)`,
-      [email, program, coach, date, time, sessionObj.id, student]
+         (email, phone, program, coach, date, time, session_id, paid, student)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8)`,
+      [email, phone, program, coach, date, time, sessionObj.id, student]
     );
 
     // c) Notify coach via email-to-SMS

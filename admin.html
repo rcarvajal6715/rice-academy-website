@@ -23,22 +23,159 @@
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { padding: 8px; border:1px solid #ddd; }
     thead th { background: #0c3c78; color: white; }
+/* === Global Header & Navigation Styles (Finalized Version) === */
+     header {
+       background-color: #0c3c78; 
+       color: white; 
+       padding: 30px 20px; 
+       position: relative; 
+       text-align: center; 
+     }
+     .header-content { 
+       display: flex; justify-content: center; align-items: center; 
+       max-width: 1200px; margin: 0 auto;
+       position: relative; 
+     }
+     .site-title { text-align: center; } 
+     .site-title h1 { 
+       font-size: 2.2em;    
+       margin-top: 0;
+       margin-bottom: 0; /* Adjusted for portal pages with no subtitle */
+       color: white; 
+     } 
+     .site-title p { 
+       font-size: 1em;    
+       margin-top: 0;
+       margin-bottom: 0;
+       color: #f0f0f0;
+       /* display: none; /* Subtitle can be shown or hidden based on page */
+     }
+     .mobile-menu-toggle { display: none; background: none; border: none; color: white; font-size: 28px; cursor: pointer; padding: 5px; }
+     nav.main-navigation { background-color: #092e5e; }
+     .nav-wrapper-desktop { 
+         display: flex; justify-content: center; align-items: center;
+         width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 20px; box-sizing: border-box;
+     }
+     ul.nav-links-desktop { list-style: none; margin: 0; padding: 0; display: flex; }
+     ul.nav-links-desktop li a { color: white; padding: 14px 20px; text-decoration: none; display: block; } 
+     ul.nav-links-desktop li a:hover { background-color: #0f4fa0; }
+     ul.nav-links-desktop li a.highlighted-nav, ul.nav-links-desktop li a.current-page { 
+        background-color: #d8f352; color: black; font-weight: bold; border-radius: 5px; 
+     }
+     ul.nav-links-desktop li a.highlighted-nav:hover, ul.nav-links-desktop li a.current-page:hover { background-color: #c1da3b; }
+     
+     .auth-buttons-desktop { 
+       position: absolute;
+       top: 20px; 
+       right: 20px; 
+       display: flex;
+       align-items: center;
+     }
+     .auth-buttons-desktop a button, .auth-buttons-desktop button {
+       background-color: white; color: #0c3c78; border: none; padding: 10px 20px; 
+       margin-left: 10px; border-radius: 5px; font-weight: bold; cursor: pointer;
+       transition: all 0.3s ease; white-space: nowrap;
+     }
+     .auth-buttons-desktop a button:hover, .auth-buttons-desktop button:hover { background-color: #0f4fa0; color: white; }
+     .mobile-menu-container {
+       display: none; background-color: #092e5e; position: fixed;
+       top: 0; left: 0; width: 100%; height: 100%;
+       z-index: 1000; padding-top: 20px;
+       box-sizing: border-box; overflow-y: auto; text-align: center;
+     }
+     nav.main-navigation.mobile-menu--open .mobile-menu-container { display: block; }
+     .mobile-menu-close {
+        display: block; position: absolute; top: 15px; right: 20px;
+        background: none; border: none; color: white; font-size: 28px; cursor: pointer;
+     }
+     ul.nav-links-mobile { list-style: none; padding: 0; margin: 20px 0; }
+     ul.nav-links-mobile li a {
+       color: white; padding: 15px 20px; text-decoration: none; display: block;
+       border-bottom: 1px solid #0c3c78;
+     }
+     ul.nav-links-mobile li:last-child a { border-bottom: none; }
+     ul.nav-links-mobile li a:hover { background-color: #0f4fa0; }
+     .auth-buttons-mobile { padding: 20px; }
+     .auth-buttons-mobile a button, .auth-buttons-mobile button {
+       background-color: #d8f352; color: #0c3c78; border: none; padding: 12px 20px;
+       border-radius: 5px; font-weight: bold; cursor: pointer; display: block;
+       width: 80%; max-width: 250px; margin: 10px auto; box-sizing: border-box;
+     }
+     .auth-buttons-mobile a button:hover, .auth-buttons-mobile button:hover { background-color: #c1da3b; }
+     
+     /* Ensure body takes full height for footer behavior if not already handled by page-specific html, body */
+     /* body { 
+        display: flex; 
+        flex-direction: column; 
+        min-height: 100vh; 
+     } */
+     /* main { /* Allow main content to grow and push footer down, if not handled by page-specific section {flex:1} */
+     /*   flex: 1;
+     } */
+     footer { /* Global footer style */
+        background-color: #0c3c78; color: white; text-align: center; padding: 20px; margin-top:auto; /* Pushes to bottom in flex if body is flex column */
+     }
+
+     @media (max-width: 768px) {
+       body { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; } 
+       header { padding: 10px 15px; } 
+       .header-content {
+         justify-content: space-between; 
+         width:100%; 
+       }
+       .site-title { text-align: left; }
+       .site-title h1 { font-size: 1.2em; margin-bottom: 0; }
+       .site-title p { display: none; } 
+       .mobile-menu-toggle { display: block; }
+       .nav-wrapper-desktop { display: none; }
+       .auth-buttons-desktop { display: none; } 
+       nav.main-navigation { padding: 0; background-color: transparent; }
+     }
+/* === End Global Header & Navigation Styles === */
   </style>
 </head>
 <body>
 
-  <header>
-    <h1>C2 Tennis Academy</h1>
-    <p>Admin Portal: Welcome Admin</p>
-  </header>
+<header>
+  <div class="header-content">
+    <div class="site-title">
+      <h1>Admin Portal</h1> <!-- Specific title -->
+      <p>C2 Tennis Academy</p> <!-- Consistent subtitle -->
+    </div>
+    <button class="mobile-menu-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mainNavigation">
+      &#9776; <!-- Hamburger icon -->
+    </button>
+  </div>
+  <div class="auth-buttons-desktop" id="authContainerDesktop">
+    <!-- Populated by checkSession JS - will show Logout, Admin Home etc. -->
+  </div>
+</header>
 
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="about.html">About</a>
-    <a href="programs.html">Programs</a>
-    <a href="schedule.html">Schedule</a>
-    <a href="contact.html">Contact</a>
-  </nav>
+<nav class="main-navigation" id="mainNavigation">
+  <div class="nav-wrapper-desktop"> 
+     <ul class="nav-links-desktop">
+       <li><a href="index.html">Home</a></li>
+       <li><a href="about.html">About</a></li>
+       <li><a href="programs.html">Programs</a></li>
+       <li><a href="schedule.html">Schedule</a></li>
+       <li><a href="contact.html">Contact</a></li>
+       <!-- No "Book" link by default for admin, can be added if needed -->
+     </ul>
+  </div>
+  <div class="mobile-menu-container">
+    <button class="mobile-menu-close" aria-label="Close navigation menu">&times;</button>
+    <ul class="nav-links-mobile">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="about.html">About</a></li>
+      <li><a href="programs.html">Programs</a></li>
+      <li><a href="schedule.html">Schedule</a></li>
+      <li><a href="contact.html">Contact</a></li>
+    </ul>
+    <div class="auth-buttons-mobile" id="authContainerMobile">
+      <!-- Populated by checkSession JS -->
+    </div>
+  </div>
+</nav>
 
   <section>
     <h2>Add / Edit Lesson</h2>
@@ -206,5 +343,235 @@
   // Kick it off on page load
   window.addEventListener('DOMContentLoaded', loadAllLessons);
 </script>
+  <script>
+  // This entire block to be added as a new script, or integrated if a single DOMContentLoaded is preferred.
+  document.addEventListener('DOMContentLoaded', () => {
+      // --- Mobile Menu Toggle Script --- 
+      const menuToggle = document.querySelector('.mobile-menu-toggle');
+      const mobileMenuClose = document.querySelector('.mobile-menu-close');
+      const mainNav = document.querySelector('nav.main-navigation');
+
+      if (menuToggle && mainNav && mobileMenuClose) {
+          menuToggle.addEventListener('click', () => {
+              const isMenuOpen = mainNav.classList.toggle('mobile-menu--open');
+              menuToggle.setAttribute('aria-expanded', isMenuOpen);
+              if (isMenuOpen) {
+                  menuToggle.innerHTML = '&times;'; 
+                  menuToggle.setAttribute('aria-label', 'Close navigation menu');
+              } else {
+                  menuToggle.innerHTML = '&#9776;'; 
+                  menuToggle.setAttribute('aria-label', 'Open navigation menu');
+              }
+          });
+
+          mobileMenuClose.addEventListener('click', () => {
+              mainNav.classList.remove('mobile-menu--open');
+              if (menuToggle) {
+                 menuToggle.setAttribute('aria-expanded', 'false');
+                 menuToggle.innerHTML = '&#9776;'; 
+                 menuToggle.setAttribute('aria-label', 'Open navigation menu');
+              }
+          });
+      }
+
+      const mobileNavLinks = document.querySelectorAll('.mobile-menu-container a');
+      if (mainNav && mobileNavLinks.length > 0) {
+          mobileNavLinks.forEach(link => {
+              link.addEventListener('click', () => {
+                  if (mainNav.classList.contains('mobile-menu--open')) {
+                      mainNav.classList.remove('mobile-menu--open');
+                      if (menuToggle) {
+                          menuToggle.setAttribute('aria-expanded', 'false');
+                          menuToggle.innerHTML = '&#9776;';
+                          menuToggle.setAttribute('aria-label', 'Open navigation menu');
+                      }
+                  }
+              });
+          });
+      }
+
+      // --- checkSession and logout functions for Admin Portal --- 
+      async function checkSession() {
+          const existingGreeting = document.querySelector('.welcome-greeting');
+          if (existingGreeting) existingGreeting.remove();
+           
+          // Original admin.html had <p>Admin Portal: Welcome Admin</p> in header.
+          // New header has "Admin Portal" as h1, "C2 Tennis Academy" as p.
+          // Greeting banner will add "Welcome, [firstName]" if available, or just "Welcome, Admin".
+
+          try {
+              const res = await fetch('/api/check-session', { credentials: 'include' });
+              const data = await res.json(); 
+
+              const authContainerDesktop = document.getElementById('authContainerDesktop');
+              const authContainerMobile = document.getElementById('authContainerMobile');
+              
+              if (data && data.loggedIn === true && data.isAdmin === true) {
+                  const portalName = data.firstName ? `Admin (\${data.firstName})` : 'Admin Portal';
+                  const loggedInHTML = `
+                      <a href="admin.html"><button>\${portalName}</button></a>
+                      <button onclick="logout()">Logout</button>
+                  `;
+                  const loggedInMobileHTML = loggedInHTML; 
+
+                  if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInHTML;
+                  if (authContainerMobile) authContainerMobile.innerHTML = loggedInMobileHTML;
+
+                  const welcomeName = data.firstName || 'Admin';
+                  const greeting = document.createElement('div');
+                  greeting.className = 'welcome-greeting';
+                  greeting.textContent = `Welcome, \${welcomeName}!`;
+                  greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
+                  if(document.body.firstChild) { // Attempt to insert before first child of body
+                      document.body.insertBefore(greeting, document.body.firstChild);
+                  } else { // Fallback if body has no children
+                      document.body.appendChild(greeting);
+                  }
+              } else {
+                  // Not logged in as an Admin
+                  window.location.href = 'login.html'; 
+                  const loggedOutHTML = `<a href="login.html"><button>Login</button></a>`;
+                  if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutHTML;
+                  if (authContainerMobile) authContainerMobile.innerHTML = loggedOutHTML;
+              }
+          } catch (err) {
+              console.error('Session check failed, redirecting to login:', err);
+              window.location.href = 'login.html'; 
+              const authContainerDesktop = document.getElementById('authContainerDesktop');
+              const authContainerMobile = document.getElementById('authContainerMobile');
+              const loggedOutHTML = `<a href="login.html"><button>Login</button></a>`;
+              if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutHTML;
+              if (authContainerMobile) authContainerMobile.innerHTML = loggedOutHTML;
+          }
+      }
+
+      window.logout = function() { // Make logout globally accessible
+          fetch('/api/logout', { method: 'POST', credentials: 'include' })
+              .then(() => {
+                  const existingGreeting = document.querySelector('.welcome-greeting');
+                  if (existingGreeting) existingGreeting.remove();
+                  document.cookie = "userFirstName=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                  window.location.href = 'login.html'; 
+              });
+      }
+
+      checkSession(); 
+  });
+  </script>
+  <script>
+  // This entire block to be added as a new script, or integrated if a single DOMContentLoaded is preferred.
+  document.addEventListener('DOMContentLoaded', () => {
+      // --- Mobile Menu Toggle Script --- 
+      const menuToggle = document.querySelector('.mobile-menu-toggle');
+      const mobileMenuClose = document.querySelector('.mobile-menu-close');
+      const mainNav = document.querySelector('nav.main-navigation');
+
+      if (menuToggle && mainNav && mobileMenuClose) {
+          menuToggle.addEventListener('click', () => {
+              const isMenuOpen = mainNav.classList.toggle('mobile-menu--open');
+              menuToggle.setAttribute('aria-expanded', isMenuOpen);
+              if (isMenuOpen) {
+                  menuToggle.innerHTML = '&times;'; 
+                  menuToggle.setAttribute('aria-label', 'Close navigation menu');
+              } else {
+                  menuToggle.innerHTML = '&#9776;'; 
+                  menuToggle.setAttribute('aria-label', 'Open navigation menu');
+              }
+          });
+
+          mobileMenuClose.addEventListener('click', () => {
+              mainNav.classList.remove('mobile-menu--open');
+              if (menuToggle) {
+                 menuToggle.setAttribute('aria-expanded', 'false');
+                 menuToggle.innerHTML = '&#9776;'; 
+                 menuToggle.setAttribute('aria-label', 'Open navigation menu');
+              }
+          });
+      }
+
+      const mobileNavLinks = document.querySelectorAll('.mobile-menu-container a');
+      if (mainNav && mobileNavLinks.length > 0) {
+          mobileNavLinks.forEach(link => {
+              link.addEventListener('click', () => {
+                  if (mainNav.classList.contains('mobile-menu--open')) {
+                      mainNav.classList.remove('mobile-menu--open');
+                      if (menuToggle) {
+                          menuToggle.setAttribute('aria-expanded', 'false');
+                          menuToggle.innerHTML = '&#9776;';
+                          menuToggle.setAttribute('aria-label', 'Open navigation menu');
+                      }
+                  }
+              });
+          });
+      }
+
+      // --- checkSession and logout functions for Admin Portal --- 
+      async function checkSession() {
+          const existingGreeting = document.querySelector('.welcome-greeting');
+          if (existingGreeting) existingGreeting.remove();
+           
+          // Original admin.html had <p>Admin Portal: Welcome Admin</p> in header.
+          // New header has "Admin Portal" as h1, "C2 Tennis Academy" as p.
+          // Greeting banner will add "Welcome, [firstName]" if available, or just "Welcome, Admin".
+
+          try {
+              const res = await fetch('/api/check-session', { credentials: 'include' });
+              const data = await res.json(); 
+
+              const authContainerDesktop = document.getElementById('authContainerDesktop');
+              const authContainerMobile = document.getElementById('authContainerMobile');
+              
+              if (data && data.loggedIn === true && data.isAdmin === true) {
+                  const portalName = data.firstName ? `Admin (\${data.firstName})` : 'Admin Portal';
+                  const loggedInHTML = `
+                      <a href="admin.html"><button>\${portalName}</button></a>
+                      <button onclick="logout()">Logout</button>
+                  `;
+                  const loggedInMobileHTML = loggedInHTML; 
+
+                  if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInHTML;
+                  if (authContainerMobile) authContainerMobile.innerHTML = loggedInMobileHTML;
+
+                  const welcomeName = data.firstName || 'Admin';
+                  const greeting = document.createElement('div');
+                  greeting.className = 'welcome-greeting';
+                  greeting.textContent = `Welcome, \${welcomeName}!`;
+                  greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
+                  if(document.body.firstChild) { // Attempt to insert before first child of body
+                      document.body.insertBefore(greeting, document.body.firstChild);
+                  } else { // Fallback if body has no children
+                      document.body.appendChild(greeting);
+                  }
+              } else {
+                  // Not logged in as an Admin
+                  window.location.href = 'login.html'; 
+                  const loggedOutHTML = `<a href="login.html"><button>Login</button></a>`;
+                  if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutHTML;
+                  if (authContainerMobile) authContainerMobile.innerHTML = loggedOutHTML;
+              }
+          } catch (err) {
+              console.error('Session check failed, redirecting to login:', err);
+              window.location.href = 'login.html'; 
+              const authContainerDesktop = document.getElementById('authContainerDesktop');
+              const authContainerMobile = document.getElementById('authContainerMobile');
+              const loggedOutHTML = `<a href="login.html"><button>Login</button></a>`;
+              if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutHTML;
+              if (authContainerMobile) authContainerMobile.innerHTML = loggedOutHTML;
+          }
+      }
+
+      window.logout = function() { // Make logout globally accessible
+          fetch('/api/logout', { method: 'POST', credentials: 'include' })
+              .then(() => {
+                  const existingGreeting = document.querySelector('.welcome-greeting');
+                  if (existingGreeting) existingGreeting.remove();
+                  document.cookie = "userFirstName=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                  window.location.href = 'login.html'; 
+              });
+      }
+
+      checkSession(); 
+  });
+  </script>
 </body>
 </html>

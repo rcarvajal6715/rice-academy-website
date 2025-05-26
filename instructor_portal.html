@@ -229,6 +229,116 @@ label {
   padding: 10px;
   width: 95%; /* or set a specific width like 250px */
 }
+
+/* === Global Header & Navigation Styles (Finalized Version) === */
+     header {
+       background-color: #0c3c78; 
+       color: white; 
+       padding: 30px 20px; 
+       position: relative; 
+       text-align: center; 
+     }
+     .header-content { 
+       display: flex; justify-content: center; align-items: center; 
+       max-width: 1200px; margin: 0 auto;
+       position: relative; 
+     }
+     .site-title { text-align: center; } 
+     .site-title h1 { 
+       font-size: 2.2em;    
+       margin-top: 0;
+       margin-bottom: 0; /* Portal pages might not have a subtitle */
+       color: white; 
+     } 
+     .site-title p { 
+       font-size: 1em;    
+       margin-top: 0;
+       margin-bottom: 0;
+       color: #f0f0f0;
+       /* display: none; /* Hide subtitle on portal pages if not needed */
+     }
+     .mobile-menu-toggle { display: none; background: none; border: none; color: white; font-size: 28px; cursor: pointer; padding: 5px; }
+     nav.main-navigation { background-color: #092e5e; }
+     .nav-wrapper-desktop { 
+         display: flex; justify-content: center; align-items: center;
+         width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 20px; box-sizing: border-box;
+     }
+     ul.nav-links-desktop { list-style: none; margin: 0; padding: 0; display: flex; }
+     ul.nav-links-desktop li a { color: white; padding: 14px 20px; text-decoration: none; display: block; } 
+     ul.nav-links-desktop li a:hover { background-color: #0f4fa0; }
+     ul.nav-links-desktop li a.highlighted-nav, ul.nav-links-desktop li a.current-page { 
+        background-color: #d8f352; color: black; font-weight: bold; border-radius: 5px; 
+     }
+     ul.nav-links-desktop li a.highlighted-nav:hover, ul.nav-links-desktop li a.current-page:hover { background-color: #c1da3b; }
+     
+     .auth-buttons-desktop { 
+       position: absolute;
+       top: 20px; 
+       right: 20px; 
+       display: flex;
+       align-items: center;
+     }
+     .auth-buttons-desktop a button, .auth-buttons-desktop button {
+       background-color: white; color: #0c3c78; border: none; padding: 10px 20px; 
+       margin-left: 10px; border-radius: 5px; font-weight: bold; cursor: pointer;
+       transition: all 0.3s ease; white-space: nowrap;
+     }
+     .auth-buttons-desktop a button:hover, .auth-buttons-desktop button:hover { background-color: #0f4fa0; color: white; }
+     .mobile-menu-container {
+       display: none; background-color: #092e5e; position: fixed;
+       top: 0; left: 0; width: 100%; height: 100%;
+       z-index: 1000; padding-top: 20px;
+       box-sizing: border-box; overflow-y: auto; text-align: center;
+     }
+     nav.main-navigation.mobile-menu--open .mobile-menu-container { display: block; }
+     .mobile-menu-close {
+        display: block; position: absolute; top: 15px; right: 20px;
+        background: none; border: none; color: white; font-size: 28px; cursor: pointer;
+     }
+     ul.nav-links-mobile { list-style: none; padding: 0; margin: 20px 0; }
+     ul.nav-links-mobile li a {
+       color: white; padding: 15px 20px; text-decoration: none; display: block;
+       border-bottom: 1px solid #0c3c78;
+     }
+     ul.nav-links-mobile li:last-child a { border-bottom: none; }
+     ul.nav-links-mobile li a:hover { background-color: #0f4fa0; }
+     .auth-buttons-mobile { padding: 20px; }
+     .auth-buttons-mobile a button, .auth-buttons-mobile button {
+       background-color: #d8f352; color: #0c3c78; border: none; padding: 12px 20px;
+       border-radius: 5px; font-weight: bold; cursor: pointer; display: block;
+       width: 80%; max-width: 250px; margin: 10px auto; box-sizing: border-box;
+     }
+     .auth-buttons-mobile a button:hover, .auth-buttons-mobile button:hover { background-color: #c1da3b; }
+     
+     /* Ensure body takes full height for footer behavior */
+     body { 
+        display: flex; 
+        flex-direction: column; 
+        min-height: 100vh; 
+     }
+     main { /* Allow main content to grow and push footer down */
+        flex: 1;
+     }
+     footer { /* Global footer style */
+        background-color: #0c3c78; color: white; text-align: center; padding: 20px; margin-top:auto; /* Pushes to bottom in flex */
+     }
+
+     @media (max-width: 768px) {
+       body { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; } 
+       header { padding: 10px 15px; } 
+       .header-content {
+         justify-content: space-between; 
+         width:100%; 
+       }
+       .site-title { text-align: left; }
+       .site-title h1 { font-size: 1.2em; margin-bottom: 0; }
+       .site-title p { display: none; } 
+       .mobile-menu-toggle { display: block; }
+       .nav-wrapper-desktop { display: none; }
+       .auth-buttons-desktop { display: none; } 
+       nav.main-navigation { padding: 0; background-color: transparent; }
+     }
+/* === End Global Header & Navigation Styles === */
   </style>
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet" />
 </head>
@@ -676,5 +786,129 @@ function getCalendarEvents() {
     calendar.render();
   }
 </script>
+
+  <script>
+  // This entire block to be added as a new script, or integrated if a single DOMContentLoaded is preferred.
+  document.addEventListener('DOMContentLoaded', () => {
+      // --- Mobile Menu Toggle Script --- 
+      const menuToggle = document.querySelector('.mobile-menu-toggle');
+      const mobileMenuClose = document.querySelector('.mobile-menu-close');
+      const mainNav = document.querySelector('nav.main-navigation');
+
+      if (menuToggle && mainNav && mobileMenuClose) {
+          menuToggle.addEventListener('click', () => {
+              const isMenuOpen = mainNav.classList.toggle('mobile-menu--open');
+              menuToggle.setAttribute('aria-expanded', isMenuOpen);
+              if (isMenuOpen) {
+                  menuToggle.innerHTML = '&times;'; 
+                  menuToggle.setAttribute('aria-label', 'Close navigation menu');
+              } else {
+                  menuToggle.innerHTML = '&#9776;'; 
+                  menuToggle.setAttribute('aria-label', 'Open navigation menu');
+              }
+          });
+
+          mobileMenuClose.addEventListener('click', () => {
+              mainNav.classList.remove('mobile-menu--open');
+              if (menuToggle) {
+                 menuToggle.setAttribute('aria-expanded', 'false');
+                 menuToggle.innerHTML = '&#9776;'; 
+                 menuToggle.setAttribute('aria-label', 'Open navigation menu');
+              }
+          });
+      }
+
+      const mobileNavLinks = document.querySelectorAll('.mobile-menu-container a');
+      if (mainNav && mobileNavLinks.length > 0) {
+          mobileNavLinks.forEach(link => {
+              link.addEventListener('click', () => {
+                  if (mainNav.classList.contains('mobile-menu--open')) {
+                      mainNav.classList.remove('mobile-menu--open');
+                      if (menuToggle) {
+                          menuToggle.setAttribute('aria-expanded', 'false');
+                          menuToggle.innerHTML = '&#9776;';
+                          menuToggle.setAttribute('aria-label', 'Open navigation menu');
+                      }
+                  }
+              });
+          });
+      }
+
+      // --- checkSession and logout functions for Instructor Portal --- 
+      async function checkSession() {
+          const existingGreeting = document.querySelector('.welcome-greeting');
+          if (existingGreeting) existingGreeting.remove();
+           // The original instructor_portal.html has a <span id="coach-name"></span> in the header.
+           // The new global header doesn't have this specific span.
+           // The greeting banner will serve as the welcome.
+
+          try {
+              const res = await fetch('/api/check-session', { credentials: 'include' });
+              const data = await res.json(); 
+
+              const authContainerDesktop = document.getElementById('authContainerDesktop');
+              const authContainerMobile = document.getElementById('authContainerMobile');
+              
+              let displayLoggedIn = data && data.loggedIn === true;
+              
+              // For instructor_portal, ensure user is logged in AND is a coach
+              if (displayLoggedIn && data.isCoach === true) { // Check for isCoach
+                  const portalName = data.firstName ? `${data.firstName}'s Portal` : 'Coach Portal';
+                  const portal = 'instructor_portal.html'; // Current page
+
+                  const loggedInHTML = `
+                      <a href="\${portal}"><button>\${portalName}</button></a>
+                      <button onclick="logout()">Logout</button>
+                  `;
+                  const loggedInMobileHTML = loggedInHTML; 
+
+                  if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInHTML;
+                  if (authContainerMobile) authContainerMobile.innerHTML = loggedInMobileHTML;
+
+                  if (data.firstName) { 
+                      const greeting = document.createElement('div');
+                      greeting.className = 'welcome-greeting';
+                      greeting.textContent = `Welcome, \${data.firstName}!`;
+                      greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
+                      
+                      const mainNavigationElement = document.querySelector('nav.main-navigation');
+                      if (mainNavigationElement && mainNavigationElement.parentNode) {
+                           mainNavigationElement.parentNode.insertBefore(greeting, mainNavigationElement.nextSibling);
+                      } else { 
+                           document.body.insertBefore(greeting, document.body.firstChild);
+                      }
+                  }
+              } else {
+                  // Not logged in as a coach (or is parent/admin)
+                  window.location.href = 'login.html'; 
+                  // Fallback for auth buttons if redirect doesn't happen immediately:
+                  const loggedOutHTML = `<a href="login.html"><button>Login</button></a>`;
+                  if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutHTML;
+                  if (authContainerMobile) authContainerMobile.innerHTML = loggedOutHTML;
+              }
+          } catch (err) {
+              console.error('Session check failed, redirecting to login:', err);
+              window.location.href = 'login.html'; 
+              const authContainerDesktop = document.getElementById('authContainerDesktop');
+              const authContainerMobile = document.getElementById('authContainerMobile');
+              const loggedOutHTML = `<a href="login.html"><button>Login</button></a>`;
+              if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutHTML;
+              if (authContainerMobile) authContainerMobile.innerHTML = loggedOutHTML;
+          }
+      }
+
+      window.logout = function() { // Make logout globally accessible
+          fetch('/api/logout', { method: 'POST', credentials: 'include' })
+              .then(() => {
+                  const existingGreeting = document.querySelector('.welcome-greeting');
+                  if (existingGreeting) existingGreeting.remove();
+                  document.cookie = "userFirstName=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; 
+                  window.location.href = 'login.html'; 
+              });
+      }
+
+      checkSession(); // Call checkSession when DOM is ready
+  });
+  </script>
 </body>
 </html>

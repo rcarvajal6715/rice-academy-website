@@ -334,56 +334,98 @@
   </footer>
 
   <script>
-  document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
     // --- Menu Toggle Script ---
     const menuToggle = document.querySelector('.mobile-menu-toggle');
     const mobileMenuClose = document.querySelector('.mobile-menu-close');
     const mainNav = document.querySelector('nav.main-navigation');
     if (menuToggle && mainNav && mobileMenuClose) {
-        menuToggle.addEventListener('click', () => { mainNav.classList.toggle('mobile-menu--open'); menuToggle.setAttribute('aria-expanded', mainNav.classList.contains('mobile-menu--open')); });
-        mobileMenuClose.addEventListener('click', () => { mainNav.classList.remove('mobile-menu--open'); if(menuToggle) menuToggle.setAttribute('aria-expanded', 'false'); });
+        menuToggle.addEventListener('click', () => { 
+            mainNav.classList.toggle('mobile-menu--open'); 
+            menuToggle.setAttribute('aria-expanded', String(mainNav.classList.contains('mobile-menu--open'))); // Use String()
+        });
+        mobileMenuClose.addEventListener('click', () => { 
+            mainNav.classList.remove('mobile-menu--open'); 
+            if(menuToggle) menuToggle.setAttribute('aria-expanded', 'false'); 
+        });
     }
     const mobileNavLinks = document.querySelectorAll('.mobile-menu-container a');
-    if (mainNav && mobileNavLinks.length > 0) { mobileNavLinks.forEach(link => { link.addEventListener('click', () => { if (mainNav.classList.contains('mobile-menu--open')) { mainNav.classList.remove('mobile-menu--open'); if(menuToggle) menuToggle.setAttribute('aria-expanded', 'false'); } }); }); }
+    if (mainNav && mobileNavLinks.length > 0) { 
+        mobileNavLinks.forEach(link => { 
+            link.addEventListener('click', () => { 
+                if (mainNav.classList.contains('mobile-menu--open')) { 
+                    mainNav.classList.remove('mobile-menu--open'); 
+                    if(menuToggle) menuToggle.setAttribute('aria-expanded', 'false'); 
+                } 
+            }); 
+        }); 
+    }
 
     // --- Session Check Script ---
     async function checkSession() {
-      const authContainerDesktop = document.getElementById('authContainerDesktop'); const authContainerMobile = document.getElementById('authContainerMobile');
-      const loggedOutDesktopHTML = `<a href="register.html"><button id="registerBtnDesktop">Register</button></a><a href="login.html"><button id="loginBtnDesktop">Login</button></a>`;
-      const loggedOutMobileHTML = `<a href="register.html"><button id="registerBtnMobile">Register</button></a><a href="login.html"><button id="loginBtnMobile">Login</button></a>`;
+      const authContainerDesktop = document.getElementById('authContainerDesktop'); 
+      const authContainerMobile = document.getElementById('authContainerMobile');
+      const loggedOutDesktopHTML = '<a href="register.html"><button id="registerBtnDesktop">Register</button></a><a href="login.html"><button id="loginBtnDesktop">Login</button></a>';
+      const loggedOutMobileHTML = '<a href="register.html"><button id="registerBtnMobile">Register</button></a><a href="login.html"><button id="loginBtnMobile">Login</button></a>';
       try {
         const res = await fetch('/api/check-session', { credentials: 'include' });
         const data = await res.json(); 
         const portal = data.isAdmin ? 'admin.html' : data.isCoach ? 'instructor_portal.html' : 'parent_portal.html';
         const portalName = data.isAdmin ? 'Admin Portal' : data.isCoach ? 'Instructor Portal' : 'Parent Portal';
-        const loggedInDesktopHTML = `<a href="\${portal}"><button>\${portalName}</button></a><button onclick="logout()">Logout</button>`;
-        const loggedInMobileHTML = `<a href="\${portal}"><button>\${portalName}</button></a><button onclick="logout()">Logout</button>`; 
+        
+        // Corrected HTML construction
+        const loggedInDesktopHTML = 
+            '<a href="' + portal + '"><button>' + portalName + '</button></a>' + 
+            '<button onclick="logout()">Logout</button>';
+        const loggedInMobileHTML = 
+            '<a href="' + portal + '"><button>' + portalName + '</button></a>' + 
+            '<button onclick="logout()">Logout</button>'; 
+            
         if (data.loggedIn) {
             if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInDesktopHTML;
             if (authContainerMobile) authContainerMobile.innerHTML = loggedInMobileHTML;
-            const existingGreeting = document.querySelector('.welcome-greeting'); if (existingGreeting) existingGreeting.remove();
-            const greeting = document.createElement('div'); greeting.className = 'welcome-greeting'; greeting.textContent = 'Welcome, ' + (data.firstName || 'User') + '!';
-            greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
-            document.body.insertBefore(greeting, document.body.firstChild);
+            
+            const existingGreeting = document.querySelector('.welcome-greeting'); 
+            if (existingGreeting) existingGreeting.remove();
+            
+            // Only add greeting if firstName is available and not null/empty
+            if (data.firstName && data.firstName.trim() !== '') {
+                const greeting = document.createElement('div'); 
+                greeting.className = 'welcome-greeting'; 
+                greeting.textContent = 'Welcome, ' + data.firstName + '!';
+                greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
+                if (document.body.firstChild) { // Check if document.body has a firstChild
+                    document.body.insertBefore(greeting, document.body.firstChild);
+                } else {
+                    document.body.appendChild(greeting); // Fallback if body is empty
+                }
+            }
         } else {
             if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutDesktopHTML;
             if (authContainerMobile) authContainerMobile.innerHTML = loggedOutMobileHTML;
-            const existingGreeting = document.querySelector('.welcome-greeting'); if (existingGreeting) existingGreeting.remove();
+            const existingGreeting = document.querySelector('.welcome-greeting'); 
+            if (existingGreeting) existingGreeting.remove();
         }
       } catch (err) {
         console.log('Session check or user not logged in:', err.message);
         if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutDesktopHTML;
         if (authContainerMobile) authContainerMobile.innerHTML = loggedOutMobileHTML;
-        const existingGreeting = document.querySelector('.welcome-greeting'); if (existingGreeting) existingGreeting.remove();
+        const existingGreeting = document.querySelector('.welcome-greeting'); 
+        if (existingGreeting) existingGreeting.remove();
       }
     }
     checkSession(); 
   }); 
 
-  function logout() { fetch('/api/logout', { method: 'POST', credentials: 'include' }).then(() => { document.cookie = "userFirstName=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; const existingGreeting = document.querySelector('.welcome-greeting'); if (existingGreeting) existingGreeting.remove(); location.reload(); }); }
-  </script>
+  function logout() { 
+    fetch('/api/logout', { method: 'POST', credentials: 'include' }).then(() => { 
+        document.cookie = "userFirstName=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; 
+        const existingGreeting = document.querySelector('.welcome-greeting'); 
+        if (existingGreeting) existingGreeting.remove(); 
+        location.reload(); 
+    }); 
+  }
+</script>
 
 </body>
 </html>
-
-

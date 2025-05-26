@@ -407,9 +407,9 @@
               const authContainerMobile = document.getElementById('authContainerMobile');
               
               if (data && data.loggedIn === true && data.isAdmin === true) {
-                  const portalName = data.firstName ? `Admin (\${data.firstName})` : 'Admin Portal';
+                  const portalButtonText = data.firstName ? `Admin (${data.firstName})` : 'Admin Portal';
                   const loggedInHTML = `
-                      <a href="admin.html"><button>\${portalName}</button></a>
+                      <a href="admin.html"><button>` + portalButtonText + `</button></a>
                       <button onclick="logout()">Logout</button>
                   `;
                   const loggedInMobileHTML = loggedInHTML; 
@@ -417,10 +417,10 @@
                   if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInHTML;
                   if (authContainerMobile) authContainerMobile.innerHTML = loggedInMobileHTML;
 
-                  const welcomeName = data.firstName || 'Admin';
+                  const welcomeMessageText = data.firstName ? `Welcome, ${data.firstName}!` : 'Welcome, Admin!';
                   const greeting = document.createElement('div');
                   greeting.className = 'welcome-greeting';
-                  greeting.textContent = `Welcome, \${welcomeName}!`;
+                  greeting.textContent = welcomeMessageText;
                   greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
                   if(document.body.firstChild) { // Attempt to insert before first child of body
                       document.body.insertBefore(greeting, document.body.firstChild);
@@ -522,9 +522,9 @@
               const authContainerMobile = document.getElementById('authContainerMobile');
               
               if (data && data.loggedIn === true && data.isAdmin === true) {
-                  const portalName = data.firstName ? `Admin (\${data.firstName})` : 'Admin Portal';
+                  const portalButtonText = data.firstName ? `Admin (${data.firstName})` : 'Admin Portal';
                   const loggedInHTML = `
-                      <a href="admin.html"><button>\${portalName}</button></a>
+                      <a href="admin.html"><button>` + portalButtonText + `</button></a>
                       <button onclick="logout()">Logout</button>
                   `;
                   const loggedInMobileHTML = loggedInHTML; 
@@ -532,10 +532,10 @@
                   if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInHTML;
                   if (authContainerMobile) authContainerMobile.innerHTML = loggedInMobileHTML;
 
-                  const welcomeName = data.firstName || 'Admin';
+                  const welcomeMessageText = data.firstName ? `Welcome, ${data.firstName}!` : 'Welcome, Admin!';
                   const greeting = document.createElement('div');
                   greeting.className = 'welcome-greeting';
-                  greeting.textContent = `Welcome, \${welcomeName}!`;
+                  greeting.textContent = welcomeMessageText;
                   greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
                   if(document.body.firstChild) { // Attempt to insert before first child of body
                       document.body.insertBefore(greeting, document.body.firstChild);

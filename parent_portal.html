@@ -295,15 +295,15 @@ nav a.highlighted-nav:hover {
               
               // For parent_portal, ensure user is logged in AND is not an admin or coach
               if (displayLoggedIn && !data.isAdmin && !data.isCoach) {
-                  const portal = 'parent_portal.html'; // Current page
-                  const portalName = 'My Portal'; // Or data.firstName + "'s Portal"
+                  const portalLink = 'parent_portal.html'; 
+                  const portalButtonText = data.firstName ? `${data.firstName}'s Portal` : 'My Portal';
 
                   const loggedInHTML = `
-                      <a href="\${portal}"><button>\${portalName}</button></a>
+                      <a href="` + portalLink + `"><button>` + portalButtonText + `</button></a>
                       <button onclick="logout()">Logout</button>
                   `;
                   const loggedInMobileHTML = ` 
-                      <a href="\${portal}"><button>\${portalName}</button></a>
+                      <a href="` + portalLink + `"><button>` + portalButtonText + `</button></a>
                       <button onclick="logout()">Logout</button> 
                   `;
 
@@ -313,7 +313,7 @@ nav a.highlighted-nav:hover {
                   if (data.firstName) {
                       const greeting = document.createElement('div');
                       greeting.className = 'welcome-greeting';
-                      greeting.textContent = `Welcome, \${data.firstName}!`;
+                      greeting.textContent = 'Welcome, ' + data.firstName + '!';
                       greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
                       // Insert greeting after the main navigation for portal pages
                       const mainNavigationElement = document.querySelector('nav.main-navigation');

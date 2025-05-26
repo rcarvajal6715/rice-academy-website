@@ -364,14 +364,10 @@ label {
   <nav class="main-navigation">
     <div class="nav-wrapper-desktop">
       <ul class="nav-links-desktop">
-         <ul class="nav-links-desktop">
-         <li><a href="index.html">Home</a></li>
-         <li><a href="about.html">About</a></li>
-         <li><a href="programs.html">Programs</a></li>
-         <li><a href="schedule.html">Schedule</a></li>
-         <li><a href="contact.html">Contact</a></li>
-         <li><a href="booking.html">Book</a></li> 
-       </ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="instructor_portal.html" class="current-page">Instructor Portal</a></li>
+        <li><a href="booking.html">Book a Session</a></li>
+        <!-- Other desktop links as needed -->
       </ul>
     </div>
 
@@ -886,7 +882,7 @@ function getCalendarEvents() {
               
               // For instructor_portal, ensure user is logged in AND is a coach
               if (displayLoggedIn && data.isCoach === true) { // Check for isCoach
-                  const portalName = data.firstName ? `${data.firstName}'s Portal` : 'Coach Portal';
+                  const portalButtonText = data.firstName ? `${data.firstName}'s Portal` : 'Coach Portal';
                   // const portal = 'instructor_portal.html'; // Current page - not needed for button text
 
                   // For desktop, show "Logout". Portal button can be the nav link itself.
@@ -895,7 +891,7 @@ function getCalendarEvents() {
                   `;
                   // For mobile, show "Portal" and "Logout"
                   const loggedInHTMLMobile = `
-                      <a href="instructor_portal.html"><button>${portalName}</button></a>
+                      <a href="instructor_portal.html"><button>` + portalButtonText + `</button></a>
                       <button onclick="logout()">Logout</button>
                   `; 
 
@@ -905,7 +901,7 @@ function getCalendarEvents() {
                   if (data.firstName) { 
                       const greeting = document.createElement('div');
                       greeting.className = 'welcome-greeting';
-                      greeting.textContent = `Welcome, ${data.firstName}!`;
+                      greeting.textContent = 'Welcome, ' + data.firstName + '!';
                       greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
                       
                       // Insert greeting after the <nav class="main-navigation"> element

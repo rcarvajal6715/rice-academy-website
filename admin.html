@@ -392,6 +392,7 @@
 
       // --- checkSession and logout functions for Admin Portal --- 
       async function checkSession() {
+          // Ensure existing greetings are removed before adding a new one to prevent duplicates from multiple calls
           const existingGreeting = document.querySelector('.welcome-greeting');
           if (existingGreeting) existingGreeting.remove();
            
@@ -407,136 +408,31 @@
               const authContainerMobile = document.getElementById('authContainerMobile');
               
               if (data && data.loggedIn === true && data.isAdmin === true) {
-                  const portalButtonText = data.firstName ? `Admin (${data.firstName})` : 'Admin Portal';
+                  // Corrected logic for portal button text
+                  const portalButtonText = data.firstName ? 'Admin (' + data.firstName + ')' : 'Admin Portal';
+                  
                   const loggedInHTML = `
                       <a href="admin.html"><button>` + portalButtonText + `</button></a>
                       <button onclick="logout()">Logout</button>
                   `;
-                  const loggedInMobileHTML = loggedInHTML; 
+                  const loggedInMobileHTML = loggedInHTML; // Assuming it's the same
 
                   if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInHTML;
                   if (authContainerMobile) authContainerMobile.innerHTML = loggedInMobileHTML;
 
-                  const welcomeMessageText = data.firstName ? `Welcome, ${data.firstName}!` : 'Welcome, Admin!';
+                  // Corrected logic for welcome message text
+                  const welcomeMessageText = data.firstName ? 'Welcome, ' + data.firstName + '!' : 'Welcome, Admin!';
+                  
                   const greeting = document.createElement('div');
                   greeting.className = 'welcome-greeting';
                   greeting.textContent = welcomeMessageText;
                   greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
-                  if(document.body.firstChild) { // Attempt to insert before first child of body
-                      document.body.insertBefore(greeting, document.body.firstChild);
-                  } else { // Fallback if body has no children
-                      document.body.appendChild(greeting);
-                  }
-              } else {
-                  // Not logged in as an Admin
-                  window.location.href = 'login.html'; 
-                  const loggedOutHTML = `<a href="login.html"><button>Login</button></a>`;
-                  if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutHTML;
-                  if (authContainerMobile) authContainerMobile.innerHTML = loggedOutHTML;
-              }
-          } catch (err) {
-              console.error('Session check failed, redirecting to login:', err);
-              window.location.href = 'login.html'; 
-              const authContainerDesktop = document.getElementById('authContainerDesktop');
-              const authContainerMobile = document.getElementById('authContainerMobile');
-              const loggedOutHTML = `<a href="login.html"><button>Login</button></a>`;
-              if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutHTML;
-              if (authContainerMobile) authContainerMobile.innerHTML = loggedOutHTML;
-          }
-      }
-
-      window.logout = function() { // Make logout globally accessible
-          fetch('/api/logout', { method: 'POST', credentials: 'include' })
-              .then(() => {
+                  
+                  // This logic for inserting the greeting is already here.
+                  // Ensure existing greetings are removed before adding a new one to prevent duplicates from multiple calls
                   const existingGreeting = document.querySelector('.welcome-greeting');
                   if (existingGreeting) existingGreeting.remove();
-                  document.cookie = "userFirstName=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                  window.location.href = 'login.html'; 
-              });
-      }
 
-      checkSession(); 
-  });
-  </script>
-  <script>
-  // This entire block to be added as a new script, or integrated if a single DOMContentLoaded is preferred.
-  document.addEventListener('DOMContentLoaded', () => {
-      // --- Mobile Menu Toggle Script --- 
-      const menuToggle = document.querySelector('.mobile-menu-toggle');
-      const mobileMenuClose = document.querySelector('.mobile-menu-close');
-      const mainNav = document.querySelector('nav.main-navigation');
-
-      if (menuToggle && mainNav && mobileMenuClose) {
-          menuToggle.addEventListener('click', () => {
-              const isMenuOpen = mainNav.classList.toggle('mobile-menu--open');
-              menuToggle.setAttribute('aria-expanded', isMenuOpen);
-              if (isMenuOpen) {
-                  menuToggle.innerHTML = '&times;'; 
-                  menuToggle.setAttribute('aria-label', 'Close navigation menu');
-              } else {
-                  menuToggle.innerHTML = '&#9776;'; 
-                  menuToggle.setAttribute('aria-label', 'Open navigation menu');
-              }
-          });
-
-          mobileMenuClose.addEventListener('click', () => {
-              mainNav.classList.remove('mobile-menu--open');
-              if (menuToggle) {
-                 menuToggle.setAttribute('aria-expanded', 'false');
-                 menuToggle.innerHTML = '&#9776;'; 
-                 menuToggle.setAttribute('aria-label', 'Open navigation menu');
-              }
-          });
-      }
-
-      const mobileNavLinks = document.querySelectorAll('.mobile-menu-container a');
-      if (mainNav && mobileNavLinks.length > 0) {
-          mobileNavLinks.forEach(link => {
-              link.addEventListener('click', () => {
-                  if (mainNav.classList.contains('mobile-menu--open')) {
-                      mainNav.classList.remove('mobile-menu--open');
-                      if (menuToggle) {
-                          menuToggle.setAttribute('aria-expanded', 'false');
-                          menuToggle.innerHTML = '&#9776;';
-                          menuToggle.setAttribute('aria-label', 'Open navigation menu');
-                      }
-                  }
-              });
-          });
-      }
-
-      // --- checkSession and logout functions for Admin Portal --- 
-      async function checkSession() {
-          const existingGreeting = document.querySelector('.welcome-greeting');
-          if (existingGreeting) existingGreeting.remove();
-           
-          // Original admin.html had <p>Admin Portal: Welcome Admin</p> in header.
-          // New header has "Admin Portal" as h1, "C2 Tennis Academy" as p.
-          // Greeting banner will add "Welcome, [firstName]" if available, or just "Welcome, Admin".
-
-          try {
-              const res = await fetch('/api/check-session', { credentials: 'include' });
-              const data = await res.json(); 
-
-              const authContainerDesktop = document.getElementById('authContainerDesktop');
-              const authContainerMobile = document.getElementById('authContainerMobile');
-              
-              if (data && data.loggedIn === true && data.isAdmin === true) {
-                  const portalButtonText = data.firstName ? `Admin (${data.firstName})` : 'Admin Portal';
-                  const loggedInHTML = `
-                      <a href="admin.html"><button>` + portalButtonText + `</button></a>
-                      <button onclick="logout()">Logout</button>
-                  `;
-                  const loggedInMobileHTML = loggedInHTML; 
-
-                  if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInHTML;
-                  if (authContainerMobile) authContainerMobile.innerHTML = loggedInMobileHTML;
-
-                  const welcomeMessageText = data.firstName ? `Welcome, ${data.firstName}!` : 'Welcome, Admin!';
-                  const greeting = document.createElement('div');
-                  greeting.className = 'welcome-greeting';
-                  greeting.textContent = welcomeMessageText;
-                  greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
                   if(document.body.firstChild) { // Attempt to insert before first child of body
                       document.body.insertBefore(greeting, document.body.firstChild);
                   } else { // Fallback if body has no children

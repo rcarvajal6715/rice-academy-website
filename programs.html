@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Programs - Rice Tennis Academy</title>
+  <title>Programs - C2 Tennis Academy</title>
 
   <meta name="description" content="C2 Tennis Academy in Texas offers elite tennis training, junior programs, and high-performance coaching using AI and video analysis.">
   <meta name="keywords" content="C2 Tennis Academy, tennis lessons Texas, UTR tennis, junior tennis, adult clinics, tennis training academy">
@@ -13,46 +13,29 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://c2tennisacademy.com/">
 
-
   <style>
     body {
       font-family: Arial, sans-serif;
       margin: 0;
       padding: 0;
+      display: flex; /* Added for footer behavior */
+      flex-direction: column; /* Added for footer behavior */
+      min-height: 100vh; /* Added for footer behavior */
     }
 
-    header, footer {
-  background-color: #0c3c78;
-  color: white;
-  text-align: center;
-  padding: 20px;
-  position: relative; /* ✅ Needed for absolute positioning inside */
-}
-
-    nav {
-      background-color: #092e5e;
-      display: flex;
-      justify-content: center;
+    /* Original Page-specific styles for programs.html */
+    main { /* Added main tag for content structure */
+      flex: 1; /* Allows footer to stick to bottom if body is flex column */
     }
-
-    nav a {
-      color: white;
-      padding: 14px 20px;
-      text-decoration: none;
-    }
-
-    nav a:hover {
-      background-color: #0f4fa0;
-    }
-
-    section {
+    section { 
       padding: 10px 20px; 
     }
-
-    h2 {
-      margin-bottom: 10px; 
+    /* h2 for "Our Programs" - Global styles might affect this, adjust if needed */
+    section > div:first-of-type h2 { 
+      margin: 0; /* Removed default h2 margin from original for this specific h2 */
+      color: #0c3c78; /* Ensured title color */
+      /* font-size will be inherited or can be set if global h2 is too large/small */
     }
-
     .program {
       display: flex;
       flex-wrap: wrap;
@@ -60,7 +43,6 @@
       gap: 20px;
       margin-bottom: 40px;
     }
-
     .program-img {
       width: 280px;
       height: 180px;
@@ -69,69 +51,227 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
       flex-shrink: 0;
     }
-
-    h3 {
+    .program h3 { /* Program titles like "Kids Camp" */
       color: #0c3c78;
     }
-
     .location {
       font-style: italic;
       margin-top: 30px;
     }
+    /* End of Original Page-specific styles */
 
-    .auth-buttons button {
-  background-color: white;
-  color: #0c3c78;
-  border: none;
-  padding: 10px 20px;
-  margin-left: 10px;
-  border-radius: 5px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-.auth-buttons button:hover {
-  background-color: #0f4fa0;
-  color: white;
+
+/* === Global Header & Navigation Styles (Finalized Version) === */
+     header {
+       background-color: #0c3c78; 
+       color: white; 
+       padding: 30px 20px; 
+       position: relative; 
+       text-align: center; 
+     }
+     .header-content { 
+       display: flex; justify-content: center; align-items: center; 
+       max-width: 1200px; margin: 0 auto;
+       position: relative; 
+     }
+     .site-title { text-align: center; } 
+     .site-title h1 { 
+       font-size: 2.2em;    
+       margin-top: 0;
+       margin-bottom: 0.25em; 
+       color: white; 
+     } 
+     .site-title p { 
+       font-size: 1em;    
+       margin-top: 0;
+       margin-bottom: 0;
+       color: #f0f0f0;
+     }
+     .mobile-menu-toggle { display: none; background: none; border: none; color: white; font-size: 28px; cursor: pointer; padding: 5px; }
+     nav.main-navigation { background-color: #092e5e; }
+     .nav-wrapper-desktop { 
+         display: flex; justify-content: center; align-items: center;
+         width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 20px; box-sizing: border-box;
+     }
+     ul.nav-links-desktop { list-style: none; margin: 0; padding: 0; display: flex; }
+     ul.nav-links-desktop li a { color: white; padding: 14px 20px; text-decoration: none; display: block; } 
+     ul.nav-links-desktop li a:hover { background-color: #0f4fa0; }
+     ul.nav-links-desktop li a.highlighted-nav, ul.nav-links-desktop li a.current-page { 
+        background-color: #d8f352; color: black; font-weight: bold; border-radius: 5px; 
+     }
+     ul.nav-links-desktop li a.highlighted-nav:hover, ul.nav-links-desktop li a.current-page:hover { background-color: #c1da3b; }
+     
+     .auth-buttons-desktop { 
+       position: absolute;
+       top: 20px; 
+       right: 20px; 
+       display: flex;
+       align-items: center;
+     }
+     .auth-buttons-desktop a button, .auth-buttons-desktop button {
+       background-color: white; color: #0c3c78; border: none; padding: 10px 20px; 
+       margin-left: 10px; border-radius: 5px; font-weight: bold; cursor: pointer;
+       transition: all 0.3s ease; white-space: nowrap;
+     }
+     .auth-buttons-desktop a button:hover, .auth-buttons-desktop button:hover { background-color: #0f4fa0; color: white; }
+     .mobile-menu-container {
+       display: none; background-color: #092e5e; position: fixed;
+       top: 0; left: 0; width: 100%; height: 100%;
+       z-index: 1000; padding-top: 20px;
+       box-sizing: border-box; overflow-y: auto; text-align: center;
+     }
+     nav.main-navigation.mobile-menu--open .mobile-menu-container { display: block; }
+     .mobile-menu-close {
+        display: block; position: absolute; top: 15px; right: 20px;
+        background: none; border: none; color: white; font-size: 28px; cursor: pointer;
+     }
+     ul.nav-links-mobile { list-style: none; padding: 0; margin: 20px 0; }
+     ul.nav-links-mobile li a {
+       color: white; padding: 15px 20px; text-decoration: none; display: block;
+       border-bottom: 1px solid #0c3c78;
+     }
+     ul.nav-links-mobile li:last-child a { border-bottom: none; }
+     ul.nav-links-mobile li a:hover { background-color: #0f4fa0; }
+     .auth-buttons-mobile { padding: 20px; }
+     .auth-buttons-mobile a button, .auth-buttons-mobile button {
+       background-color: #d8f352; color: #0c3c78; border: none; padding: 12px 20px;
+       border-radius: 5px; font-weight: bold; cursor: pointer; display: block;
+       width: 80%; max-width: 250px; margin: 10px auto; box-sizing: border-box;
+     }
+     .auth-buttons-mobile a button:hover, .auth-buttons-mobile button:hover { background-color: #c1da3b; }
+     
+     footer { /* Global footer style */
+        background-color: #0c3c78; color: white; text-align: center; padding: 20px; margin-top:auto; /* Ensures footer is at bottom for flex column body */
+     }
+
+     @media (max-width: 768px) {
+       body { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; } 
+       header { padding: 10px 15px; } 
+       .header-content {
+         justify-content: space-between; 
+         width:100%; 
+       }
+       .site-title { text-align: left; }
+       .site-title h1 { font-size: 1.2em; margin-bottom: 0; }
+       .site-title p { display: none; } 
+       .mobile-menu-toggle { display: block; }
+       .nav-wrapper-desktop { display: none; }
+       .auth-buttons-desktop { display: none; }
+       nav.main-navigation { padding: 0; background-color: transparent; }
+     }
+/* End of Global Header & Navigation Styles */
+
+
+/* === Responsive Styles for programs.html CONTENT === */
+@media (max-width: 768px) {
+    section {
+        padding: 20px 15px; 
+    }
+    section > div:first-of-type { 
+        flex-direction: column; 
+        align-items: center;    
+        height: auto;           
+        margin-bottom: 20px;
+    }
+    section > div:first-of-type h2 { 
+        margin-bottom: 15px; 
+        font-size: 1.8em; 
+    }
+    section > div:first-of-type a[href="booking.html"] img { 
+        height: auto;       
+        max-width: 200px;  
+    }
+    .program {
+        flex-direction: column; 
+        align-items: center;   
+        text-align: center;    
+    }
+    .program-img {
+        width: 100%;          
+        max-width: 280px;     
+        height: auto;         
+        margin-bottom: 10px;  
+    }
+    .program > div { 
+        width: 100%; 
+    }
+    .program h3 { 
+        font-size: 1.3em;
+    }
+    .program p {
+        font-size: 0.95em;
+    }
 }
 
-    nav a.highlighted-nav {
-  background-color: #d8f352; /* Gold */
-  color: black;             /* Dark blue text */
-  font-weight: bold;
-  border-radius: 5px;
-  margin-left: 8px;
+@media (max-width: 480px) {
+    section > div:first-of-type h2 {
+        font-size: 1.5em;
+    }
+    section > div:first-of-type a[href="booking.html"] img {
+        max-width: 150px; 
+    }
+    .program-img {
+        max-width: 220px; 
+    }
+    .program h3 {
+        font-size: 1.1em;
+    }
+    .program p {
+        font-size: 0.9em;
+    }
+    .location {
+        font-size: 0.9em;
+    }
 }
-nav a.highlighted-nav:hover {
-  background-color: 4b8f01; /* Slightly darker gold */
-  color: black;
-}
+/* === End of Responsive Styles for programs.html CONTENT === */
   </style>
 </head>
 <body>
 
-  
-
   <header>
-  <div>
-    <h1>C2 Tennis Academy</h1>
-    <p>Developing Champions On and Off the Court</p>
-  </div>
-  <div class="auth-buttons" style="position: absolute; top: 20px; right: 20px;" id="authContainer">
-    <a href="register.html"><button id="registerBtn">Register</button></a>
-    <a href="login.html"><button id="loginBtn">Login</button></a>
-  </div>
-</header>
+    <div class="header-content">
+      <div class="site-title">
+        <h1>C2 Tennis Academy</h1>
+        <p>Developing Champions On and Off the Court</p>
+      </div>
+      <button class="mobile-menu-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mainNavigation">
+        &#9776; <!-- Hamburger icon -->
+      </button>
+    </div>
+    <div class="auth-buttons-desktop" id="authContainerDesktop">
+      <a href="register.html"><button id="registerBtnDesktop">Register</button></a>
+      <a href="login.html"><button id="loginBtnDesktop">Login</button></a>
+    </div>
+  </header>
 
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="about.html">About</a>
-    <a href="programs.html">Programs</a>
-    <a href="schedule.html">Schedule</a>
-    <a href="contact.html">Contact</a>
-     <a href="booking.html" class="highlighted-nav">Book</a>
+  <nav class="main-navigation" id="mainNavigation">
+    <div class="nav-wrapper-desktop"> 
+       <ul class="nav-links-desktop">
+         <li><a href="index.html">Home</a></li>
+         <li><a href="about.html">About</a></li>
+         <li><a href="programs.html" class="current-page">Programs</a></li> <!-- Marked as current page -->
+         <li><a href="schedule.html">Schedule</a></li>
+         <li><a href="contact.html">Contact</a></li>
+         <li><a href="booking.html" class="highlighted-nav">Book</a></li>
+       </ul>
+    </div>
+    <div class="mobile-menu-container">
+      <button class="mobile-menu-close" aria-label="Close navigation menu">&times;</button>
+      <ul class="nav-links-mobile">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="programs.html">Programs</a></li>
+        <li><a href="schedule.html">Schedule</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li><a href="booking.html">Book</a></li>
+      </ul>
+      <div class="auth-buttons-mobile" id="authContainerMobile">
+        <a href="register.html"><button id="registerBtnMobile">Register</button></a>
+        <a href="login.html"><button id="loginBtnMobile">Login</button></a>
+      </div>
+    </div>
   </nav>
-
+<main> 
   <section>
     <div style="display: flex; justify-content: space-between; align-items: center; height: 80px; margin-bottom: 10px;">
         <h2 style="margin: 0;">Our Programs</h2>
@@ -186,59 +326,64 @@ nav a.highlighted-nav:hover {
     </div>
 
     <p class="location"><strong>Location:</strong> All programs are held at <em>Colleyville Middle School Tennis Courts</em>, Colleyville, TX.</p>
-
-   
   </section>
+</main>
 
   <footer>
     <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
   </footer>
 
   <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // --- Menu Toggle Script ---
+    const menuToggle = document.querySelector('.mobile-menu-toggle');
+    const mobileMenuClose = document.querySelector('.mobile-menu-close');
+    const mainNav = document.querySelector('nav.main-navigation');
+    if (menuToggle && mainNav && mobileMenuClose) {
+        menuToggle.addEventListener('click', () => { mainNav.classList.toggle('mobile-menu--open'); menuToggle.setAttribute('aria-expanded', mainNav.classList.contains('mobile-menu--open')); });
+        mobileMenuClose.addEventListener('click', () => { mainNav.classList.remove('mobile-menu--open'); if(menuToggle) menuToggle.setAttribute('aria-expanded', 'false'); });
+    }
+    const mobileNavLinks = document.querySelectorAll('.mobile-menu-container a');
+    if (mainNav && mobileNavLinks.length > 0) { mobileNavLinks.forEach(link => { link.addEventListener('click', () => { if (mainNav.classList.contains('mobile-menu--open')) { mainNav.classList.remove('mobile-menu--open'); if(menuToggle) menuToggle.setAttribute('aria-expanded', 'false'); } }); }); }
+
+    // --- Session Check Script ---
     async function checkSession() {
+      const authContainerDesktop = document.getElementById('authContainerDesktop'); const authContainerMobile = document.getElementById('authContainerMobile');
+      const loggedOutDesktopHTML = `<a href="register.html"><button id="registerBtnDesktop">Register</button></a><a href="login.html"><button id="loginBtnDesktop">Login</button></a>`;
+      const loggedOutMobileHTML = `<a href="register.html"><button id="registerBtnMobile">Register</button></a><a href="login.html"><button id="loginBtnMobile">Login</button></a>`;
       try {
         const res = await fetch('/api/check-session', { credentials: 'include' });
-        if (!res.ok) return;
-  
-        const data = await res.json();
+        const data = await res.json(); 
+        const portal = data.isAdmin ? 'admin.html' : data.isCoach ? 'instructor_portal.html' : 'parent_portal.html';
+        const portalName = data.isAdmin ? 'Admin Portal' : data.isCoach ? 'Instructor Portal' : 'Parent Portal';
+        const loggedInDesktopHTML = `<a href="\${portal}"><button>\${portalName}</button></a><button onclick="logout()">Logout</button>`;
+        const loggedInMobileHTML = `<a href="\${portal}"><button>\${portalName}</button></a><button onclick="logout()">Logout</button>`; 
         if (data.loggedIn) {
-          const authContainer = document.getElementById('authContainer');
-          const portal = data.isAdmin ? 'admin.html'
-                       : data.isCoach ? 'instructor_portal.html'
-                       : 'parent_portal.html';
-  
-          authContainer.innerHTML = `
-            <a href="${portal}"><button>${data.isAdmin ? 'Admin Portal' : data.isCoach ? 'Instructor Portal' : 'Parent Portal'}</button></a>
-            <button onclick="logout()">Logout</button>
-          `;
-  
-          const greeting = document.createElement('div');
-          greeting.textContent = 'Welcome, ' + (data.firstName || 'User') + '!';
-          greeting.style.backgroundColor = '#0c3c78';
-          greeting.style.color = 'white';
-          greeting.style.padding = '10px';
-          greeting.style.textAlign = 'center';
-          greeting.style.fontWeight = 'bold';
-          document.body.insertBefore(greeting, document.body.firstChild);
+            if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInDesktopHTML;
+            if (authContainerMobile) authContainerMobile.innerHTML = loggedInMobileHTML;
+            const existingGreeting = document.querySelector('.welcome-greeting'); if (existingGreeting) existingGreeting.remove();
+            const greeting = document.createElement('div'); greeting.className = 'welcome-greeting'; greeting.textContent = 'Welcome, ' + (data.firstName || 'User') + '!';
+            greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
+            document.body.insertBefore(greeting, document.body.firstChild);
+        } else {
+            if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutDesktopHTML;
+            if (authContainerMobile) authContainerMobile.innerHTML = loggedOutMobileHTML;
+            const existingGreeting = document.querySelector('.welcome-greeting'); if (existingGreeting) existingGreeting.remove();
         }
       } catch (err) {
-        console.error('Session check failed:', err);
+        console.log('Session check or user not logged in:', err.message);
+        if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutDesktopHTML;
+        if (authContainerMobile) authContainerMobile.innerHTML = loggedOutMobileHTML;
+        const existingGreeting = document.querySelector('.welcome-greeting'); if (existingGreeting) existingGreeting.remove();
       }
     }
-  
-    function logout() {
-  fetch('/api/logout', { method: 'POST', credentials: 'include' })
-    .then(() => {
-      document.cookie = "userFirstName=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      location.reload();
-    });
-}
-  
-    checkSession();
+    checkSession(); 
+  }); 
+
+  function logout() { fetch('/api/logout', { method: 'POST', credentials: 'include' }).then(() => { document.cookie = "userFirstName=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; const existingGreeting = document.querySelector('.welcome-greeting'); if (existingGreeting) existingGreeting.remove(); location.reload(); }); }
   </script>
 
 </body>
 </html>
-
 
 

@@ -13,27 +13,24 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://c2tennisacademy.com/">
 
-
   <style>
     body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
-    header, footer { background-color: #0c3c78; color: white; text-align: center; padding: 20px; }
-    nav { background-color: #092e5e; display: flex; justify-content: center; }
-    nav a { color: white; padding: 14px 20px; text-decoration: none; }
-    nav a:hover { background-color: #0f4fa0; }
+    
+    /* Page-specific styles for contact.html */
     section { padding: 40px 20px; }
-
     form {
       max-width: 600px;
       margin: auto;
     }
-    input, textarea {
+    form input, form textarea { /* Made selectors more specific to the form */
       width: 100%;
       padding: 12px;
       margin: 10px 0;
       border-radius: 5px;
       border: 1px solid #ccc;
+      box-sizing: border-box; /* Added for consistency */
     }
-    button {
+    form button[type="submit"] { /* Made selector more specific */
       background-color: #0c3c78;
       color: white;
       padding: 14px;
@@ -42,69 +39,161 @@
       width: 100%;
       cursor: pointer;
     }
-    button:hover {
+    form button[type="submit"]:hover {
       background-color: #002f5e;
     }
+    /* End of Page-specific styles */
 
- .auth-buttons {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  display: flex;
-  gap: 10px; /* 👈 clean spacing between buttons */
-}
+/* === Global Header & Navigation Styles (Finalized Version) === */
+     header {
+       background-color: #0c3c78; 
+       color: white; 
+       padding: 30px 20px; 
+       position: relative; 
+       text-align: center; 
+     }
+     .header-content { 
+       display: flex; justify-content: center; align-items: center; 
+       max-width: 1200px; margin: 0 auto;
+       position: relative; 
+     }
+     .site-title { text-align: center; } 
+     .site-title h1 { 
+       font-size: 2.2em;    
+       margin-top: 0;
+       margin-bottom: 0.25em; 
+       color: white; 
+     } 
+     .site-title p { 
+       font-size: 1em;    
+       margin-top: 0;
+       margin-bottom: 0;
+       color: #f0f0f0;
+     }
+     .mobile-menu-toggle { display: none; background: none; border: none; color: white; font-size: 28px; cursor: pointer; padding: 5px; }
+     nav.main-navigation { background-color: #092e5e; }
+     .nav-wrapper-desktop { 
+         display: flex; justify-content: center; align-items: center;
+         width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 20px; box-sizing: border-box;
+     }
+     ul.nav-links-desktop { list-style: none; margin: 0; padding: 0; display: flex; }
+     ul.nav-links-desktop li a { color: white; padding: 14px 20px; text-decoration: none; display: block; } 
+     ul.nav-links-desktop li a:hover { background-color: hsl(214, 83%, 34%); }
+     ul.nav-links-desktop li a.highlighted-nav{ /* Added .current-page for active state */
+        background-color: #d8f352; color: black; font-weight: bold; border-radius: 5px; 
+     }
+     ul.nav-links-desktop li a.highlighted-nav:hover, ul.nav-links-desktop li a.current-page:hover { background-color: #c1da3b; }
+     
+     .auth-buttons-desktop { 
+       position: absolute;
+       top: 20px; 
+       right: 20px; 
+       display: flex;
+       align-items: center;
+     }
+     .auth-buttons-desktop a button, .auth-buttons-desktop button {
+       background-color: white; color: #0c3c78; border: none; padding: 10px 20px; 
+       margin-left: 10px; border-radius: 5px; font-weight: bold; cursor: pointer;
+       transition: all 0.3s ease; white-space: nowrap;
+     }
+     .auth-buttons-desktop a button:hover, .auth-buttons-desktop button:hover { background-color: #0f4fa0; color: white; }
+     .mobile-menu-container {
+       display: none; background-color: #092e5e; position: fixed;
+       top: 0; left: 0; width: 100%; height: 100%;
+       z-index: 1000; padding-top: 20px;
+       box-sizing: border-box; overflow-y: auto; text-align: center;
+     }
+     nav.main-navigation.mobile-menu--open .mobile-menu-container { display: block; }
+     .mobile-menu-close {
+        display: block; position: absolute; top: 15px; right: 20px;
+        background: none; border: none; color: white; font-size: 28px; cursor: pointer;
+     }
+     ul.nav-links-mobile { list-style: none; padding: 0; margin: 20px 0; }
+     ul.nav-links-mobile li a {
+       color: white; padding: 15px 20px; text-decoration: none; display: block;
+       border-bottom: 1px solid #0c3c78;
+     }
+     ul.nav-links-mobile li:last-child a { border-bottom: none; }
+     ul.nav-links-mobile li a:hover { background-color: #0f4fa0; }
+     .auth-buttons-mobile { padding: 20px; }
+     .auth-buttons-mobile a button, .auth-buttons-mobile button {
+       background-color: #d8f352; color: #0c3c78; border: none; padding: 12px 20px;
+       border-radius: 5px; font-weight: bold; cursor: pointer; display: block;
+       width: 80%; max-width: 250px; margin: 10px auto; box-sizing: border-box;
+     }
+     .auth-buttons-mobile a button:hover, .auth-buttons-mobile button:hover { background-color: #c1da3b; }
+     
+     footer { /* Global footer style */
+        background-color: #0c3c78; color: white; text-align: center; padding: 20px;
+     }
 
-.auth-buttons button {
-  background-color: white;
-  color: #0c3c78;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 5px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.auth-buttons button:hover {
-  background-color: #0f4fa0;
-  color: white;
-}
-
-nav a.highlighted-nav {
-  background-color: #d8f352; /* Gold */
-  color: black;             /* Dark blue text */
-  font-weight: bold;
-  border-radius: 5px;
-  margin-left: 8px;
-}
-nav a.highlighted-nav:hover {
-  background-color: 4b8f01; /* Slightly darker gold */
-  color: black;
-}
+     @media (max-width: 768px) {
+       body { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; } 
+       header { padding: 10px 15px; } 
+       .header-content {
+         justify-content: space-between; 
+         width:100%; 
+       }
+       .site-title { text-align: left; }
+       .site-title h1 { font-size: 1.2em; margin-bottom: 0; }
+       .site-title p { display: none; } 
+       .mobile-menu-toggle { display: block; }
+       .nav-wrapper-desktop { display: none; }
+       .auth-buttons-desktop { display: none; }
+       nav.main-navigation { padding: 0; background-color: transparent; }
+       
+       /* Page-specific responsive for contact.html */
+       form {
+         padding: 0 10px; /* Add some padding to form on smaller screens */
+       }
+     }
+/* End of Global Header & Navigation Styles */
   </style>
 </head>
 <body>
 
-  
-
   <header>
-    <div>
-      <h1>C2 Tennis Academy</h1>
-      <p>Developing Champions On and Off the Court</p>
+    <div class="header-content">
+      <div class="site-title">
+        <h1>C2 Tennis Academy</h1>
+        <p>Developing Champions On and Off the Court</p>
+      </div>
+      <button class="mobile-menu-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mainNavigation">
+        &#9776; <!-- Hamburger icon -->
+      </button>
     </div>
-    <div class="auth-buttons" style="position: absolute; top: 20px; right: 20px;" id="authContainer">
-      <a href="register.html"><button id="registerBtn">Register</button></a>
-      <a href="login.html"><button id="loginBtn">Login</button></a>
+    <div class="auth-buttons-desktop" id="authContainerDesktop">
+      <a href="register.html"><button id="registerBtnDesktop">Register</button></a>
+      <a href="login.html"><button id="loginBtnDesktop">Login</button></a>
     </div>
   </header>
 
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="about.html">About</a>
-    <a href="programs.html">Programs</a>
-    <a href="schedule.html">Schedule</a>
-    <a href="contact.html">Contact</a>
-     <a href="booking.html" class="highlighted-nav">Book</a>
+  <nav class="main-navigation" id="mainNavigation">
+    <div class="nav-wrapper-desktop"> 
+       <ul class="nav-links-desktop">
+         <li><a href="index.html">Home</a></li>
+         <li><a href="about.html">About</a></li>
+         <li><a href="programs.html">Programs</a></li>
+         <li><a href="schedule.html">Schedule</a></li>
+         <li><a href="contact.html" class="current-page">Contact</a></li> <!-- Marked as current -->
+         <li><a href="booking.html" class="highlighted-nav">Book</a></li>
+       </ul>
+    </div>
+    <div class="mobile-menu-container">
+      <button class="mobile-menu-close" aria-label="Close navigation menu">&times;</button>
+      <ul class="nav-links-mobile">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="programs.html">Programs</a></li>
+        <li><a href="schedule.html">Schedule</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li><a href="booking.html">Book</a></li>
+      </ul>
+      <div class="auth-buttons-mobile" id="authContainerMobile">
+        <a href="register.html"><button id="registerBtnMobile">Register</button></a>
+        <a href="login.html"><button id="loginBtnMobile">Login</button></a>
+      </div>
+    </div>
   </nav>
 
   <section>
@@ -123,56 +212,54 @@ nav a.highlighted-nav:hover {
   </footer>
 
   <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // --- Menu Toggle Script ---
+    const menuToggle = document.querySelector('.mobile-menu-toggle');
+    const mobileMenuClose = document.querySelector('.mobile-menu-close');
+    const mainNav = document.querySelector('nav.main-navigation');
+    if (menuToggle && mainNav && mobileMenuClose) {
+        menuToggle.addEventListener('click', () => { mainNav.classList.toggle('mobile-menu--open'); menuToggle.setAttribute('aria-expanded', mainNav.classList.contains('mobile-menu--open')); });
+        mobileMenuClose.addEventListener('click', () => { mainNav.classList.remove('mobile-menu--open'); if(menuToggle) menuToggle.setAttribute('aria-expanded', 'false'); });
+    }
+    const mobileNavLinks = document.querySelectorAll('.mobile-menu-container a');
+    if (mainNav && mobileNavLinks.length > 0) { mobileNavLinks.forEach(link => { link.addEventListener('click', () => { if (mainNav.classList.contains('mobile-menu--open')) { mainNav.classList.remove('mobile-menu--open'); if(menuToggle) menuToggle.setAttribute('aria-expanded', 'false'); } }); }); }
+
+    // --- Session Check Script ---
     async function checkSession() {
+      const authContainerDesktop = document.getElementById('authContainerDesktop'); const authContainerMobile = document.getElementById('authContainerMobile');
+      const loggedOutDesktopHTML = `<a href="register.html"><button id="registerBtnDesktop">Register</button></a><a href="login.html"><button id="loginBtnDesktop">Login</button></a>`;
+      const loggedOutMobileHTML = `<a href="register.html"><button id="registerBtnMobile">Register</button></a><a href="login.html"><button id="loginBtnMobile">Login</button></a>`;
       try {
         const res = await fetch('/api/check-session', { credentials: 'include' });
-        if (!res.ok) return;
-  
-        const data = await res.json();
+        const data = await res.json(); 
+        const portal = data.isAdmin ? 'admin.html' : data.isCoach ? 'instructor_portal.html' : 'parent_portal.html';
+        const portalName = data.isAdmin ? 'Admin Portal' : data.isCoach ? 'Instructor Portal' : 'Parent Portal';
+        const loggedInDesktopHTML = `<a href="\${portal}"><button>\${portalName}</button></a><button onclick="logout()">Logout</button>`;
+        const loggedInMobileHTML = `<a href="\${portal}"><button>\${portalName}</button></a><button onclick="logout()">Logout</button>`; 
         if (data.loggedIn) {
-          const authContainer = document.getElementById('authContainer');
-          const portal = data.isAdmin ? 'admin.html'
-                       : data.isCoach ? 'instructor_portal.html'
-                       : 'parent_portal.html';
-  
-          authContainer.innerHTML = `
-  <div class="auth-buttons" style="display: flex; align-items: center;">
-    <a href="${portal}" style="margin-left: 10px;"><button>${data.isAdmin ? 'Admin Portal' : data.isCoach ? 'Instructor Portal' : 'Parent Portal'}</button></a>
-    <button onclick="logout()" style="margin-left: 10px;">Logout</button>
-  </div>
-`;
-  
-          const greeting = document.createElement('div');
-          greeting.textContent = 'Welcome, ' + (data.firstName || 'User') + '!';
-          greeting.style.backgroundColor = '#0c3c78';
-          greeting.style.color = 'white';
-          greeting.style.padding = '10px';
-          greeting.style.textAlign = 'center';
-          greeting.style.fontWeight = 'bold';
-          document.body.insertBefore(greeting, document.body.firstChild);
+            if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInDesktopHTML;
+            if (authContainerMobile) authContainerMobile.innerHTML = loggedInMobileHTML;
+            const existingGreeting = document.querySelector('.welcome-greeting'); if (existingGreeting) existingGreeting.remove();
+            const greeting = document.createElement('div'); greeting.className = 'welcome-greeting'; greeting.textContent = 'Welcome, ' + (data.firstName || 'User') + '!';
+            greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
+            document.body.insertBefore(greeting, document.body.firstChild);
+        } else {
+            if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutDesktopHTML;
+            if (authContainerMobile) authContainerMobile.innerHTML = loggedOutMobileHTML;
+            const existingGreeting = document.querySelector('.welcome-greeting'); if (existingGreeting) existingGreeting.remove();
         }
       } catch (err) {
-        console.error('Session check failed:', err);
+        console.log('Session check or user not logged in:', err.message);
+        if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutDesktopHTML;
+        if (authContainerMobile) authContainerMobile.innerHTML = loggedOutMobileHTML;
+        const existingGreeting = document.querySelector('.welcome-greeting'); if (existingGreeting) existingGreeting.remove();
       }
     }
-  
-   function logout() {
-  fetch('/api/logout', { method: 'POST', credentials: 'include' })
-    .then(() => {
-      document.cookie = "userFirstName=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      location.reload();
-    });
-}
-  
-    checkSession();
+    checkSession(); 
+  }); 
+
+  function logout() { fetch('/api/logout', { method: 'POST', credentials: 'include' }).then(() => { document.cookie = "userFirstName=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; const existingGreeting = document.querySelector('.welcome-greeting'); if (existingGreeting) existingGreeting.remove(); location.reload(); }); }
   </script>
 
 </body>
 </html>
-
-
-
-
-
-
-

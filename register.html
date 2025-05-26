@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Register</title>
+  <title>Register - C2 Tennis Academy</title> <!-- Title updated for consistency -->
 
   <meta name="description" content="C2 Tennis Academy in Texas offers elite tennis training, junior programs, and high-performance coaching using AI and video analysis.">
   <meta name="keywords" content="C2 Tennis Academy, tennis lessons Texas, UTR tennis, junior tennis, adult clinics, tennis training academy">
@@ -12,7 +12,6 @@
   <meta property="og:description" content="Boost your UTR with expert coaching, AI video feedback, and elite tennis programs at C2 Tennis Academy.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://c2tennisacademy.com/">
-
 
   <style>
     body {
@@ -23,60 +22,59 @@
       flex-direction: column;
       min-height: 100vh;
     }
-    header {
-      background-color: #0c3c78;
-      color: white;
-      text-align: center;
-      padding: 20px;
-      position: relative;
+    
+    /* Page-specific styles for register.html */
+    main { /* Added to allow flex-grow for content */
+      flex: 1;
+      display: flex; /* Optional: if you want to center form vertically */
+      flex-direction: column; /* Optional: if you want to center form vertically */
+      justify-content: center; /* Optional: if you want to center form vertically */
     }
-    .auth-buttons {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-    }
-    button.add-student {
-  margin-bottom: 20px;
-}
-    .auth-buttons a, .auth-buttons button {
-      color: white;
-      padding: 10px 15px;
-      margin-left: 10px;
-      text-decoration: none;
-      border: 2px solid white;
-      border-radius: 5px;
-      background: none;
-      cursor: pointer;
-    }
-    .auth-buttons a:hover, .auth-buttons button:hover {
-      background-color: white;
-      color: #0c3c78;
-    }
-    form {
+    form#registerForm { /* More specific selector */
       max-width: 400px;
-      margin: 40px auto;
+      margin: 40px auto; /* Auto margins for horizontal centering */
       padding: 20px;
+      background-color: #fff; /* Added background for form visibility */
+      border: 1px solid #ccc; /* Added border */
+      border-radius: 10px; /* Added border-radius */
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1); /* Added box-shadow */
     }
-    input {
+    form#registerForm h2 { /* Style for form title */
+        text-align: center;
+        color: #0c3c78;
+        margin-top: 0;
+        margin-bottom: 20px;
+    }
+    form#registerForm input { /* Specific to form inputs */
       width: 100%;
       padding: 10px;
       margin: 10px 0;
+      box-sizing: border-box; /* Added for consistency */
+      border: 1px solid #ccc;
+      border-radius: 5px;
     }
-nav {
-      background-color: #092e5e;
-      display: flex;
-      justify-content: center;
+    form#registerForm label { /* Style for student names label */
+        display: block;
+        margin-top: 15px;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #333; /* Or #0c3c78 if preferred */
     }
-    nav a {
+    button.add-student { /* Specific to add student button */
+      margin-bottom: 20px;
+      background-color: #5cb85c; /* Example: green color for add */
       color: white;
-      padding: 14px 20px;
-      text-decoration: none;
+      padding: 10px 15px;
+      border: none;
+      width: auto; /* Fit content */
+      border-radius: 5px;
+      cursor: pointer;
+      display: block; /* Or inline-block if preferred with other elements */
     }
-    nav a:hover {
-      background-color: #0f4fa0;
+    button.add-student:hover {
+      background-color: #4cae4c;
     }
-
-    button {
+    form#registerForm button[type="submit"] { /* Specific to form submit button */
       background-color: #0c3c78;
       color: white;
       padding: 14px 20px;
@@ -84,33 +82,163 @@ nav {
       width: 100%;
       border-radius: 5px;
       cursor: pointer;
+      margin-top: 10px; /* Adjusted margin */
     }
-    button:hover {
+    form#registerForm button[type="submit"]:hover {
       background-color: #0f4fa0;
     }
-    footer {
-      background-color: #0c3c78;
-      color: white;
-      text-align: center;
-      padding: 20px;
-      margin-top: auto;
-    }
+    /* End of Page-specific styles */
+
+/* === Global Header & Navigation Styles (Finalized Version) === */
+     header {
+       background-color: #0c3c78; 
+       color: white; 
+       padding: 30px 20px; 
+       position: relative; 
+       text-align: center; 
+     }
+     .header-content { 
+       display: flex; justify-content: center; align-items: center; 
+       max-width: 1200px; margin: 0 auto;
+       position: relative; 
+     }
+     .site-title { text-align: center; } 
+     .site-title h1 { 
+       font-size: 2.2em;    
+       margin-top: 0;
+       margin-bottom: 0.25em; 
+       color: white; 
+     } 
+     .site-title p { 
+       font-size: 1em;    
+       margin-top: 0;
+       margin-bottom: 0;
+       color: #f0f0f0;
+     }
+     .mobile-menu-toggle { display: none; background: none; border: none; color: white; font-size: 28px; cursor: pointer; padding: 5px; }
+     nav.main-navigation { background-color: #092e5e; }
+     .nav-wrapper-desktop { 
+         display: flex; justify-content: center; align-items: center;
+         width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 20px; box-sizing: border-box;
+     }
+     ul.nav-links-desktop { list-style: none; margin: 0; padding: 0; display: flex; }
+     ul.nav-links-desktop li a { color: white; padding: 14px 20px; text-decoration: none; display: block; } 
+     ul.nav-links-desktop li a:hover { background-color: #0f4fa0; }
+     ul.nav-links-desktop li a.highlighted-nav, ul.nav-links-desktop li a.current-page { 
+        background-color: #d8f352; color: black; font-weight: bold; border-radius: 5px; 
+     }
+     ul.nav-links-desktop li a.highlighted-nav:hover, ul.nav-links-desktop li a.current-page:hover { background-color: #c1da3b; }
+     
+     .auth-buttons-desktop { 
+       position: absolute;
+       top: 20px; 
+       right: 20px; 
+       display: flex;
+       align-items: center;
+     }
+     .auth-buttons-desktop a button, .auth-buttons-desktop button {
+       background-color: white; color: #0c3c78; border: none; padding: 10px 20px; 
+       margin-left: 10px; border-radius: 5px; font-weight: bold; cursor: pointer;
+       transition: all 0.3s ease; white-space: nowrap;
+     }
+     .auth-buttons-desktop a button:hover, .auth-buttons-desktop button:hover { background-color: #0f4fa0; color: white; }
+     .mobile-menu-container {
+       display: none; background-color: #092e5e; position: fixed;
+       top: 0; left: 0; width: 100%; height: 100%;
+       z-index: 1000; padding-top: 20px;
+       box-sizing: border-box; overflow-y: auto; text-align: center;
+     }
+     nav.main-navigation.mobile-menu--open .mobile-menu-container { display: block; }
+     .mobile-menu-close {
+        display: block; position: absolute; top: 15px; right: 20px;
+        background: none; border: none; color: white; font-size: 28px; cursor: pointer;
+     }
+     ul.nav-links-mobile { list-style: none; padding: 0; margin: 20px 0; }
+     ul.nav-links-mobile li a {
+       color: white; padding: 15px 20px; text-decoration: none; display: block;
+       border-bottom: 1px solid #0c3c78;
+     }
+     ul.nav-links-mobile li:last-child a { border-bottom: none; }
+     ul.nav-links-mobile li a:hover { background-color: #0f4fa0; }
+     .auth-buttons-mobile { padding: 20px; }
+     .auth-buttons-mobile a button, .auth-buttons-mobile button {
+       background-color: #d8f352; color: #0c3c78; border: none; padding: 12px 20px;
+       border-radius: 5px; font-weight: bold; cursor: pointer; display: block;
+       width: 80%; max-width: 250px; margin: 10px auto; box-sizing: border-box;
+     }
+     .auth-buttons-mobile a button:hover, .auth-buttons-mobile button:hover { background-color: #c1da3b; }
+     
+     footer { /* Global footer style */
+        background-color: #0c3c78; color: white; text-align: center; padding: 20px; margin-top: auto; /* Ensure footer is at bottom */
+     }
+
+     @media (max-width: 768px) {
+       body { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; } 
+       header { padding: 10px 15px; } 
+       .header-content {
+         justify-content: space-between; 
+         width:100%; 
+       }
+       .site-title { text-align: left; }
+       .site-title h1 { font-size: 1.2em; margin-bottom: 0; }
+       .site-title p { display: none; } 
+       .mobile-menu-toggle { display: block; }
+       .nav-wrapper-desktop { display: none; }
+       .auth-buttons-desktop { display: none; } 
+       nav.main-navigation { padding: 0; background-color: transparent; }
+       
+       /* Page-specific responsive for register.html */
+       form#registerForm { /* More specific selector */
+         margin: 20px; /* Adjust margin for smaller screens */
+         padding: 20px;
+       }
+     }
+/* End of Global Header & Navigation Styles */
   </style>
 </head>
 <body>
   <header>
-    <h1>Rice Tennis Academy</h1>
-    <p>Developing Champions On and Off the Court</p>
+    <div class="header-content">
+      <div class="site-title">
+        <h1>C2 Tennis Academy</h1> <!-- Standardized Site Title -->
+        <p>Developing Champions On and Off the Court</p>
+      </div>
+      <button class="mobile-menu-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mainNavigation">
+        &#9776; <!-- Hamburger icon -->
+      </button>
+    </div>
+    <div class="auth-buttons-desktop" id="authContainerDesktop">
+      <a href="login.html"><button id="loginBtnDesktop">Login</button></a>
+    </div>
   </header>
 
-   <nav>
-  <a href="/index.html">Home</a>
-  <a href="/about.html">About</a>
-  <a href="/programs.html">Programs</a>
-  <a href="/schedule.html">Schedule</a>
-  <a href="/contact.html">Contact</a>
-</nav>
-
+   <nav class="main-navigation" id="mainNavigation">
+    <div class="nav-wrapper-desktop"> 
+       <ul class="nav-links-desktop">
+         <li><a href="index.html">Home</a></li>
+         <li><a href="about.html">About</a></li>
+         <li><a href="programs.html">Programs</a></li>
+         <li><a href="schedule.html">Schedule</a></li>
+         <li><a href="contact.html">Contact</a></li>
+         <li><a href="booking.html" class="highlighted-nav">Book</a></li> 
+       </ul>
+    </div>
+    <div class="mobile-menu-container">
+      <button class="mobile-menu-close" aria-label="Close navigation menu">&times;</button>
+      <ul class="nav-links-mobile">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="programs.html">Programs</a></li>
+        <li><a href="schedule.html">Schedule</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li><a href="booking.html">Book</a></li>
+      </ul>
+      <div class="auth-buttons-mobile" id="authContainerMobile">
+        <a href="login.html"><button id="loginBtnMobile">Login</button></a>
+      </div>
+    </div>
+  </nav>
+<main> <!-- Added main tag to wrap form -->
  <form id="registerForm">
   <h2>Register</h2>
   <input type="text" id="first_name" placeholder="First Name" required />
@@ -128,12 +256,27 @@ nav {
 
 <button type="submit">Register</button>
 </form>
+</main>
 
   <footer>
     <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
   </footer>
 
   <script>
+  // Mobile Menu Toggle Script
+  document.addEventListener('DOMContentLoaded', () => {
+    const menuToggle = document.querySelector('.mobile-menu-toggle');
+    const mobileMenuClose = document.querySelector('.mobile-menu-close');
+    const mainNav = document.querySelector('nav.main-navigation');
+    if (menuToggle && mainNav && mobileMenuClose) {
+        menuToggle.addEventListener('click', () => { mainNav.classList.toggle('mobile-menu--open'); menuToggle.setAttribute('aria-expanded', mainNav.classList.contains('mobile-menu--open')); });
+        mobileMenuClose.addEventListener('click', () => { mainNav.classList.remove('mobile-menu--open'); if(menuToggle) menuToggle.setAttribute('aria-expanded', 'false'); });
+    }
+    const mobileNavLinks = document.querySelectorAll('.mobile-menu-container a');
+    if (mainNav && mobileNavLinks.length > 0) { mobileNavLinks.forEach(link => { link.addEventListener('click', () => { if (mainNav.classList.contains('mobile-menu--open')) { mainNav.classList.remove('mobile-menu--open'); if(menuToggle) menuToggle.setAttribute('aria-expanded', 'false'); } }); }); }
+  });
+
+  // Original registration form scripts
   function addStudentField() {
     const container = document.getElementById('studentsContainer');
     const input = document.createElement('input');
@@ -172,20 +315,11 @@ nav {
     alert(text);
 
     if (res.ok) {
-      document.cookie = `userFirstName=${encodeURIComponent(data.first_name)}; path=/`;
-      window.location.href = 'index.html';
+      // No userFirstName cookie to set here as per new auth system
+      window.location.href = 'login.html'; // Redirect to login after successful registration
     }
   });
-
-  function logout() {
-    document.cookie = 'userFirstName=; Max-Age=0; path=/';
-    window.location.reload();
-  }
-
-  const name = document.cookie.split('; ').find(row => row.startsWith('userFirstName='))?.split('=')[1];
-  if (name && document.getElementById('nav-buttons')) {
-    document.getElementById('nav-buttons').innerHTML = '<button onclick="logout()">Logout</button>';
-  }
+  // Removed old logout function and userFirstName cookie check
 </script>
 </body>
 </html>

@@ -294,7 +294,6 @@
   <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
 </footer>
 
-<script>
 document.addEventListener('DOMContentLoaded', () => {
     // --- Menu Toggle Script ---
     const menuToggle = document.querySelector('.mobile-menu-toggle');
@@ -304,12 +303,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (menuToggle && mainNav && mobileMenuClose) {
         menuToggle.addEventListener('click', () => {
             const isMenuOpen = mainNav.classList.toggle('mobile-menu--open');
-            menuToggle.setAttribute('aria-expanded', isMenuOpen);
+            menuToggle.setAttribute('aria-expanded', String(isMenuOpen)); // Use String() for boolean
         });
 
         mobileMenuClose.addEventListener('click', () => {
             mainNav.classList.remove('mobile-menu--open');
-            menuToggle.setAttribute('aria-expanded', 'false');
+            if (menuToggle) { 
+                menuToggle.setAttribute('aria-expanded', 'false');
+            }
         });
     }
     
@@ -344,47 +345,46 @@ document.addEventListener('DOMContentLoaded', () => {
                          : data.isCoach ? 'Instructor Portal' 
                          : 'Parent Portal';
 
-        const loggedInHTML = `
-            <a href="\${portal}"><button>\${portalName}</button></a>
-            <button onclick="logout()">Logout</button>
-        `;
-        const loggedInMobileHTML = ` 
-            <a href="\${portal}"><button>\${portalName}</button></a>
-            <button onclick="logout()">Logout</button> 
-        `; 
+        // Corrected HTML construction using string concatenation
+        const loggedInHTML =
+            '<a href="' + portal + '"><button>' + portalName + '</button></a>' +
+            '<button onclick="logout()">Logout</button>';
 
-        const loggedOutHTML = `
-            <a href="register.html"><button id="registerBtnDesktop">Register</button></a>
-            <a href="login.html"><button id="loginBtnDesktop">Login</button></a>
-        `;
-        const loggedOutMobileHTML = `
-            <a href="register.html"><button id="registerBtnMobile">Register</button></a>
-            <a href="login.html"><button id="loginBtnMobile">Login</button></a>
-        `;
+        const loggedInMobileHTML =
+            '<a href="' + portal + '"><button>' + portalName + '</button></a>' +
+            '<button onclick="logout()">Logout</button>';
+
+        const loggedOutHTML = 
+            '<a href="register.html"><button id="registerBtnDesktop">Register</button></a>' +
+            '<a href="login.html"><button id="loginBtnDesktop">Login</button></a>';
+        const loggedOutMobileHTML = 
+            '<a href="register.html"><button id="registerBtnMobile">Register</button></a>' +
+            '<a href="login.html"><button id="loginBtnMobile">Login</button></a>';
 
         if (data.loggedIn) {
             if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInHTML;
             if (authContainerMobile) authContainerMobile.innerHTML = loggedInMobileHTML;
             
-            // Remove any existing greeting before adding a new one
             const existingGreeting = document.querySelector('.welcome-greeting');
             if (existingGreeting) existingGreeting.remove();
 
-            const greeting = document.createElement('div');
-            greeting.className = 'welcome-greeting'; // Added a class for potential styling/removal
-            greeting.textContent = 'Welcome, ' + (data.firstName || 'User') + '!';
-            greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
-            
-            if(document.body.firstChild) {
-                 document.body.insertBefore(greeting, document.body.firstChild);
-            } else {
-                 document.body.appendChild(greeting);
+            if (data.firstName && data.firstName.trim() !== '') { 
+                const greeting = document.createElement('div');
+                greeting.className = 'welcome-greeting';
+                greeting.textContent = 'Welcome, ' + data.firstName + '!';
+                greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
+                
+                if(document.body.firstChild) {
+                     document.body.insertBefore(greeting, document.body.firstChild);
+                } else {
+                     document.body.appendChild(greeting);
+                }
             }
 
         } else {
             if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutHTML;
             if (authContainerMobile) authContainerMobile.innerHTML = loggedOutMobileHTML;
-            // Ensure any old greeting is removed if user is not logged in
+            
             const existingGreeting = document.querySelector('.welcome-greeting');
             if (existingGreeting) existingGreeting.remove();
         }
@@ -392,25 +392,22 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Session check or user not logged in:', err.message);
         const authContainerDesktop = document.getElementById('authContainerDesktop');
         const authContainerMobile = document.getElementById('authContainerMobile');
-        const loggedOutHTML = `
-            <a href="register.html"><button id="registerBtnDesktop">Register</button></a>
-            <a href="login.html"><button id="loginBtnDesktop">Login</button></a>
-        `;
-        const loggedOutMobileHTML = `
-            <a href="register.html"><button id="registerBtnMobile">Register</button></a>
-            <a href="login.html"><button id="loginBtnMobile">Login</button></a>
-        `;
-        if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutHTML;
-        if (authContainerMobile) authContainerMobile.innerHTML = loggedOutMobileHTML;
+        const loggedOutHTMLCatch = 
+            '<a href="register.html"><button id="registerBtnDesktop">Register</button></a>' +
+            '<a href="login.html"><button id="loginBtnDesktop">Login</button></a>';
+        const loggedOutMobileHTMLCatch = 
+            '<a href="register.html"><button id="registerBtnMobile">Register</button></a>' +
+            '<a href="login.html"><button id="loginBtnMobile">Login</button></a>';
+        if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutHTMLCatch;
+        if (authContainerMobile) authContainerMobile.innerHTML = loggedOutMobileHTMLCatch;
         const existingGreeting = document.querySelector('.welcome-greeting');
         if (existingGreeting) existingGreeting.remove();
       }
     }
 
-    checkSession(); // Call checkSession
+    checkSession();
   });
 
-  // Global logout function
   function logout() {
     fetch('/api/logout', {
       method: 'POST',

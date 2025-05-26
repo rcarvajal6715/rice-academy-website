@@ -558,24 +558,26 @@ document.addEventListener('DOMContentLoaded', () => {
                                : 'Parent Portal';
 
                 // Logged-in HTML for desktop also includes "Meet the Coaches"
-                const loggedInDesktopHTML = `
-                    <a href="${portal}"><button>${portalName}</button></a>
-                    <button onclick="logout()">Logout</button>
-                    <a href="about.html#meet-our-coaches" class="coach-link-button">Meet the Coaches</a>
-                `;
-                const loggedInMobileHTML = `
-                    <a href="${portal}"><button>${portalName}</button></a>
-                    <button onclick="logout()">Logout</button>
-                `;
+                const loggedInDesktopHTML = '<a href="' + portal + '"><button>' + portalName + '</button></a>' +
+                                            '<button onclick="logout()">Logout</button>' +
+                                            '<a href="about.html#meet-our-coaches" class="coach-link-button">Meet the Coaches</a>';
+                
+                const loggedInMobileHTML = '<a href="' + portal + '"><button>' + portalName + '</button></a>' +
+                                           '<button onclick="logout()">Logout</button>';
 
                 if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInDesktopHTML;
                 if (authContainerMobile) authContainerMobile.innerHTML = loggedInMobileHTML;
 
                 if (data.firstName) {
+                    const welcomeMessageText = 'Welcome, ' + data.firstName + '!';
                     const greeting = document.createElement('div');
                     greeting.className = 'welcome-greeting'; 
-                    greeting.textContent = `Welcome, ${data.firstName}!`;
+                    greeting.textContent = welcomeMessageText;
                     // greeting.style.cssText is now handled by the .welcome-greeting class in <style>
+                    
+                    const existingGreeting = document.querySelector('div.welcome-greeting'); 
+                    if (existingGreeting) existingGreeting.remove();
+
                     if(document.body.firstChild && document.body.firstChild.nodeName !== 'SCRIPT' && document.body.firstChild.nodeName !== 'LINK') {
                         document.body.insertBefore(greeting, document.body.firstChild);
                     } else {

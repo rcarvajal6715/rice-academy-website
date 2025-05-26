@@ -296,25 +296,25 @@ nav a.highlighted-nav:hover {
               // For parent_portal, ensure user is logged in AND is not an admin or coach
               if (displayLoggedIn && !data.isAdmin && !data.isCoach) {
                   const portalLink = 'parent_portal.html'; 
-                  const portalButtonText = data.firstName ? `${data.firstName}'s Portal` : 'My Portal';
+                  const portalButtonText = data.firstName ? data.firstName + "'s Portal" : 'My Portal';
 
-                  const loggedInHTML = `
-                      <a href="` + portalLink + `"><button>` + portalButtonText + `</button></a>
-                      <button onclick="logout()">Logout</button>
-                  `;
-                  const loggedInMobileHTML = ` 
-                      <a href="` + portalLink + `"><button>` + portalButtonText + `</button></a>
-                      <button onclick="logout()">Logout</button> 
-                  `;
+                  const loggedInHTML = '<a href="' + portalLink + '"><button>' + portalButtonText + '</button></a><button onclick="logout()">Logout</button>';
+                  const loggedInMobileHTML = '<a href="' + portalLink + '"><button>' + portalButtonText + '</button></a><button onclick="logout()">Logout</button>';
 
                   if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInHTML;
                   if (authContainerMobile) authContainerMobile.innerHTML = loggedInMobileHTML;
 
                   if (data.firstName) {
+                      const welcomeMessageText = 'Welcome, ' + data.firstName + '!'; 
+
                       const greeting = document.createElement('div');
                       greeting.className = 'welcome-greeting';
-                      greeting.textContent = 'Welcome, ' + data.firstName + '!';
+                      greeting.textContent = welcomeMessageText; 
                       greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
+                      
+                      const existingGreeting = document.querySelector('.welcome-greeting');
+                      if (existingGreeting) existingGreeting.remove();
+
                       // Insert greeting after the main navigation for portal pages
                       const mainNavigationElement = document.querySelector('nav.main-navigation');
                       if (mainNavigationElement && mainNavigationElement.parentNode) {

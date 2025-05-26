@@ -882,28 +882,26 @@ function getCalendarEvents() {
               
               // For instructor_portal, ensure user is logged in AND is a coach
               if (displayLoggedIn && data.isCoach === true) { // Check for isCoach
-                  const portalButtonText = data.firstName ? `${data.firstName}'s Portal` : 'Coach Portal';
-                  // const portal = 'instructor_portal.html'; // Current page - not needed for button text
-
-                  // For desktop, show "Logout". Portal button can be the nav link itself.
-                  const loggedInHTMLDesktop = `
-                      <button onclick="logout()">Logout</button>
-                  `;
-                  // For mobile, show "Portal" and "Logout"
-                  const loggedInHTMLMobile = `
-                      <a href="instructor_portal.html"><button>` + portalButtonText + `</button></a>
-                      <button onclick="logout()">Logout</button>
-                  `; 
+                  const portalButtonText = data.firstName ? data.firstName + "'s Portal" : 'Coach Portal';
+                  
+                  const loggedInHTMLDesktop = '<button onclick="logout()">Logout</button>';
+                  
+                  const loggedInHTMLMobile = '<a href="instructor_portal.html"><button>' + portalButtonText + '</button></a><button onclick="logout()">Logout</button>';
 
                   if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInHTMLDesktop;
                   if (authContainerMobile) authContainerMobile.innerHTML = loggedInHTMLMobile;
 
                   if (data.firstName) { 
+                      const welcomeMessageText = 'Welcome, ' + data.firstName + '!';
+
                       const greeting = document.createElement('div');
                       greeting.className = 'welcome-greeting';
-                      greeting.textContent = 'Welcome, ' + data.firstName + '!';
+                      greeting.textContent = welcomeMessageText; 
                       greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
                       
+                      const existingGreeting = document.querySelector('.welcome-greeting');
+                      if (existingGreeting) existingGreeting.remove();
+
                       // Insert greeting after the <nav class="main-navigation"> element
                       const mainNavigationElement = document.querySelector('nav.main-navigation');
                       if (mainNavigationElement && mainNavigationElement.parentNode) {

@@ -302,14 +302,13 @@
                          : data.isCoach ? 'Instructor Portal' 
                          : 'Parent Portal';
 
-        const loggedInHTML = `
-            <a href="\${portal}"><button>\${portalName}</button></a>
-            <button onclick="logout()">Logout</button>
-        `;
-        const loggedInMobileHTML = ` 
-            <a href="\${portal}"><button>\${portalName}</button></a>
-            <button onclick="logout()">Logout</button> 
-        `; 
+        const loggedInHTML =
+            '<a href="' + portal + '"><button>' + portalName + '</button></a>' +
+            '<button onclick="logout()">Logout</button>';
+
+        const loggedInMobileHTML =
+            '<a href="' + portal + '"><button>' + portalName + '</button></a>' +
+            '<button onclick="logout()">Logout</button>';
 
         const loggedOutHTML = `
             <a href="register.html"><button id="registerBtnDesktop">Register</button></a>

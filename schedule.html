@@ -326,8 +326,13 @@
         const data = await res.json(); 
         const portal = data.isAdmin ? 'admin.html' : data.isCoach ? 'instructor_portal.html' : 'parent_portal.html';
         const portalName = data.isAdmin ? 'Admin Portal' : data.isCoach ? 'Instructor Portal' : 'Parent Portal';
-        const loggedInDesktopHTML = `<a href="\${portal}"><button>\${portalName}</button></a><button onclick="logout()">Logout</button>`;
-        const loggedInMobileHTML = `<a href="\${portal}"><button>\${portalName}</button></a><button onclick="logout()">Logout</button>`; 
+        const loggedInDesktopHTML =
+            '<a href="' + portal + '"><button>' + portalName + '</button></a>' +
+            '<button onclick="logout()">Logout</button>';
+
+        const loggedInMobileHTML =
+            '<a href="' + portal + '"><button>' + portalName + '</button></a>' +
+            '<button onclick="logout()">Logout</button>';
         if (data.loggedIn) {
             if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInDesktopHTML;
             if (authContainerMobile) authContainerMobile.innerHTML = loggedInMobileHTML;

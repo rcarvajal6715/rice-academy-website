@@ -231,7 +231,7 @@ label {
 }
 
 /* === Global Header & Navigation Styles (Finalized Version) === */
-     header {
+     header { /* This is the new header style block */
        background-color: #0c3c78; 
        color: white; 
        padding: 30px 20px; 
@@ -243,11 +243,11 @@ label {
        max-width: 1200px; margin: 0 auto;
        position: relative; 
      }
-     .site-title { text-align: center; } 
+     .site-title { text-align: center; flex-grow: 1; /* Allows title to center if auth buttons are present */ } 
      .site-title h1 { 
        font-size: 2.2em;    
        margin-top: 0;
-       margin-bottom: 0; /* Portal pages might not have a subtitle */
+       margin-bottom: 0; 
        color: white; 
      } 
      .site-title p { 
@@ -255,9 +255,8 @@ label {
        margin-top: 0;
        margin-bottom: 0;
        color: #f0f0f0;
-       /* display: none; /* Hide subtitle on portal pages if not needed */
      }
-     .mobile-menu-toggle { display: none; background: none; border: none; color: white; font-size: 28px; cursor: pointer; padding: 5px; }
+     .mobile-menu-toggle { display: none; background: none; border: none; color: white; font-size: 28px; cursor: pointer; padding: 5px; position: absolute; left: 15px; top: 50%; transform: translateY(-50%); }
      nav.main-navigation { background-color: #092e5e; }
      .nav-wrapper-desktop { 
          display: flex; justify-content: center; align-items: center;
@@ -271,10 +270,11 @@ label {
      }
      ul.nav-links-desktop li a.highlighted-nav:hover, ul.nav-links-desktop li a.current-page:hover { background-color: #c1da3b; }
      
-     .auth-buttons-desktop { 
+     .auth-buttons-desktop { /* For desktop view */
        position: absolute;
-       top: 20px; 
+       top: 50%; 
        right: 20px; 
+       transform: translateY(-50%);
        display: flex;
        align-items: center;
      }
@@ -284,7 +284,8 @@ label {
        transition: all 0.3s ease; white-space: nowrap;
      }
      .auth-buttons-desktop a button:hover, .auth-buttons-desktop button:hover { background-color: #0f4fa0; color: white; }
-     .mobile-menu-container {
+     
+     .mobile-menu-container { /* For mobile navigation flyout */
        display: none; background-color: #092e5e; position: fixed;
        top: 0; left: 0; width: 100%; height: 100%;
        z-index: 1000; padding-top: 20px;
@@ -302,7 +303,10 @@ label {
      }
      ul.nav-links-mobile li:last-child a { border-bottom: none; }
      ul.nav-links-mobile li a:hover { background-color: #0f4fa0; }
-     .auth-buttons-mobile { padding: 20px; }
+     
+     .auth-buttons-mobile { /* For mobile menu */
+        padding: 20px; 
+     }
      .auth-buttons-mobile a button, .auth-buttons-mobile button {
        background-color: #d8f352; color: #0c3c78; border: none; padding: 12px 20px;
        border-radius: 5px; font-weight: bold; cursor: pointer; display: block;
@@ -310,138 +314,162 @@ label {
      }
      .auth-buttons-mobile a button:hover, .auth-buttons-mobile button:hover { background-color: #c1da3b; }
      
-     /* Ensure body takes full height for footer behavior */
      body { 
         display: flex; 
         flex-direction: column; 
         min-height: 100vh; 
      }
-     main { /* Allow main content to grow and push footer down */
+     main { 
         flex: 1;
      }
-     footer { /* Global footer style */
-        background-color: #0c3c78; color: white; text-align: center; padding: 20px; margin-top:auto; /* Pushes to bottom in flex */
+     footer { 
+        background-color: #0c3c78; color: white; text-align: center; padding: 20px; margin-top:auto; 
      }
 
      @media (max-width: 768px) {
        body { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; } 
-       header { padding: 10px 15px; } 
+       header { padding: 15px 20px; /* Adjusted padding for mobile header */ } 
        .header-content {
-         justify-content: space-between; 
+         justify-content: space-between; /* Hamburger on left, title, (desktop auth hidden) */
          width:100%; 
        }
-       .site-title { text-align: left; }
+       .site-title { text-align: center; flex-grow: 1; margin-left: 30px; /* Space for hamburger */ margin-right: 30px; /* Space for potential future icon */ }
        .site-title h1 { font-size: 1.2em; margin-bottom: 0; }
        .site-title p { display: none; } 
-       .mobile-menu-toggle { display: block; }
-       .nav-wrapper-desktop { display: none; }
-       .auth-buttons-desktop { display: none; } 
-       nav.main-navigation { padding: 0; background-color: transparent; }
+       .mobile-menu-toggle { display: block; /* Shows hamburger */ }
+       .nav-wrapper-desktop { display: none; /* Hides desktop nav links */ }
+       .auth-buttons-desktop { display: none; /* Hides desktop auth buttons */ } 
+       nav.main-navigation { padding: 0; background-color: transparent; /* Nav element itself becomes a container for mobile menu logic */ }
      }
 /* === End Global Header & Navigation Styles === */
   </style>
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet" />
 </head>
 <body>
+  <!-- NEW RESPONSIVE HEADER -->
   <header>
-    <h1>C2 Tennis Academy</h1>
-    <p>Coach Portal: Welcome <span id="coach-name"></span></p>
+    <div class="header-content">
+      <button class="mobile-menu-toggle" aria-label="Open navigation menu" aria-expanded="false">&#9776;</button>
+      <div class="site-title">
+        <h1>C2 Tennis Academy</h1>
+        <p>Coach Portal</p> <!-- Subtitle for portal pages -->
+      </div>
+      <div id="authContainerDesktop" class="auth-buttons-desktop">
+        <!-- Desktop Auth buttons will be injected here by JS -->
+      </div>
+    </div>
   </header>
 
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="programs.html">Programs</a>
-    <a href="schedule.html">Schedule</a>
-    <a href="booking.html">Book</a>
-    <a href="contact.html">Contact</a>
-    <a href="logout.html">Logout</a>
+  <!-- NEW RESPONSIVE NAVIGATION -->
+  <nav class="main-navigation">
+    <div class="nav-wrapper-desktop">
+      <ul class="nav-links-desktop">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="instructor_portal.html" class="current-page">Instructor Portal</a></li>
+        <li><a href="booking.html">Book a Session</a></li>
+        <!-- Other desktop links as needed -->
+      </ul>
+    </div>
+
+    <div class="mobile-menu-container">
+      <button class="mobile-menu-close" aria-label="Close navigation menu">&times;</button>
+      <div id="authContainerMobile" class="auth-buttons-mobile">
+        <!-- Mobile Auth buttons will be injected here by JS -->
+      </div>
+      <ul class="nav-links-mobile">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="instructor_portal.html">Instructor Portal</a></li>
+        <li><a href="booking.html">Book a Session</a></li>
+        <!-- Other mobile links as needed -->
+      </ul>
+    </div>
   </nav>
 
-  <section>
-    <h2>Your Upcoming Lessons</h2>
-    <div id="lessons-cards"></div>
-    <h2>Submit Progress Update</h2>
-    <form id="progress-form">
-      <label for="student-select">Select Student:</label>
-      <select id="student-select">
-        <option value="" disabled selected>Choose a student</option>
-      </select>
-      <label for="feedback">Progress Summary:</label>
-      <textarea id="feedback" rows="5" placeholder="Write progress notes here..."></textarea>
-      <button type="submit">Submit</button>
-    </form>
-
-    <h2>Add Lesson</h2>
-    <form id="coach-lesson-form">
-      <div>
-        <label for="coach-program">Program</label>
-        <select id="coach-program" required>
-          <option value="" disabled selected>Choose a program</option>
-          <option value="Tennis Private">Tennis Private</option>
-          <option value="Summer Camp - Day Pass">Summer Camp - Day Pass</option>
-          <option value="Summer Camp - Week Pass">Summer Camp - Week Pass</option>
-          <option value="Kids Camp - Day Pass">Kids Camp - Day Pass</option>
-          <option value="Kids Camp - Week Pass">Kids Camp - Week Pass</option>
+  <!-- Main content of the portal - REMAINS UNTOUCHED -->
+  <main>
+    <section>
+      <h2>Your Upcoming Lessons</h2>
+      <div id="lessons-cards"></div>
+      <h2>Submit Progress Update</h2>
+      <form id="progress-form">
+        <label for="student-select">Select Student:</label>
+        <select id="student-select">
+          <option value="" disabled selected>Choose a student</option>
+        </select>
+        <label for="feedback">Progress Summary:</label>
+        <textarea id="feedback" rows="5" placeholder="Write progress notes here..."></textarea>
+        <button type="submit">Submit</button>
+      </form>
+  
+      <h2>Add Lesson</h2>
+      <form id="coach-lesson-form">
+        <div>
+          <label for="coach-program">Program</label>
+          <select id="coach-program" required>
+            <option value="" disabled selected>Choose a program</option>
+            <option value="Tennis Private">Tennis Private</option>
+            <option value="Summer Camp - Day Pass">Summer Camp - Day Pass</option>
+            <option value="Summer Camp - Week Pass">Summer Camp - Week Pass</option>
+            <option value="Kids Camp - Day Pass">Kids Camp - Day Pass</option>
+            <option value="Kids Camp - Week Pass">Kids Camp - Week Pass</option>
+          </select>
+        </div>
+        <div id="coach-student-container" style="display:none; margin-top:10px;">
+          <label for="coach-student">Student Name</label>
+          <input type="text" id="coach-student" placeholder="Enter student name" />
+        </div>
+        <div style="margin-top:10px;">
+          <label for="coach-date">Date</label>
+          <input type="date" id="coach-date" required />
+        </div>
+        <div style="margin-top:10px;">
+          <label for="coach-time">Time</label>
+          <input type="time" id="coach-time" required />
+        </div>
+        <button type="submit" style="margin-top:20px;">Add Lesson</button>
+      </form>
+    </section>
+  
+    <div class="time-block-section">
+    <h3 style="color: #0c3c78;">Block Specific Time Slots</h3>
+    <form id="time-block-form">
+      <div class="form-group">
+        <label for="time-block-date">Date</label>
+       <input type="text" id="time-block-date" placeholder="Select a date" required>
+      </div>
+      <div class="form-group">
+        <label for="time-block-start">Start Time</label>
+        <select id="time-block-start" required>
+          <option value="">-- Select Time --</option>
         </select>
       </div>
-      <div id="coach-student-container" style="display:none; margin-top:10px;">
-        <label for="coach-student">Student Name</label>
-        <input type="text" id="coach-student" placeholder="Enter student name" />
+      <div class="form-group">
+        <label for="time-block-end">End Time</label>
+        <select id="time-block-end" required>
+          <option value="">-- Select Time --</option>
+        </select>
       </div>
-      <div style="margin-top:10px;">
-        <label for="coach-date">Date</label>
-        <input type="date" id="coach-date" required />
-      </div>
-      <div style="margin-top:10px;">
-        <label for="coach-time">Time</label>
-        <input type="time" id="coach-time" required />
-      </div>
-      <button type="submit" style="margin-top:20px;">Add Lesson</button>
+      <button type="submit" class="full-width-button">Add Time Block</button>
     </form>
-
-      
-      
-  
-  </section>
-
-  <div class="time-block-section">
-  <h3 style="color: #0c3c78;">Block Specific Time Slots</h3>
-  <form id="time-block-form">
-    <div class="form-group">
-      <label for="time-block-date">Date</label>
-     <input type="text" id="time-block-date" placeholder="Select a date" required>
-    </div>
-    <div class="form-group">
-      <label for="time-block-start">Start Time</label>
-      <select id="time-block-start" required>
-        <option value="">-- Select Time --</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label for="time-block-end">End Time</label>
-      <select id="time-block-end" required>
-        <option value="">-- Select Time --</option>
-      </select>
-    </div>
-    <button type="submit" class="full-width-button">Add Time Block</button>
-  </form>
-</div>
-  <div class="offdays-section">
-      <h2>Block Off Days / Times (You Are Unavailable)</h2>
-      <div id="coach-availability-calendar" style="margin:40px auto; max-width: 500px;"></div>
-      <button id="submit-offdays" style="display:block;margin:20px auto 0 auto;">Submit Off-Days</button>
-      <small>
-        Click on days in the calendar to mark yourself unavailable.<br>
-        Blocked days will show a <span style="color:#e74c3c;font-weight:bold;">❌</span>.<br>
-        Click again to unblock. Click "Submit Off-Days" to save.
-      </small>
-    </div>
-
+  </div>
+    <div class="offdays-section">
+        <h2>Block Off Days / Times (You Are Unavailable)</h2>
+        <div id="coach-availability-calendar" style="margin:40px auto; max-width: 500px;"></div>
+        <button id="submit-offdays" style="display:block;margin:20px auto 0 auto;">Submit Off-Days</button>
+        <small>
+          Click on days in the calendar to mark yourself unavailable.<br>
+          Blocked days will show a <span style="color:#e74c3c;font-weight:bold;">❌</span>.<br>
+          Click again to unblock. Click "Submit Off-Days" to save.
+        </small>
+      </div>
+  </main>
+  <!-- End of main content -->
 
   <footer>
     <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
   </footer>
   
+  <!-- Scripts for portal functionality - REMAINS UNTOUCHED (except for the global header/nav JS at the end) -->
   <script>
     // --------- Lessons & Progress Submission (untouched) ----------
     fetch('/api/my-lessons', { credentials: 'include' })
@@ -787,17 +815,18 @@ function getCalendarEvents() {
   }
 </script>
 
+  <!-- SCRIPT FOR MOBILE MENU TOGGLE, CHECK SESSION, LOGOUT - REMAINS UNTOUCHED -->
   <script>
   // This entire block to be added as a new script, or integrated if a single DOMContentLoaded is preferred.
   document.addEventListener('DOMContentLoaded', () => {
       // --- Mobile Menu Toggle Script --- 
       const menuToggle = document.querySelector('.mobile-menu-toggle');
       const mobileMenuClose = document.querySelector('.mobile-menu-close');
-      const mainNav = document.querySelector('nav.main-navigation');
+      const mainNav = document.querySelector('nav.main-navigation'); // Targets the main <nav>
 
       if (menuToggle && mainNav && mobileMenuClose) {
           menuToggle.addEventListener('click', () => {
-              const isMenuOpen = mainNav.classList.toggle('mobile-menu--open');
+              const isMenuOpen = mainNav.classList.toggle('mobile-menu--open'); // Toggles on main <nav>
               menuToggle.setAttribute('aria-expanded', isMenuOpen);
               if (isMenuOpen) {
                   menuToggle.innerHTML = '&times;'; 
@@ -809,7 +838,7 @@ function getCalendarEvents() {
           });
 
           mobileMenuClose.addEventListener('click', () => {
-              mainNav.classList.remove('mobile-menu--open');
+              mainNav.classList.remove('mobile-menu--open'); // Removes from main <nav>
               if (menuToggle) {
                  menuToggle.setAttribute('aria-expanded', 'false');
                  menuToggle.innerHTML = '&#9776;'; 
@@ -819,7 +848,7 @@ function getCalendarEvents() {
       }
 
       const mobileNavLinks = document.querySelectorAll('.mobile-menu-container a');
-      if (mainNav && mobileNavLinks.length > 0) {
+      if (mainNav && mobileNavLinks.length > 0) { // mainNav check is important
           mobileNavLinks.forEach(link => {
               link.addEventListener('click', () => {
                   if (mainNav.classList.contains('mobile-menu--open')) {
@@ -854,35 +883,46 @@ function getCalendarEvents() {
               // For instructor_portal, ensure user is logged in AND is a coach
               if (displayLoggedIn && data.isCoach === true) { // Check for isCoach
                   const portalName = data.firstName ? `${data.firstName}'s Portal` : 'Coach Portal';
-                  const portal = 'instructor_portal.html'; // Current page
+                  // const portal = 'instructor_portal.html'; // Current page - not needed for button text
 
-                  const loggedInHTML = `
-                      <a href="\${portal}"><button>\${portalName}</button></a>
+                  // For desktop, show "Logout". Portal button can be the nav link itself.
+                  const loggedInHTMLDesktop = `
                       <button onclick="logout()">Logout</button>
                   `;
-                  const loggedInMobileHTML = loggedInHTML; 
+                  // For mobile, show "Portal" and "Logout"
+                  const loggedInHTMLMobile = `
+                      <a href="instructor_portal.html"><button>${portalName}</button></a>
+                      <button onclick="logout()">Logout</button>
+                  `; 
 
-                  if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInHTML;
-                  if (authContainerMobile) authContainerMobile.innerHTML = loggedInMobileHTML;
+                  if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInHTMLDesktop;
+                  if (authContainerMobile) authContainerMobile.innerHTML = loggedInHTMLMobile;
 
                   if (data.firstName) { 
                       const greeting = document.createElement('div');
                       greeting.className = 'welcome-greeting';
-                      greeting.textContent = `Welcome, \${data.firstName}!`;
+                      greeting.textContent = `Welcome, ${data.firstName}!`;
                       greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
                       
+                      // Insert greeting after the <nav class="main-navigation"> element
                       const mainNavigationElement = document.querySelector('nav.main-navigation');
                       if (mainNavigationElement && mainNavigationElement.parentNode) {
                            mainNavigationElement.parentNode.insertBefore(greeting, mainNavigationElement.nextSibling);
                       } else { 
-                           document.body.insertBefore(greeting, document.body.firstChild);
+                           // Fallback if main-navigation is not found (should not happen with new structure)
+                           const headerElement = document.querySelector('header');
+                           if (headerElement && headerElement.parentNode) {
+                               headerElement.parentNode.insertBefore(greeting, headerElement.nextSibling);
+                           } else {
+                               document.body.insertBefore(greeting, document.body.firstChild);
+                           }
                       }
                   }
               } else {
                   // Not logged in as a coach (or is parent/admin)
                   window.location.href = 'login.html'; 
                   // Fallback for auth buttons if redirect doesn't happen immediately:
-                  const loggedOutHTML = `<a href="login.html"><button>Login</button></a>`;
+                  const loggedOutHTML = `<a href="login.html"><button>Login</button></a> <a href="register.html"><button>Register</button></a>`;
                   if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutHTML;
                   if (authContainerMobile) authContainerMobile.innerHTML = loggedOutHTML;
               }
@@ -891,7 +931,7 @@ function getCalendarEvents() {
               window.location.href = 'login.html'; 
               const authContainerDesktop = document.getElementById('authContainerDesktop');
               const authContainerMobile = document.getElementById('authContainerMobile');
-              const loggedOutHTML = `<a href="login.html"><button>Login</button></a>`;
+              const loggedOutHTML = `<a href="login.html"><button>Login</button></a> <a href="register.html"><button>Register</button></a>`;
               if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutHTML;
               if (authContainerMobile) authContainerMobile.innerHTML = loggedOutHTML;
           }

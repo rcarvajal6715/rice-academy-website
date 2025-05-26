@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12,28 +13,160 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://c2tennisacademy.com/">
 
-
   <!-- Flatpickr CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <style>
+    html, body {
+      /* height: 100%; Ensure this doesn't conflict if booking page content is long */
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      font-family: Arial, sans-serif;
+    }
+    main {
+      flex: 1; /* Allows footer to stick to bottom if content is short */
+    }
+    footer {
+      background-color: #0c3c78;
+      color: white;
+      text-align: center;
+      padding: 20px;
+      /* position: relative; /* Generally not needed unless specific positioning is required */
+    }
 
+    /* === Styles from index.html for Header & Navigation === */
+    header {
+       background-color: #0c3c78; 
+       color: white; 
+       padding: 30px 20px;
+       position: relative; 
+       text-align: center; 
+     }
+     .header-content {
+       display: flex; justify-content: center; align-items: center;
+       max-width: 1200px; margin: 0 auto;
+       position: relative;
+     }
+     .site-title { text-align: center; }
+     .site-title h1 { 
+       font-size: 2.2em;
+       margin-top: 0;
+       margin-bottom: 0.25em; 
+       color: white; 
+     } 
+     .site-title p { 
+       font-size: 1em;    
+       margin-top: 0;
+       margin-bottom: 0;
+       color: #f0f0f0;
+     }
+
+     .mobile-menu-toggle { display: none; background: none; border: none; color: white; font-size: 28px; cursor: pointer; padding: 5px; }
+
+     nav.main-navigation { background-color: #092e5e; }
+     .nav-wrapper-desktop {
+         display: flex; justify-content: center; align-items: center;
+         width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 20px; box-sizing: border-box;
+     }
+     ul.nav-links-desktop { list-style: none; margin: 0; padding: 0; display: flex; }
+     ul.nav-links-desktop li a { color: white; padding: 14px 20px; text-decoration: none; display: block; }
+     ul.nav-links-desktop li a:hover { background-color: #0f4fa0; }
+     /* Highlight for "Book" link if needed on booking.html, can be added via class */
+     ul.nav-links-desktop li a.highlighted-nav { background-color: #d8f352; color: black; font-weight: bold; border-radius: 5px; }
+     ul.nav-links-desktop li a.highlighted-nav:hover { background-color: #c1da3b; }
+
+
+     .auth-buttons-desktop {
+       position: absolute;
+       top: 20px; 
+       right: 20px; 
+       display: flex;
+       align-items: center;
+     }
+     .auth-buttons-desktop a button, .auth-buttons-desktop button,
+     .auth-buttons-desktop a.coach-link-button { /* Include coach link button styling here */
+       background-color: white; color: #0c3c78; border: none; padding: 10px 20px;
+       margin-left: 10px; border-radius: 5px; font-weight: bold; cursor: pointer;
+       transition: all 0.3s ease; white-space: nowrap; text-decoration: none; /* For <a> tags */
+       display: inline-flex; align-items: center; justify-content: center; /* For proper button appearance on <a> */
+     }
+     .auth-buttons-desktop a button:hover, .auth-buttons-desktop button:hover,
+     .auth-buttons-desktop a.coach-link-button:hover { background-color: #0f4fa0; color: white; }
+     
+     .auth-buttons-desktop a.coach-link-button { /* Specific override for coach link if needed */
+        background-color: #d8f352;
+        color: #0c3c78;
+     }
+     .auth-buttons-desktop a.coach-link-button:hover {
+        background-color: #c1da3b;
+        color: #0c3c78;
+     }
+
+
+     .mobile-menu-container {
+       display: none; background-color: #092e5e; position: fixed;
+       top: 0; left: 0; width: 100%; height: 100%;
+       z-index: 1000; 
+       padding-top: 20px; 
+       box-sizing: border-box; overflow-y: auto; text-align: center;
+     }
+     nav.main-navigation.mobile-menu--open .mobile-menu-container { display: block; }
+     .mobile-menu-close {
+        display: block; 
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 28px;
+        cursor: pointer;
+     }
+     ul.nav-links-mobile { list-style: none; padding: 0; margin: 20px 0; }
+     ul.nav-links-mobile li a {
+       color: white; padding: 15px 20px; text-decoration: none; display: block;
+       border-bottom: 1px solid #0c3c78;
+     }
+     ul.nav-links-mobile li:last-child a { border-bottom: none; }
+     ul.nav-links-mobile li a:hover { background-color: #0f4fa0; }
+
+     .auth-buttons-mobile { padding: 20px; }
+     .auth-buttons-mobile a button, .auth-buttons-mobile button {
+       background-color: #d8f352; color: #0c3c78; border: none; padding: 12px 20px;
+       border-radius: 5px; font-weight: bold; cursor: pointer; display: block;
+       width: 80%; max-width: 250px; margin: 10px auto; box-sizing: border-box;
+       text-decoration: none;
+     }
+     .auth-buttons-mobile a button:hover, .auth-buttons-mobile button:hover { background-color: #c1da3b; }
+     
+
+     @media (max-width: 768px) {
+       body { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+
+       header { padding: 10px 15px; }
+       .header-content {
+         justify-content: space-between; 
+         width:100%; 
+       }
+       .site-title { text-align: left; }
+       .site-title h1 { font-size: 1.2em; margin-bottom: 0; }
+       .site-title p { display: none; } 
+
+       .mobile-menu-toggle { display: block; }
+       
+       .nav-wrapper-desktop { display: none; }
+       .auth-buttons-desktop { display: none; }
+
+       nav.main-navigation { padding: 0; background-color: transparent; }
+     }
+
+    /* === Styles specific to booking.html === */
     .flatpickr-day.week-highlight {
-  background: #0c3c78 !important;
-  color: white !important;
-  border-radius: 50%;
-}
-    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
-    header, footer {
-  background-color: #0c3c78;
-  color: white;
-  text-align: center;
-  padding: 20px;
-  position: relative; /* ← add this */
-}
-    nav { background-color: #092e5e; display: flex; justify-content: center; }
-    nav a { color: white; padding: 14px 20px; text-decoration: none; }
-    nav a:hover { background-color: #0f4fa0; }
-    section { padding: 40px 20px; }
+      background: #0c3c78 !important;
+      color: white !important;
+      border-radius: 50%;
+    }
+    section { padding: 40px 20px; } /* Original booking section padding */
     .booking-container {
       max-width: 500px; margin: auto; background: #fff; padding: 30px;
       border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1);
@@ -44,198 +177,127 @@
       width: 100%; padding: 10px; margin-top: 5px; box-sizing: border-box;
       border: 1px solid #ccc; border-radius: 5px;
     }
-    button {
+    /* General button style for booking form, distinct from auth buttons */
+    .booking-container button[type="submit"] {
       margin-top: 20px; width: 100%; padding: 12px; background-color: #0c3c78;
       color: white; border: none; border-radius: 5px; font-size: 1rem;
       cursor: pointer;
     }
-    button:hover { background-color: #0f4fa0; }
+    .booking-container button[type="submit"]:hover { background-color: #0f4fa0; }
 
-    .auth-buttons button {
-      background-color: white;
-      color: #0c3c78;
-      border: none;
-      padding: 10px 20px;
-      margin-left: 10px;
-      border-radius: 5px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.3s ease;
+    /* Welcome greeting style */
+    .welcome-greeting {
+        background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;
     }
-    .auth-buttons button:hover {
-      background-color: #0f4fa0;
-      color: white;
-    }
-    .coach-link-button {
-  background-color: #d8f352;
-  color: #0c3c78;
-  border: none;
-  padding: 10px 20px;
-  margin-left: 10px;
-  border-radius: 5px;
-  font-weight: bold;
-  font-family: inherit;
-  text-decoration: none;
-  display: inline-block;
-  transition: all 0.3s ease;
-}
-.coach-link-button:hover {
-  background-color: #c1da3b;
-  color: #0c3c78;
-}
 
-/* Hide mobile menu toggle and container by default */
-.mobile-menu-toggle,
-.mobile-menu-container {
-  display: none;
-}
-
-/* Desktop nav only for larger screens */
-.desktop-nav {
-  display: flex;
-}
-
-/* Show mobile nav on small screens only */
-@media (max-width: 768px) {
-  .desktop-nav {
-    display: none;
-  }
-
-  .mobile-menu-toggle {
-    display: block;
-    background: #0c3c78;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    font-size: 1.5rem;
-    cursor: pointer;
-    width: 100%;
-    text-align: left;
-  }
-
-  .mobile-menu-container {
-    display: none;
-    flex-direction: column;
-    background-color: #0c3c78;
-    position: absolute;
-    top: 60px;
-    width: 100%;
-    padding: 10px;
-    z-index: 1000;
-  }
-
-  .mobile-menu-container a,
-  .mobile-menu-container button {
-    color: white;
-    padding: 10px;
-    text-align: left;
-    text-decoration: none;
-    background: none;
-    border: none;
-    font-size: 1rem;
-  }
-
-  .mobile-menu-close {
-    align-self: flex-end;
-    font-size: 1.5rem;
-    background: none;
-    border: none;
-    color: white;
-    cursor: pointer;
-  }
-
-  .mobile-menu--open {
-    display: flex !important;
-  }
-}
   </style>
 </head>
 <body>
 
-  <!-- Welcome banner if logged in -->
-  
-
   <header>
-    <div>
-      <h1>C2 Tennis Academy</h1>
-      <p>Developing Champions On and Off the Court</p>
+    <div class="header-content">
+      <div class="site-title">
+        <h1>C2 Tennis Academy</h1>
+        <p>Developing Champions On and Off the Court</p>
+      </div>
+      <button class="mobile-menu-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mainNavigationMobile">
+        &#9776; <!-- Hamburger icon -->
+      </button>
     </div>
-    <div class="auth-buttons" style="position: absolute; top: 60px; right: 40px;">
-  <a href="about.html#meet-our-coaches" class="coach-link-button">Meet the Coaches</a>
-</div>
+    <div class="auth-buttons-desktop" id="authContainerDesktop">
+      <!-- Desktop auth buttons will be populated by JavaScript -->
+      <!-- Fallback or initial content if JS is slow/fails -->
+      <a href="register.html"><button>Register</button></a>
+      <a href="login.html"><button>Login</button></a>
+      <a href="about.html#meet-our-coaches" class="coach-link-button">Meet the Coaches</a>
+    </div>
   </header>
- <nav class="desktop-nav">
-  <a href="index.html">Home</a>
-  <a href="about.html">About</a>
-  <a href="programs.html">Programs</a>
-  <a href="schedule.html">Schedule</a>
-  <a href="contact.html">Contact</a>
-</nav>
- <!-- Mobile Menu Toggle Button -->
-<button class="mobile-menu-toggle" aria-label="Open navigation menu" aria-expanded="false">&#9776;</button>
 
-<!-- Mobile Menu -->
-<div class="mobile-menu-container">
-  <a href="index.html">Home</a>
-  <a href="about.html">About</a>
-  <a href="programs.html">Programs</a>
-  <a href="schedule.html">Schedule</a>
-  <a href="contact.html">Contact</a>
-  <button class="mobile-menu-close" aria-label="Close navigation menu">&times;</button>
-</div>
-
-  <section>
-    <div class="booking-container">
-      <h2>Book a Session</h2>
-      <form id="bookingForm">
-        <label for="student">Student Name</label>
-      <input type="text" id="student" placeholder="Enter student name" required />
-
-        <label for="program">Program</label>
-    <select id="program" name="program" required>
-        <option value="" disabled selected>Select a program</option>
-        <option value="Tennis Private">Tennis Private — $80</option>
-       <option value="Summer Camp - Day Pass">Summer Camp - Day Pass — $30</option>
-       <option value="Summer Camp - Week Pass">Summer Camp - Week Pass — $130</option>
-       <option value="Kids Camp - Day Pass">Kids Camp - Day Pass — $40</option>
-       <option value="Kids Camp - Week Pass">Kids Camp - Week Pass — $110</option>
-    </select>
-        <label for="campDay" id="campDayLabel" style="display:none;">Choose Camp Day</label>
-        <input type="text" id="campDay" placeholder="Select a weekday" style="display:none;" readonly />
-        <label for="weekStart" id="weekStartLabel" style="display:none;">Select Week Start (Monday only)</label>
-        <input type="text" id="weekStart" placeholder="Select a Monday" style="display:none;" readonly />
-
-        <label for="coach" id="coachLabel" style="display:none;">Coach</label>
-        <select id="coach" style="display:none;">
-          <option value="">-- Select Coach --</option>
-          <option value="Ricardo Carvajalino">Ricardo Carvajalino</option>
-          <option value="Zachary Capone">Zachary Capone</option>
-          <option value="Jacob Capone">Jacob Capone</option>
-          <option value="Matthew Abbey">Matthew Abbey</option>
-          <option value="Paula Carvajalino">Paula Carvajalino</option>
-        </select>
-
-        <label for="date" id="dateLabel" style="display:none;">Preferred Date</label>
-        <input type="text" id="date" placeholder="Select a date" style="display:none;" readonly />
-
-        <label for="time" id="timeLabel" style="display:none;">Preferred Time</label>
-        <!-- Changed to dropdown showing available times -->
-        <select id="time" style="display:none;"></select>
-
-      <div id="email-container">
-        <label for="email">Your Email</label>
-        <input type="email" id="email" name="email" required />
-      </div>
-
-      <div id="phone-container">
-        <label for="phone">Your Phone Number</label>
-        <input type="tel" id="phone" name="phone" required />
-      </div>
-
-        <button type="submit">Pay &amp; Book</button>
-      </form>
+  <nav class="main-navigation" id="mainNavigationMobile">
+    <div class="nav-wrapper-desktop"> 
+       <ul class="nav-links-desktop">
+         <li><a href="index.html">Home</a></li>
+         <li><a href="about.html">About</a></li>
+         <li><a href="programs.html">Programs</a></li>
+         <li><a href="schedule.html">Schedule</a></li>
+         <li><a href="contact.html">Contact</a></li>
+         <li><a href="booking.html" class="highlighted-nav">Book</a></li>
+       </ul>
     </div>
-  </section>
+
+    <div class="mobile-menu-container">
+      <button class="mobile-menu-close" aria-label="Close navigation menu">&times;</button>
+      <ul class="nav-links-mobile">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="programs.html">Programs</a></li>
+        <li><a href="schedule.html">Schedule</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li><a href="booking.html">Book</a></li>
+      </ul>
+      <div class="auth-buttons-mobile" id="authContainerMobile">
+        <!-- Mobile auth buttons will be populated by JavaScript -->
+        <!-- Fallback or initial content -->
+        <a href="register.html"><button>Register</button></a>
+        <a href="login.html"><button>Login</button></a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <section>
+      <div class="booking-container">
+        <h2>Book a Session</h2>
+        <form id="bookingForm">
+          <label for="student">Student Name</label>
+        <input type="text" id="student" placeholder="Enter student name" required />
+
+          <label for="program">Program</label>
+      <select id="program" name="program" required>
+          <option value="" disabled selected>Select a program</option>
+          <option value="Tennis Private">Tennis Private — $80</option>
+         <option value="Summer Camp - Day Pass">Summer Camp - Day Pass — $30</option>
+         <option value="Summer Camp - Week Pass">Summer Camp - Week Pass — $130</option>
+         <option value="Kids Camp - Day Pass">Kids Camp - Day Pass — $40</option>
+         <option value="Kids Camp - Week Pass">Kids Camp - Week Pass — $110</option>
+      </select>
+          <label for="campDay" id="campDayLabel" style="display:none;">Choose Camp Day</label>
+          <input type="text" id="campDay" placeholder="Select a weekday" style="display:none;" readonly />
+          <label for="weekStart" id="weekStartLabel" style="display:none;">Select Week Start (Monday only)</label>
+          <input type="text" id="weekStart" placeholder="Select a Monday" style="display:none;" readonly />
+
+          <label for="coach" id="coachLabel" style="display:none;">Coach</label>
+          <select id="coach" style="display:none;">
+            <option value="">-- Select Coach --</option>
+            <option value="Ricardo Carvajalino">Ricardo Carvajalino</option>
+            <option value="Zachary Capone">Zachary Capone</option>
+            <option value="Jacob Capone">Jacob Capone</option>
+            <option value="Matthew Abbey">Matthew Abbey</option>
+            <option value="Paula Carvajalino">Paula Carvajalino</option>
+          </select>
+
+          <label for="date" id="dateLabel" style="display:none;">Preferred Date</label>
+          <input type="text" id="date" placeholder="Select a date" style="display:none;" readonly />
+
+          <label for="time" id="timeLabel" style="display:none;">Preferred Time</label>
+          <select id="time" style="display:none;"></select>
+
+        <div id="email-container">
+          <label for="email">Your Email</label>
+          <input type="email" id="email" name="email" required />
+        </div>
+
+        <div id="phone-container">
+          <label for="phone">Your Phone Number</label>
+          <input type="tel" id="phone" name="phone" required />
+        </div>
+
+          <button type="submit">Pay &amp; Book</button>
+        </form>
+      </div>
+    </section>
+  </main>
+  
 
   <footer>
     <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
@@ -245,7 +307,7 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
   <script>
-// 1) Your parseTime & fmtTime helpers
+// Helper Functions & Availability Map (Unchanged)
 function parseTime(str) {
   const [time, mer] = str.split(' ');
   let [h, m] = time.split(':').map(Number);
@@ -260,8 +322,6 @@ function fmtTime(mins) {
   if (h === 0) h = 12;
   return `${h}:${m.toString().padStart(2,'0')} ${mer}`;
 }
-
-// 2) Your availability map
 const availability = {
   'Jacob Capone':        { days: [4,5,6], times: { 4:{min:'3:00 PM',max:'8:00 PM'},5:{min:'3:00 PM',max:'8:00 PM'},6:{min:'8:00 AM',max:'4:00 PM'} } },
   'Zachary Capone':      { days: [1,2,3,4,5,6], times: { default:{min:'9:00 AM',max:'7:00 PM'},6:{min:'9:00 AM',max:'5:00 PM'} } },
@@ -272,10 +332,11 @@ const availability = {
 </script>
 
   <script>
-  
+  // Empty script block from original - preserved
 </script>
 
   <script>
+  // Main Booking Logic (Unchanged from previous correct version)
   const programEl     = document.getElementById('program');
   const coachEl       = document.getElementById('coach');
   const coachLbl      = document.getElementById('coachLabel');
@@ -289,26 +350,19 @@ const availability = {
   const weekStartLabel  = document.getElementById('weekStartLabel');
   let datePicker = null;
 
-let campDayPicker = null;
-let weekStartPicker = null;
-
   programEl.addEventListener('change', () => {
     const program    = programEl.value;
     const isCampDay  = program === 'Summer Camp - Day Pass' || program === 'Kids Camp - Day Pass';
     const isCampWeek = program === 'Summer Camp - Week Pass' || program === 'Kids Camp - Week Pass';
     const showCoach  = program === 'Tennis Private';
 
-    // Private lessons → show coach & date
     coachEl.style.display = showCoach ? 'block' : 'none';
     coachLbl.style.display = showCoach ? 'block' : 'none';
     dateEl.style.display  = showCoach ? 'block' : 'none';
     dateLbl.style.display = showCoach ? 'block' : 'none';
+    timeEl.style.display  = showCoach ? 'block' : 'none';
+    timeLbl.style.display = showCoach ? 'block' : 'none';
 
-    // Camps → show time dropdown
-timeEl.style.display  = showCoach ? 'block' : 'none';
-timeLbl.style.display = showCoach ? 'block' : 'none';
-
-    // Clear any old flatpickr
     if (datePicker) {
       datePicker.destroy();
       datePicker = null;
@@ -316,145 +370,99 @@ timeLbl.style.display = showCoach ? 'block' : 'none';
       dateEl.value = '';
     }
 
-    // Day-pass calendar
     if (isCampDay) {
-  campDayLabel.style.display = campDayInput.style.display = 'block';
+      campDayLabel.style.display = campDayInput.style.display = 'block';
+      setTimeout(() => {
+        flatpickr(campDayInput, {
+          dateFormat: 'Y-m-d', minDate: 'today',
+          disable: [
+            ...(program === 'Summer Camp - Day Pass' ? [d => d.getDay() === 0 || d.getDay() === 6] : []),
+            ...(program === 'Kids Camp - Day Pass' ? [d => d.getDay() < 1 || d.getDay() > 3] : [])
+          ]
+        });
+      }, 10);
+    } else {
+      campDayLabel.style.display = campDayInput.style.display = 'none';
+      campDayInput.value = '';
+    }
 
-  // Delay to ensure visibility before flatpickr binds
-  setTimeout(() => {
-    console.log('Initializing flatpickr for campDay');
-
-    flatpickr(campDayInput, {
-      dateFormat: 'Y-m-d',
-      minDate: 'today',
-      disable: [
-        // Summer Camp disables weekends
-        ...(program === 'Summer Camp - Day Pass' ? [
-          d => d.getDay() === 0 || d.getDay() === 6
-        ] : []),
-
-        // Kids Camp disables everything except Mon–Wed
-        ...(program === 'Kids Camp - Day Pass' ? [
-          d => d.getDay() < 1 || d.getDay() > 3
-        ] : [])
-      ]
-    });
-  }, 10);
-} else {
-  campDayLabel.style.display = campDayInput.style.display = 'none';
-  campDayInput.value = '';
-}
-
-    // Week-pass calendar
-if (isCampWeek) {
-  weekStartLabel.style.display = 'block';
-  weekStartInput.style.display = 'block';
-
-  // Ensure input is visible before attaching Flatpickr
-  setTimeout(() => {
-    console.log('Initializing flatpickr for weekStart');
-    
-    flatpickr(weekStartInput, {
-      dateFormat: 'Y-m-d',
-      minDate: 'today',
-      disable: [
-        (date) => date.getDay() !== 1 // Allow only Mondays
-      ],
-      clickOpens: true,
-      allowInput: false
-    });
-  }, 10);
-} else {
-  weekStartLabel.style.display = 'none';
-  weekStartInput.style.display = 'none';
-  weekStartInput.value = '';
-}
+    if (isCampWeek) {
+      weekStartLabel.style.display = weekStartInput.style.display = 'block';
+      setTimeout(() => {
+        flatpickr(weekStartInput, {
+          dateFormat: 'Y-m-d', minDate: 'today',
+          disable: [(date) => date.getDay() !== 1],
+          clickOpens: true, allowInput: false
+        });
+      }, 10);
+    } else {
+      weekStartLabel.style.display = weekStartInput.style.display = 'none';
+      weekStartInput.value = '';
+    }
   });
-</script>
 
-
-<script>
   let blockedDays = [];
   let timeBlocks = [];
 
-
-  
-
-
-coachEl.addEventListener('change', async () => {
-  if (!coachEl.value) return;
-
-  try {
-    const res = await fetch(`/api/public-availability?coach=${encodeURIComponent(coachEl.value)}`);
-    const data = await res.json();
-    blockedDays = data.days || [];
-    timeBlocks = data.times || [];
-  } catch (err) {
-    console.error('❌ Failed to fetch public availability:', err);
-    blockedDays = [];
-    timeBlocks = [];
-  }
-
-  if (datePicker) datePicker.destroy();
-
-  dateEl.value = '';
-  timeEl.innerHTML = '<option value="">-- Select Time --</option>';
-
-  dateLbl.style.display = dateEl.style.display = 'block';
-  timeLbl.style.display = timeEl.style.display = 'none';
-
-  const avail = availability[coachEl.value];
-
-  datePicker = flatpickr(dateEl, {
-    dateFormat: 'Y-m-d',
-    minDate: 'today',
-    disable: [
-      d => !avail.days.includes(d.getDay()),
-      ...blockedDays.map(d => new Date(d))
-    ],
-    onChange(selectedDates) {
-      const d = selectedDates[0];
-      const dow = d.getDay();
-      const slot = avail.times[dow] || avail.times.default;
-
-      timeEl.innerHTML = '<option value="">-- Select Time --</option>';
-
-      const selectedDateStr = d.toISOString().split('T')[0];
-      const blockedTimesForDate = timeBlocks
-        .filter(tb => tb.date === selectedDateStr)
-        .map(tb => [parseTime(tb.start), parseTime(tb.end)]);
-
-      for (let t = parseTime(slot.min); t + 30 <= parseTime(slot.max); t += 30) {
-        const isBlocked = blockedTimesForDate.some(([start, end]) => t >= start && t < end);
-        if (!isBlocked) {
-          const opt = document.createElement('option');
-          opt.value = fmtTime(t);
-          opt.textContent = fmtTime(t);
-          timeEl.appendChild(opt);
-        }
-      }
-
-      timeLbl.style.display = timeEl.style.display = 'block';
+  coachEl.addEventListener('change', async () => {
+    if (!coachEl.value) return;
+    try {
+      const res = await fetch(`/api/public-availability?coach=${encodeURIComponent(coachEl.value)}`);
+      const data = await res.json();
+      blockedDays = data.days || [];
+      timeBlocks = data.times || [];
+    } catch (err) {
+      console.error('❌ Failed to fetch public availability:', err);
+      blockedDays = []; timeBlocks = [];
     }
+
+    if (datePicker) datePicker.destroy();
+    dateEl.value = '';
+    timeEl.innerHTML = '<option value="">-- Select Time --</option>';
+    dateLbl.style.display = dateEl.style.display = 'block';
+    timeLbl.style.display = timeEl.style.display = 'none';
+
+    const avail = availability[coachEl.value];
+    datePicker = flatpickr(dateEl, {
+      dateFormat: 'Y-m-d', minDate: 'today',
+      disable: [
+        d => !avail.days.includes(d.getDay()),
+        ...blockedDays.map(d => new Date(d))
+      ],
+      onChange(selectedDates) {
+        const d = selectedDates[0];
+        const dow = d.getDay();
+        const slot = avail.times[dow] || avail.times.default;
+        timeEl.innerHTML = '<option value="">-- Select Time --</option>';
+        const selectedDateStr = d.toISOString().split('T')[0];
+        const blockedTimesForDate = timeBlocks
+          .filter(tb => tb.date === selectedDateStr)
+          .map(tb => [parseTime(tb.start), parseTime(tb.end)]);
+        for (let t = parseTime(slot.min); t + 30 <= parseTime(slot.max); t += 30) {
+          const isBlocked = blockedTimesForDate.some(([start, end]) => t >= start && t < end);
+          if (!isBlocked) {
+            const opt = document.createElement('option');
+            opt.value = fmtTime(t); opt.textContent = fmtTime(t);
+            timeEl.appendChild(opt);
+          }
+        }
+        timeLbl.style.display = timeEl.style.display = 'block';
+      }
+    });
   });
-});
-  // 2) Attach your submit handler only once
+
   document.getElementById('bookingForm').addEventListener('submit', async e => {
     e.preventDefault();
-
     const student = document.getElementById('student').value;
     const program = programEl.value;
     const coach   = coachEl.value || '';
     let date;
-
-    if (program === 'Summer Camp - Week Pass')      date = weekStartInput.value;
-    else if (program === 'Summer Camp - Day Pass')  date = campDayInput.value;
-    else                                            date = dateEl.value;
-
+    if (program.includes('Week Pass')) date = weekStartInput.value;
+    else if (program.includes('Day Pass')) date = campDayInput.value;
+    else date = dateEl.value;
     const time  = timeEl.value;
     const email = document.getElementById('email').value;
     const phone = document.getElementById('phone').value;
-
     try {
       const res = await fetch('/api/create-payment', {
         method: 'POST',
@@ -462,71 +470,58 @@ coachEl.addEventListener('change', async () => {
         credentials: 'include',
         body: JSON.stringify({ student, email, phone, program, coach, date, time })
       });
-
       if (!res.ok) throw new Error(await res.text());
       const { url } = await res.json();
       window.location.href = url;
-
     } catch (err) {
       console.error('Payment error', err);
       alert('Payment failed. Please try again.');
     }
   });
-
 </script>
 
+<!-- SCRIPT FOR MOBILE MENU, CHECK-SESSION, LOGOUT (Adapted for new structure) -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Mobile Menu Toggle Script --- 
+    // --- Mobile Menu Toggle Script (Adapted from index.html) ---
     const menuToggle = document.querySelector('.mobile-menu-toggle');
     const mobileMenuClose = document.querySelector('.mobile-menu-close');
-    const mainNav = document.querySelector('.mobile-menu-container');
+    // The main <nav> element is now the one that gets the 'mobile-menu--open' class
+    const mainNavElement = document.querySelector('nav.main-navigation'); 
 
-    if (menuToggle && mainNav && mobileMenuClose) {
+    if (menuToggle && mainNavElement && mobileMenuClose) {
         menuToggle.addEventListener('click', () => {
-            const isMenuOpen = mainNav.classList.toggle('mobile-menu--open');
-            menuToggle.setAttribute('aria-expanded', isMenuOpen);
-            if (isMenuOpen) {
-                menuToggle.innerHTML = '&times;';
-                menuToggle.setAttribute('aria-label', 'Close navigation menu');
-            } else {
-                menuToggle.innerHTML = '&#9776;';
-                menuToggle.setAttribute('aria-label', 'Open navigation menu');
-            }
+            const isMenuOpen = mainNavElement.classList.toggle('mobile-menu--open');
+            menuToggle.setAttribute('aria-expanded', String(isMenuOpen));
+            // Optional: Change hamburger to X and back if desired (not in index.html script)
+            // menuToggle.innerHTML = isMenuOpen ? '&times;' : '&#9776;';
         });
 
         mobileMenuClose.addEventListener('click', () => {
-            mainNav.classList.remove('mobile-menu--open');
-            if (menuToggle) {
-               menuToggle.setAttribute('aria-expanded', 'false');
-               menuToggle.innerHTML = '&#9776;';
-               menuToggle.setAttribute('aria-label', 'Open navigation menu');
-            }
+            mainNavElement.classList.remove('mobile-menu--open');
+            menuToggle.setAttribute('aria-expanded', 'false');
+            // menuToggle.innerHTML = '&#9776;';
         });
     }
 
-    const mobileNavLinks = document.querySelectorAll('.mobile-menu-container a');
-    if (mainNav && mobileNavLinks.length > 0) {
+    // Close mobile menu when a nav link is clicked (Adapted from index.html)
+    const mobileNavLinks = document.querySelectorAll('.mobile-menu-container ul.nav-links-mobile li a');
+    if (mainNavElement && mobileNavLinks.length > 0) {
         mobileNavLinks.forEach(link => {
             link.addEventListener('click', () => {
-                if (mainNav.classList.contains('mobile-menu--open')) {
-                    mainNav.classList.remove('mobile-menu--open');
-                    if (menuToggle) {
-                        menuToggle.setAttribute('aria-expanded', 'false');
-                        menuToggle.innerHTML = '&#9776;';
-                        menuToggle.setAttribute('aria-label', 'Open navigation menu');
-                    }
+                if (mainNavElement.classList.contains('mobile-menu--open')) {
+                    mainNavElement.classList.remove('mobile-menu--open');
+                    if(menuToggle) menuToggle.setAttribute('aria-expanded', 'false');
+                    // if(menuToggle) menuToggle.innerHTML = '&#9776;';
                 }
             });
         });
     }
 
-    // --- Updated checkSession and logout functions --- 
+    // --- Updated checkSession and logout functions (Content largely same, targets updated) ---
     async function checkSession() {
-        const existingGreeting = document.querySelector('div[style*="background:#0c3c78;color:white"]');
-        if (existingGreeting && existingGreeting.textContent.startsWith('Welcome,')) {
-            existingGreeting.remove();
-        }
+        const existingGreeting = document.querySelector('div.welcome-greeting'); 
+        if (existingGreeting) existingGreeting.remove();
 
         const emailContainer = document.getElementById('email-container');
         const emailInput = document.getElementById('email');
@@ -535,56 +530,63 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const res = await fetch('/api/check-session', { credentials: 'include' });
+            const data = await res.json();
 
-            const authContainerDesktop = document.getElementById('authContainerDesktop');
-            const authContainerMobile = document.getElementById('authContainerMobile');
+            const authContainerDesktop = document.getElementById('authContainerDesktop'); // Targets .auth-buttons-desktop
+            const authContainerMobile = document.getElementById('authContainerMobile');   // Targets .auth-buttons-mobile
 
-            const loggedOutHTML = `
-                <a href="register.html"><button id="registerBtnDesktop">Register</button></a>
-                <a href="login.html"><button id="loginBtnDesktop">Login</button></a>
+            // Default logged-out HTML now includes the "Meet the Coaches" link for desktop
+            const loggedOutDesktopHTML = `
+                <a href="register.html"><button>Register</button></a>
+                <a href="login.html"><button>Login</button></a>
+                <a href="about.html#meet-our-coaches" class="coach-link-button">Meet the Coaches</a>
             `;
             const loggedOutMobileHTML = `
-                <a href="register.html"><button id="registerBtnMobile">Register</button></a>
-                <a href="login.html"><button id="loginBtnMobile">Login</button></a>
+                <a href="register.html"><button>Register</button></a>
+                <a href="login.html"><button>Login</button></a>
             `;
 
-            if (res.ok) {
-                const data = await res.json();
-                
+            if (data && data.loggedIn) {
                 if (emailContainer) { emailContainer.style.display = 'none'; if(emailInput) emailInput.required = false; }
                 if (phoneContainer) { phoneContainer.style.display = 'none'; if(phoneInput) phoneInput.required = false; }
 
-                if (data.loggedIn) {
-                    const portal = data.isAdmin ? 'admin.html'
-                                 : data.isCoach ? 'instructor_portal.html'
-                                 : 'parent_portal.html';
-                    const portalName = data.isAdmin ? 'Admin Portal'
-                                   : data.isCoach ? 'Instructor Portal'
-                                   : 'Parent Portal';
+                const portal = data.isAdmin ? 'admin.html'
+                             : data.isCoach ? 'instructor_portal.html'
+                             : 'parent_portal.html';
+                const portalName = data.isAdmin ? 'Admin Portal'
+                               : data.isCoach ? 'Instructor Portal'
+                               : 'Parent Portal';
 
-                    const loggedInHTML = `
-                        <a href="${portal}"><button>${portalName}</button></a>
-                        <button onclick="logout()">Logout</button>
-                    `;
-                    const loggedInMobileHTML = loggedInHTML;
+                // Logged-in HTML for desktop also includes "Meet the Coaches"
+                const loggedInDesktopHTML = `
+                    <a href="${portal}"><button>${portalName}</button></a>
+                    <button onclick="logout()">Logout</button>
+                    <a href="about.html#meet-our-coaches" class="coach-link-button">Meet the Coaches</a>
+                `;
+                const loggedInMobileHTML = `
+                    <a href="${portal}"><button>${portalName}</button></a>
+                    <button onclick="logout()">Logout</button>
+                `;
 
-                    
+                if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInDesktopHTML;
+                if (authContainerMobile) authContainerMobile.innerHTML = loggedInMobileHTML;
 
-                    if (data.firstName) {
-                        const greeting = document.createElement('div');
-                        greeting.textContent = `Welcome, ${data.firstName}!`;
-                        greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
+                if (data.firstName) {
+                    const greeting = document.createElement('div');
+                    greeting.className = 'welcome-greeting'; 
+                    greeting.textContent = `Welcome, ${data.firstName}!`;
+                    // greeting.style.cssText is now handled by the .welcome-greeting class in <style>
+                    if(document.body.firstChild && document.body.firstChild.nodeName !== 'SCRIPT' && document.body.firstChild.nodeName !== 'LINK') {
                         document.body.insertBefore(greeting, document.body.firstChild);
+                    } else {
+                        // Fallback if firstChild is script/link or body is empty
+                        const mainContentArea = document.querySelector('main') || document.body;
+                        mainContentArea.parentNode.insertBefore(greeting, mainContentArea);
                     }
-                } else {
-                    
-                    
-                    if (emailContainer) { emailContainer.style.display = 'block'; if(emailInput) emailInput.required = true; }
-                    if (phoneContainer) { phoneContainer.style.display = 'block'; if(phoneInput) phoneInput.required = true; }
                 }
             } else {
-                
-                
+                if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutDesktopHTML;
+                if (authContainerMobile) authContainerMobile.innerHTML = loggedOutMobileHTML;
                 if (emailContainer) { emailContainer.style.display = 'block'; if(emailInput) emailInput.required = true; }
                 if (phoneContainer) { phoneContainer.style.display = 'block'; if(phoneInput) phoneInput.required = true; }
             }
@@ -597,27 +599,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const authContainerDesktop = document.getElementById('authContainerDesktop');
             const authContainerMobile = document.getElementById('authContainerMobile');
-            const loggedOutHTML = `
-                <a href="register.html"><button id="registerBtnDesktop">Register</button></a>
-                <a href="login.html"><button id="loginBtnDesktop">Login</button></a>
+            const loggedOutDesktopHTML = `
+                <a href="register.html"><button>Register</button></a>
+                <a href="login.html"><button>Login</button></a>
+                <a href="about.html#meet-our-coaches" class="coach-link-button">Meet the Coaches</a>
             `;
             const loggedOutMobileHTML = `
-                <a href="register.html"><button id="registerBtnMobile">Register</button></a>
-                <a href="login.html"><button id="loginBtnMobile">Login</button></a>
+                <a href="register.html"><button>Register</button></a>
+                <a href="login.html"><button>Login</button></a>
             `;
-            
-            
+            if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutDesktopHTML;
+            if (authContainerMobile) authContainerMobile.innerHTML = loggedOutMobileHTML;
         }
     }
 
-    function logout() {
+    window.logout = function() { // Ensure logout is global
         fetch('/api/logout', { method: 'POST', credentials: 'include' })
             .then(() => {
-                const existingGreeting = document.querySelector('div[style*="background:#0c3c78;color:white"]');
-                if (existingGreeting && existingGreeting.textContent.startsWith('Welcome,')) {
-                    existingGreeting.remove();
-                }
-                document.cookie = "userFirstName=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                const existingGreeting = document.querySelector('div.welcome-greeting');
+                if (existingGreeting) existingGreeting.remove();
+                document.cookie = "userFirstName=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; // Keep old cookie cleanup
+                location.reload();
+            })
+            .catch(err => {
+                console.error('Logout failed:', err);
                 location.reload();
             });
     }

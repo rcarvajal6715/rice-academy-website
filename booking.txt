@@ -83,23 +83,77 @@
   background-color: #c1da3b;
   color: #0c3c78;
 }
+
+/* Hide mobile menu toggle and container by default */
+.mobile-menu-toggle,
+.mobile-menu-container {
+  display: none;
+}
+
+/* Desktop nav only for larger screens */
+.desktop-nav {
+  display: flex;
+}
+
+/* Show mobile nav on small screens only */
+@media (max-width: 768px) {
+  .desktop-nav {
+    display: none;
+  }
+
+  .mobile-menu-toggle {
+    display: block;
+    background: #0c3c78;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 1.5rem;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+  }
+
+  .mobile-menu-container {
+    display: none;
+    flex-direction: column;
+    background-color: #0c3c78;
+    position: absolute;
+    top: 60px;
+    width: 100%;
+    padding: 10px;
+    z-index: 1000;
+  }
+
+  .mobile-menu-container a,
+  .mobile-menu-container button {
+    color: white;
+    padding: 10px;
+    text-align: left;
+    text-decoration: none;
+    background: none;
+    border: none;
+    font-size: 1rem;
+  }
+
+  .mobile-menu-close {
+    align-self: flex-end;
+    font-size: 1.5rem;
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+  }
+
+  .mobile-menu--open {
+    display: flex !important;
+  }
+}
   </style>
 </head>
 <body>
 
   <!-- Welcome banner if logged in -->
-  <script>
-    const firstName = document.cookie
-      .split('; ')
-      .find(r => r.startsWith('userFirstName='))
-      ?.split('=')[1];
-    if (firstName) {
-      const b = document.createElement('div');
-      b.textContent = `Welcome, ${decodeURIComponent(firstName)}!`;
-      b.style = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold';
-      document.body.insertBefore(b, document.body.firstChild);
-    }
-  </script>
+  
 
   <header>
     <div>
@@ -110,13 +164,25 @@
   <a href="about.html#meet-our-coaches" class="coach-link-button">Meet the Coaches</a>
 </div>
   </header>
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="about.html">About</a>
-    <a href="programs.html">Programs</a>
-    <a href="schedule.html">Schedule</a>
-    <a href="contact.html">Contact</a>
-  </nav>
+ <nav class="desktop-nav">
+  <a href="index.html">Home</a>
+  <a href="about.html">About</a>
+  <a href="programs.html">Programs</a>
+  <a href="schedule.html">Schedule</a>
+  <a href="contact.html">Contact</a>
+</nav>
+ <!-- Mobile Menu Toggle Button -->
+<button class="mobile-menu-toggle" aria-label="Open navigation menu" aria-expanded="false">&#9776;</button>
+
+<!-- Mobile Menu -->
+<div class="mobile-menu-container">
+  <a href="index.html">Home</a>
+  <a href="about.html">About</a>
+  <a href="programs.html">Programs</a>
+  <a href="schedule.html">Schedule</a>
+  <a href="contact.html">Contact</a>
+  <button class="mobile-menu-close" aria-label="Close navigation menu">&times;</button>
+</div>
 
   <section>
     <div class="booking-container">
@@ -161,6 +227,11 @@
         <input type="email" id="email" name="email" required />
       </div>
 
+      <div id="phone-container">
+        <label for="phone">Your Phone Number</label>
+        <input type="tel" id="phone" name="phone" required />
+      </div>
+
         <button type="submit">Pay &amp; Book</button>
       </form>
     </div>
@@ -201,21 +272,7 @@ const availability = {
 </script>
 
   <script>
-  window.addEventListener('DOMContentLoaded', async () => {
-    try {
-      const res = await fetch('/api/check-session', {
-        method: 'GET',
-        credentials: 'include'
-      });
-      if (res.ok) {
-        // if they’re logged in, hide the email field
-        const container = document.getElementById('email-container');
-        if (container) container.style.display = 'none';
-      }
-    } catch (err) {
-      console.error('Session check failed:', err);
-    }
-  });
+  
 </script>
 
   <script>
@@ -232,10 +289,13 @@ const availability = {
   const weekStartLabel  = document.getElementById('weekStartLabel');
   let datePicker = null;
 
+let campDayPicker = null;
+let weekStartPicker = null;
+
   programEl.addEventListener('change', () => {
     const program    = programEl.value;
-    const isCampDay  = program === 'Summer Camp - Day Pass';
-    const isCampWeek = program === 'Summer Camp - Week Pass';
+    const isCampDay  = program === 'Summer Camp - Day Pass' || program === 'Kids Camp - Day Pass';
+    const isCampWeek = program === 'Summer Camp - Week Pass' || program === 'Kids Camp - Week Pass';
     const showCoach  = program === 'Tennis Private';
 
     // Private lessons → show coach & date
@@ -245,8 +305,8 @@ const availability = {
     dateLbl.style.display = showCoach ? 'block' : 'none';
 
     // Camps → show time dropdown
-    timeEl.style.display  = (isCampDay || isCampWeek) ? 'block' : 'none';
-    timeLbl.style.display = (isCampDay || isCampWeek) ? 'block' : 'none';
+timeEl.style.display  = showCoach ? 'block' : 'none';
+timeLbl.style.display = showCoach ? 'block' : 'none';
 
     // Clear any old flatpickr
     if (datePicker) {
@@ -258,104 +318,311 @@ const availability = {
 
     // Day-pass calendar
     if (isCampDay) {
-      campDayLabel.style.display = campDayInput.style.display = 'block';
-      flatpickr(campDayInput, {
-  dateFormat: 'Y-m-d',
-  minDate: 'today',
-  disable: d => d.getDay() === 0 || d.getDay() === 6
-});
-    } else {
-      campDayLabel.style.display = campDayInput.style.display = 'none';
-      campDayInput.value = '';
-    }
+  campDayLabel.style.display = campDayInput.style.display = 'block';
+
+  // Delay to ensure visibility before flatpickr binds
+  setTimeout(() => {
+    console.log('Initializing flatpickr for campDay');
+
+    flatpickr(campDayInput, {
+      dateFormat: 'Y-m-d',
+      minDate: 'today',
+      disable: [
+        // Summer Camp disables weekends
+        ...(program === 'Summer Camp - Day Pass' ? [
+          d => d.getDay() === 0 || d.getDay() === 6
+        ] : []),
+
+        // Kids Camp disables everything except Mon–Wed
+        ...(program === 'Kids Camp - Day Pass' ? [
+          d => d.getDay() < 1 || d.getDay() > 3
+        ] : [])
+      ]
+    });
+  }, 10);
+} else {
+  campDayLabel.style.display = campDayInput.style.display = 'none';
+  campDayInput.value = '';
+}
 
     // Week-pass calendar
-    if (isCampWeek) {
-      weekStartLabel.style.display = weekStartInput.style.display = 'block';
-      flatpickr(weekStartInput, {
-  dateFormat: 'Y-m-d',
-  minDate: 'today',
-  disable: d => d.getDay() !== 1,
-  onChange(selectedDates) { /* … */ }
-});
-    } else {
-      weekStartLabel.style.display = weekStartInput.style.display = 'none';
-      weekStartInput.value = '';
-    }
+if (isCampWeek) {
+  weekStartLabel.style.display = 'block';
+  weekStartInput.style.display = 'block';
+
+  // Ensure input is visible before attaching Flatpickr
+  setTimeout(() => {
+    console.log('Initializing flatpickr for weekStart');
+    
+    flatpickr(weekStartInput, {
+      dateFormat: 'Y-m-d',
+      minDate: 'today',
+      disable: [
+        (date) => date.getDay() !== 1 // Allow only Mondays
+      ],
+      clickOpens: true,
+      allowInput: false
+    });
+  }, 10);
+} else {
+  weekStartLabel.style.display = 'none';
+  weekStartInput.style.display = 'none';
+  weekStartInput.value = '';
+}
   });
 </script>
 
 
 <script>
-coachEl.addEventListener('change', () => {
+  let blockedDays = [];
+  let timeBlocks = [];
+
+
+  
+
+
+coachEl.addEventListener('change', async () => {
   if (!coachEl.value) return;
-  // destroy any old instance
+
+  try {
+    const res = await fetch(`/api/public-availability?coach=${encodeURIComponent(coachEl.value)}`);
+    const data = await res.json();
+    blockedDays = data.days || [];
+    timeBlocks = data.times || [];
+  } catch (err) {
+    console.error('❌ Failed to fetch public availability:', err);
+    blockedDays = [];
+    timeBlocks = [];
+  }
+
   if (datePicker) datePicker.destroy();
-  // clear previous values
+
   dateEl.value = '';
   timeEl.innerHTML = '<option value="">-- Select Time --</option>';
-  // show the date & hide time until a date is picked
+
   dateLbl.style.display = dateEl.style.display = 'block';
   timeLbl.style.display = timeEl.style.display = 'none';
 
   const avail = availability[coachEl.value];
+
   datePicker = flatpickr(dateEl, {
-  dateFormat: 'Y-m-d',
-  minDate: 'today',
-  disable: [
-    d => !avail.days.includes(d.getDay())
-  ],
-  onChange(selectedDates) {
-    const d = selectedDates[0];
+    dateFormat: 'Y-m-d',
+    minDate: 'today',
+    disable: [
+      d => !avail.days.includes(d.getDay()),
+      ...blockedDays.map(d => new Date(d))
+    ],
+    onChange(selectedDates) {
+      const d = selectedDates[0];
       const dow = d.getDay();
       const slot = avail.times[dow] || avail.times.default;
-      // rebuild your time dropdown…
+
       timeEl.innerHTML = '<option value="">-- Select Time --</option>';
-      for (
-        let t = parseTime(slot.min);
-        t + 30 <= parseTime(slot.max);
-        t += 30
-      ) {
-        const opt = document.createElement('option');
-        opt.value = fmtTime(t);
-        opt.textContent = fmtTime(t);
-        timeEl.appendChild(opt);
+
+      const selectedDateStr = d.toISOString().split('T')[0];
+      const blockedTimesForDate = timeBlocks
+        .filter(tb => tb.date === selectedDateStr)
+        .map(tb => [parseTime(tb.start), parseTime(tb.end)]);
+
+      for (let t = parseTime(slot.min); t + 30 <= parseTime(slot.max); t += 30) {
+        const isBlocked = blockedTimesForDate.some(([start, end]) => t >= start && t < end);
+        if (!isBlocked) {
+          const opt = document.createElement('option');
+          opt.value = fmtTime(t);
+          opt.textContent = fmtTime(t);
+          timeEl.appendChild(opt);
+        }
       }
+
       timeLbl.style.display = timeEl.style.display = 'block';
     }
   });
 });
+  // 2) Attach your submit handler only once
+  document.getElementById('bookingForm').addEventListener('submit', async e => {
+    e.preventDefault();
+
+    const student = document.getElementById('student').value;
+    const program = programEl.value;
+    const coach   = coachEl.value || '';
+    let date;
+
+    if (program === 'Summer Camp - Week Pass')      date = weekStartInput.value;
+    else if (program === 'Summer Camp - Day Pass')  date = campDayInput.value;
+    else                                            date = dateEl.value;
+
+    const time  = timeEl.value;
+    const email = document.getElementById('email').value;
+    const phone = document.getElementById('phone').value;
+
+    try {
+      const res = await fetch('/api/create-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ student, email, phone, program, coach, date, time })
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+      const { url } = await res.json();
+      window.location.href = url;
+
+    } catch (err) {
+      console.error('Payment error', err);
+      alert('Payment failed. Please try again.');
+    }
+  });
+
 </script>
 
 <script>
-// 3) Attach your form submit listener *after* all your elems are defined:
-document.getElementById('bookingForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  console.log('💥 Submit hit');
-  const student = document.getElementById('student').value;
-  const program = programEl.value;
-  const coach   = coachEl.value || '';
-  let date;
-  if (program === 'Summer Camp - Week Pass')      date = weekStartInput.value;
-  else if (program === 'Summer Camp - Day Pass')  date = campDayInput.value;
-  else                                            date = dateEl.value;
-  const time  = timeEl.value;
-  const email = document.getElementById('email').value;
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Mobile Menu Toggle Script --- 
+    const menuToggle = document.querySelector('.mobile-menu-toggle');
+    const mobileMenuClose = document.querySelector('.mobile-menu-close');
+    const mainNav = document.querySelector('.mobile-menu-container');
 
-  try {
-    const res = await fetch('/api/create-payment', {
-      method:      'POST',
-      headers:     { 'Content-Type':'application/json' },
-      credentials: 'include',
-      body:        JSON.stringify({ student, email, program, coach, date, time })
-    });
-    if (!res.ok) throw new Error(await res.text());
-    const { url } = await res.json();
-    window.location.href = url;
-  } catch (err) {
-    console.error('Payment error', err);
-    alert('Payment failed. Please try again.');
-  }
+    if (menuToggle && mainNav && mobileMenuClose) {
+        menuToggle.addEventListener('click', () => {
+            const isMenuOpen = mainNav.classList.toggle('mobile-menu--open');
+            menuToggle.setAttribute('aria-expanded', isMenuOpen);
+            if (isMenuOpen) {
+                menuToggle.innerHTML = '&times;';
+                menuToggle.setAttribute('aria-label', 'Close navigation menu');
+            } else {
+                menuToggle.innerHTML = '&#9776;';
+                menuToggle.setAttribute('aria-label', 'Open navigation menu');
+            }
+        });
+
+        mobileMenuClose.addEventListener('click', () => {
+            mainNav.classList.remove('mobile-menu--open');
+            if (menuToggle) {
+               menuToggle.setAttribute('aria-expanded', 'false');
+               menuToggle.innerHTML = '&#9776;';
+               menuToggle.setAttribute('aria-label', 'Open navigation menu');
+            }
+        });
+    }
+
+    const mobileNavLinks = document.querySelectorAll('.mobile-menu-container a');
+    if (mainNav && mobileNavLinks.length > 0) {
+        mobileNavLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                if (mainNav.classList.contains('mobile-menu--open')) {
+                    mainNav.classList.remove('mobile-menu--open');
+                    if (menuToggle) {
+                        menuToggle.setAttribute('aria-expanded', 'false');
+                        menuToggle.innerHTML = '&#9776;';
+                        menuToggle.setAttribute('aria-label', 'Open navigation menu');
+                    }
+                }
+            });
+        });
+    }
+
+    // --- Updated checkSession and logout functions --- 
+    async function checkSession() {
+        const existingGreeting = document.querySelector('div[style*="background:#0c3c78;color:white"]');
+        if (existingGreeting && existingGreeting.textContent.startsWith('Welcome,')) {
+            existingGreeting.remove();
+        }
+
+        const emailContainer = document.getElementById('email-container');
+        const emailInput = document.getElementById('email');
+        const phoneContainer = document.getElementById('phone-container');
+        const phoneInput = document.getElementById('phone');
+
+        try {
+            const res = await fetch('/api/check-session', { credentials: 'include' });
+
+            const authContainerDesktop = document.getElementById('authContainerDesktop');
+            const authContainerMobile = document.getElementById('authContainerMobile');
+
+            const loggedOutHTML = `
+                <a href="register.html"><button id="registerBtnDesktop">Register</button></a>
+                <a href="login.html"><button id="loginBtnDesktop">Login</button></a>
+            `;
+            const loggedOutMobileHTML = `
+                <a href="register.html"><button id="registerBtnMobile">Register</button></a>
+                <a href="login.html"><button id="loginBtnMobile">Login</button></a>
+            `;
+
+            if (res.ok) {
+                const data = await res.json();
+                
+                if (emailContainer) { emailContainer.style.display = 'none'; if(emailInput) emailInput.required = false; }
+                if (phoneContainer) { phoneContainer.style.display = 'none'; if(phoneInput) phoneInput.required = false; }
+
+                if (data.loggedIn) {
+                    const portal = data.isAdmin ? 'admin.html'
+                                 : data.isCoach ? 'instructor_portal.html'
+                                 : 'parent_portal.html';
+                    const portalName = data.isAdmin ? 'Admin Portal'
+                                   : data.isCoach ? 'Instructor Portal'
+                                   : 'Parent Portal';
+
+                    const loggedInHTML = `
+                        <a href="${portal}"><button>${portalName}</button></a>
+                        <button onclick="logout()">Logout</button>
+                    `;
+                    const loggedInMobileHTML = loggedInHTML;
+
+                    
+
+                    if (data.firstName) {
+                        const greeting = document.createElement('div');
+                        greeting.textContent = `Welcome, ${data.firstName}!`;
+                        greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
+                        document.body.insertBefore(greeting, document.body.firstChild);
+                    }
+                } else {
+                    
+                    
+                    if (emailContainer) { emailContainer.style.display = 'block'; if(emailInput) emailInput.required = true; }
+                    if (phoneContainer) { phoneContainer.style.display = 'block'; if(phoneInput) phoneInput.required = true; }
+                }
+            } else {
+                
+                
+                if (emailContainer) { emailContainer.style.display = 'block'; if(emailInput) emailInput.required = true; }
+                if (phoneContainer) { phoneContainer.style.display = 'block'; if(phoneInput) phoneInput.required = true; }
+            }
+        } catch (err) {
+            console.error('Session check failed:', err);
+            if (emailContainer) emailContainer.style.display = 'block';
+            if (emailInput) emailInput.required = true;
+            if (phoneContainer) phoneContainer.style.display = 'block';
+            if (phoneInput) phoneInput.required = true;
+
+            const authContainerDesktop = document.getElementById('authContainerDesktop');
+            const authContainerMobile = document.getElementById('authContainerMobile');
+            const loggedOutHTML = `
+                <a href="register.html"><button id="registerBtnDesktop">Register</button></a>
+                <a href="login.html"><button id="loginBtnDesktop">Login</button></a>
+            `;
+            const loggedOutMobileHTML = `
+                <a href="register.html"><button id="registerBtnMobile">Register</button></a>
+                <a href="login.html"><button id="loginBtnMobile">Login</button></a>
+            `;
+            
+            
+        }
+    }
+
+    function logout() {
+        fetch('/api/logout', { method: 'POST', credentials: 'include' })
+            .then(() => {
+                const existingGreeting = document.querySelector('div[style*="background:#0c3c78;color:white"]');
+                if (existingGreeting && existingGreeting.textContent.startsWith('Welcome,')) {
+                    existingGreeting.remove();
+                }
+                document.cookie = "userFirstName=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                location.reload();
+            });
+    }
+
+    checkSession();
 });
 </script>
 </body>

@@ -70,10 +70,12 @@
        right: 20px; 
        display: flex;
        align-items: center;
+       gap: 15px; /* Added gap property */
      }
      .auth-buttons-desktop a button, .auth-buttons-desktop button {
        background-color: white; color: #0c3c78; border: none; padding: 10px 20px; 
-       margin-left: 15px; border-radius: 5px; font-weight: bold; cursor: pointer;
+       /* margin-left: 15px; */ /* Removed margin-left */
+       border-radius: 5px; font-weight: bold; cursor: pointer;
        transition: all 0.3s ease; white-space: nowrap;
      }
      .auth-buttons-desktop a button:hover, .auth-buttons-desktop button:hover { background-color: #0f4fa0; color: white; }
@@ -142,6 +144,11 @@
 
       section {
         padding: 20px 10px; /* Reduce padding for smaller screens */
+      }
+
+      #all-lessons-container {
+        overflow-x: auto; /* Allow horizontal scrolling only for the table container */
+        -webkit-overflow-scrolling: touch; /* Optional: for smoother scrolling on iOS */
       }
     }
 /* === End Global Header & Navigation Styles === */
@@ -285,6 +292,24 @@
   </script>
 
   <script>
+  // Helper function to format time to 12-hour AM/PM
+  function formatTime_12hr(timeStr) {
+    if (!timeStr || !timeStr.includes(':')) {
+      return timeStr; // Return original if invalid
+    }
+    const parts = timeStr.split(':');
+    let hours = parseInt(parts[0], 10);
+    const minutes = parseInt(parts[1], 10);
+    
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    
+    const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+    
+    return hours + ':' + minutesStr + ' ' + ampm;
+  }
+
   // Load & render the admin lessons table
   async function loadAllLessons() {
     const res = await fetch('/api/admin/lessons', { credentials: 'include' });
@@ -320,12 +345,13 @@
     lessons.forEach(les => {
       const dateStr = new Date(les.date).toLocaleDateString();
       const paidText = les.paid ? 'Yes' : 'No';
+      const formattedTime = formatTime_12hr(les.time); // Use the helper function
       html += `
         <tr data-id="${les.id}">
           <td style="padding:8px; border:1px solid #ddd;">${les.program}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.coach}</td>
           <td style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${les.time}</td>
+          <td style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
           <td style="padding:8px; border:1px solid #ddd;">${paidText}</td>
           <td style="padding:8px; border:1px solid #ddd;">

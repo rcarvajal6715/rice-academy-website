@@ -73,7 +73,7 @@
      }
      .auth-buttons-desktop a button, .auth-buttons-desktop button {
        background-color: white; color: #0c3c78; border: none; padding: 10px 20px; 
-       margin-left: 10px; border-radius: 5px; font-weight: bold; cursor: pointer;
+       margin-left: 15px; border-radius: 5px; font-weight: bold; cursor: pointer;
        transition: all 0.3s ease; white-space: nowrap;
      }
      .auth-buttons-desktop a button:hover, .auth-buttons-desktop button:hover { background-color: #0f4fa0; color: white; }
@@ -130,7 +130,20 @@
        .nav-wrapper-desktop { display: none; }
        .auth-buttons-desktop { display: none; } 
        nav.main-navigation { padding: 0; background-color: transparent; }
-     }
+
+      /* Mobile-specific layout adjustments */
+      form {
+        grid-template-columns: 1fr; /* Change to single column layout */
+      }
+
+      h2 {
+        margin-bottom: 20px; /* Add bottom margin for h2 */
+      }
+
+      section {
+        padding: 20px 10px; /* Reduce padding for smaller screens */
+      }
+    }
 /* === End Global Header & Navigation Styles === */
   </style>
 </head>

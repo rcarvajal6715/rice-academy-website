@@ -87,8 +87,18 @@
      }
      nav.main-navigation.mobile-menu--open .mobile-menu-container { display: block; }
      .mobile-menu-close {
-        display: block; position: absolute; top: 15px; right: 20px;
-        background: none; border: none; color: white; font-size: 28px; cursor: pointer;
+        display: block; 
+        position: absolute; 
+        top: 10px; /* Adjusted */
+        right: 10px; /* Adjusted */
+        left: auto; /* Explicitly set */
+        bottom: auto; /* Explicitly set */
+        background: none; 
+        border: none; 
+        color: white; 
+        font-size: 28px; 
+        cursor: pointer;
+        z-index: 10; /* Optionally add a z-index */
      }
      ul.nav-links-mobile { list-style: none; padding: 0; margin: 50px 0 20px; }
      ul.nav-links-mobile li a {

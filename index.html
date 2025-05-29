@@ -15,6 +15,14 @@
   <meta property="og:url" content="https://c2tennisacademy.com/">
 
   <style>
+    @keyframes spin {
+        from {
+            transform: rotate(0deg);
+        }
+        to {
+            transform: rotate(360deg);
+        }
+    }
     html, body {
       height: 100%;
       margin: 0;
@@ -167,14 +175,39 @@
 /* Hero Section specific responsive styles from old rules */
 @media (max-width: 768px) {
     .hero {
-        padding: 80px 15px; 
-        min-height: auto; 
+        padding: 20px 15px; /* Adjusted padding for full vh */
+        min-height: 100vh; /* Make hero section full viewport height */
+        /* background-image: url('mobilebackground.png'); Removed */
+        background-color: black; /* Set background color to black */
+        /* Add flexbox properties for vertical centering of content */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        box-sizing: border-box; /* Ensure padding doesn't add to 100vh */
     }
+
+    .mobile-hero-spinning-image {
+        max-width: 70%; /* Make image smaller than container */
+        max-height: 70vh; /* Ensure it doesn't get too tall */
+        object-fit: contain; /* Show whole image, scaled down, letterboxed if needed */
+        display: block; /* Ensure it's displayed for animation */
+        animation-name: spin;
+        animation-duration: 20s;
+        animation-iteration-count: infinite;
+        animation-timing-function: linear;
+        /* Centering is handled by parent .hero flex properties */
+    }
+
     .hero h1 {
         font-size: 2.2em; 
+        color: black;
+        text-shadow: none; 
     }
     .hero p {
         font-size: 1.1em; 
+        color: black;
+        text-shadow: none; 
     }
 }
 
@@ -186,9 +219,13 @@
     }
     .hero h1 {
         font-size: 1.8em;
+        color: black; /* Changed text color to black */
+        text-shadow: none; /* Removed text shadow for better readability on black text */
     }
     .hero p {
         font-size: 1em;
+        color: black; /* Changed text color to black */
+        text-shadow: none; /* Removed text shadow */
     }
 }
   </style>
@@ -243,6 +280,7 @@
 
   <main>
     <section class="hero">
+      <img src="mobilebackground.png" alt="Spinning background element" class="mobile-hero-spinning-image">
       <h1>Welcome to C2 Tennis Academy</h1>
       <p>Where passion meets performance</p>
     </section>

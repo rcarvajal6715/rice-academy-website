@@ -58,6 +58,15 @@
       font-size: 1.5em;
       text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
     }
+    .mobile-hero-spinning-image {
+        display: none; /* Hidden by default (desktop) */
+    }
+    .hero-image-text-wrapper {
+      position: relative;
+      display: flex; 
+      justify-content: center;
+      align-items: center;
+    }
     
 /* === Global Header & Navigation Styles (Revised for Desktop) === */
      header {
@@ -178,7 +187,10 @@
         padding: 20px 15px; /* Adjusted padding for full vh */
         min-height: 100vh; /* Make hero section full viewport height */
         /* background-image: url('mobilebackground.png'); Removed */
-        background-color: black; /* Set background color to black */
+        background-image: url('blackbackground.png');
+        background-size: cover;
+        background-position: center center;
+        background-repeat: no-repeat;
         /* Add flexbox properties for vertical centering of content */
         display: flex;
         flex-direction: column;
@@ -200,13 +212,19 @@
     }
 
     .hero h1 {
-        font-size: 2.2em; 
-        color: black;
-        text-shadow: none; 
+        font-size: 2.8em; /* Adjusted font size */
+        color: white; /* Adjusted color */
+        position: absolute;
+        top: 25%; /* Adjusted top position */
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%; /* Adjusted width */
+        max-width: 600px; /* Max-width for safety */
+        text-align: center; /* Ensure text is centered */
     }
     .hero p {
         font-size: 1.1em; 
-        color: black;
+        color: white; /* Changed for visibility on black background */
         text-shadow: none; 
     }
 }
@@ -218,14 +236,20 @@
         padding: 50px 10px;
     }
     .hero h1 {
-        font-size: 1.8em;
-        color: black; /* Changed text color to black */
-        text-shadow: none; /* Removed text shadow for better readability on black text */
+        font-size: 2.2em; /* Corrected font size for 480px */
+        color: white; /* Adjusted color */
+        position: absolute;
+        top: 25%; /* Adjusted top position */
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%; /* Adjusted width */
+        max-width: 600px; /* Max-width for safety */
+        text-align: center; /* Ensure text is centered */
     }
     .hero p {
         font-size: 1em;
-        color: black; /* Changed text color to black */
-        text-shadow: none; /* Removed text shadow */
+        color: white; /* Changed for visibility on black background */
+        text-shadow: none; 
     }
 }
   </style>
@@ -280,8 +304,10 @@
 
   <main>
     <section class="hero">
-      <img src="mobilebackground.png" alt="Spinning background element" class="mobile-hero-spinning-image">
-      <h1>Welcome to C2 Tennis Academy</h1>
+      <div class="hero-image-text-wrapper">
+        <img src="mobilebackground.png" alt="Spinning background element" class="mobile-hero-spinning-image">
+        <h1>Welcome to C2 Tennis Academy</h1>
+      </div>
       <p>Where passion meets performance</p>
     </section>
   </main>

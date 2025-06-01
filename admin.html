@@ -50,6 +50,7 @@
        color: #f0f0f0;
        /* display: none; /* Subtitle can be shown or hidden based on page */
      }
+     
      .mobile-menu-toggle { display: none; background: none; border: none; color: white; font-size: 28px; cursor: pointer; padding: 5px; }
      nav.main-navigation { background-color: #092e5e; }
      .nav-wrapper-desktop { 
@@ -115,15 +116,7 @@
      }
      .auth-buttons-mobile a button:hover, .auth-buttons-mobile button:hover { background-color: #c1da3b; }
      
-     /* Ensure body takes full height for footer behavior if not already handled by page-specific html, body */
-     /* body { 
-        display: flex; 
-        flex-direction: column; 
-        min-height: 100vh; 
-     } */
-     /* main { /* Allow main content to grow and push footer down, if not handled by page-specific section {flex:1} */
-     /*   flex: 1;
-     } */
+     
      footer { /* Global footer style */
         background-color: #0c3c78; color: white; text-align: center; padding: 20px; margin-top:auto; /* Pushes to bottom in flex if body is flex column */
      }
@@ -161,6 +154,29 @@
         -webkit-overflow-scrolling: touch; /* Optional: for smoother scrolling on iOS */
       }
     }
+  /* Override the highlighted “Book” pill to be fully rounded */
+ul.nav-links-desktop li a.highlighted-nav {
+  border-radius: 9999px;
+}
+
+/* If you also want the mobile “Book” link rounded, do: */
+ul.nav-links-mobile li a.highlighted-nav {
+  border-radius: 9999px;
+}
+/* Make desktop nav links more pill-shaped */
+ul.nav-links-desktop li a {
+  border-radius: 9999px;
+}
+
+/* Ensure highlighted tab stays pill-shaped */
+ul.nav-links-desktop li a.highlighted-nav {
+  border-radius: 9999px;
+}
+
+/* Make mobile nav links match */
+ul.nav-links-mobile li a {
+  border-radius: 9999px;
+}
 /* === End Global Header & Navigation Styles === */
   </style>
 </head>

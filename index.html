@@ -23,6 +23,26 @@
             transform: rotate(360deg);
         }
     }
+    /* ===== Blue “Explore” button ===== */
+.explore-button {
+  background-color: #3b82f6;               /* blue-500 */
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 2rem;                   /* roughly py-3 px-8 */
+  border: none;
+  border-radius: 9999px;                   /* pill shape */
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+              0   4px  6px -2px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transform-origin: center center;
+  transition: background-color 0.2s ease,
+              transform 0.2s ease;
+}
+
+.explore-button:hover {
+  background-color: #2563eb;               /* blue-600 */
+  transform: scale(1.05);
+}
     html, body {
       height: 100%;
       margin: 0;
@@ -307,6 +327,9 @@
       <div class="hero-text-content"> <!-- New wrapper for text -->
         <h1>Welcome to C2 Tennis Academy</h1>
         <p>Where passion meets performance</p>
+        <button class="explore-button" onclick="location.href='/programs.html'">
+        Our Mission
+      </button>
       </div>
       <img src="mobilebackground.png" alt="Spinning background element" class="mobile-hero-spinning-image">
     </section>

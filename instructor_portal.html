@@ -341,6 +341,29 @@ label {
        .auth-buttons-desktop { display: none; /* Hides desktop auth buttons */ } 
        nav.main-navigation { padding: 0; background-color: transparent; /* Nav element itself becomes a container for mobile menu logic */ }
      }
+       /* Override the highlighted “Book” pill to be fully rounded */
+ul.nav-links-desktop li a.highlighted-nav {
+  border-radius: 9999px;
+}
+
+/* If you also want the mobile “Book” link rounded, do: */
+ul.nav-links-mobile li a.highlighted-nav {
+  border-radius: 9999px;
+}
+/* Make desktop nav links more pill-shaped */
+ul.nav-links-desktop li a {
+  border-radius: 9999px;
+}
+
+/* Ensure highlighted tab stays pill-shaped */
+ul.nav-links-desktop li a.highlighted-nav {
+  border-radius: 9999px;
+}
+
+/* Make mobile nav links match */
+ul.nav-links-mobile li a {
+  border-radius: 9999px;
+}
 /* === End Global Header & Navigation Styles === */
   </style>
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet" />

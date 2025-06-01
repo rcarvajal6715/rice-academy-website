@@ -25,14 +25,17 @@
     }
     /* ===== Blue “Explore” button ===== */
 .explore-button {
-  background-color: #3b82f6;               /* blue-500 */
+  font-family: Arial, sans-serif; /* same as <body> */
+  font-size: 1rem;                /* matches nav links’ default */
+  font-weight: 400;               /* normal weight, like the links */
+  background-color: #3b82f6;
   color: white;
-  font-weight: 600;
-  padding: 0.75rem 2rem;                   /* roughly py-3 px-8 */
+  padding: 0.75rem 2rem;
   border: none;
-  border-radius: 9999px;                   /* pill shape */
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
-              0   4px  6px -2px rgba(0, 0, 0, 0.05);
+  border-radius: 9999px;
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0   4px  6px -2px rgba(0, 0, 0, 0.05);
   cursor: pointer;
   transform-origin: center center;
   transition: background-color 0.2s ease,
@@ -40,7 +43,7 @@
 }
 
 .explore-button:hover {
-  background-color: #2563eb;               /* blue-600 */
+  background-color: #2563eb;
   transform: scale(1.05);
 }
     html, body {
@@ -271,6 +274,29 @@
         color: white; /* Changed for visibility on black background */
         text-shadow: none; 
     }
+}
+/* Make desktop nav links more pill-shaped */
+ul.nav-links-desktop li a {
+  border-radius: 9999px;
+}
+
+/* Ensure highlighted tab stays pill-shaped */
+ul.nav-links-desktop li a.highlighted-nav {
+  border-radius: 9999px;
+}
+
+/* Make mobile nav links match */
+ul.nav-links-mobile li a {
+  border-radius: 9999px;
+}
+/* Override the highlighted “Book” pill to be fully rounded */
+ul.nav-links-desktop li a.highlighted-nav {
+  border-radius: 9999px;
+}
+
+/* If you also want the mobile “Book” link rounded, do: */
+ul.nav-links-mobile li a.highlighted-nav {
+  border-radius: 9999px;
 }
   </style>
 </head>

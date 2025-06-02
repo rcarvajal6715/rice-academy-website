@@ -223,14 +223,14 @@
     .sticky-section {
       position: -webkit-sticky;
       position: sticky;
-      top: 0;
+      top: 0; /* Temporarily changed for diagnostics */
       min-height: 100vh;
-      overflow: hidden;
     }
 
     /* ─── Hero / Banner with black overlay ─── */
     .hero {
       /* Make it exactly one viewport high */
+      position: sticky; 
       height: 100vh;
       background: url('mission.png') no-repeat center center/cover;
       color: white;
@@ -241,8 +241,7 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      position: relative;
-      z-index: 1;
+      z-index: 1; /* Temporarily changed for diagnostics */
     }
     .hero::after {
       content: '';
@@ -288,11 +287,12 @@
 
     /* ─── Mission Section ─── */
     .mission-section {
-      background-color: white;
-      padding: 60px 20px;
-      text-align: center;
-      z-index: 1;
-    }
+  position: relative;    /* makes z-index:2 actually work */
+  z-index: 2;            /* now this will sit on top of .hero */
+  background-color: white;
+  padding: 60px 20px;
+  text-align: center;
+}
     .mission-section .mission-text {
       font-size: 1.125em;
       line-height: 1.6;
@@ -303,10 +303,11 @@
 
     /* ─── Community Outreach ─── */
     .community-section {
-      background-color: #f4f7fa;
-      padding: 60px 20px;
-      z-index: 1;
-    }
+      z-index: 3;
+  /* position: relative;  <-- you can drop this entirely */
+  background-color: #f4f7fa;
+  padding: 60px 20px;
+}
     .community-section h3 {
       text-align: center;
       margin-bottom: 1em;
@@ -343,7 +344,7 @@
       text-align: center;
       padding: 20px;
       margin-top: 60px;
-      z-index: 10;
+      z-index: 4;
     }
   </style>
 </head>
@@ -410,7 +411,7 @@
   </section>
 
   <!-- ─── MISSION STATEMENT ─── -->
-  <section class="mission-section sticky-section">
+ <section class="mission-section sticky-section">
     <div class="mission-text">
       <p>
         At C2 Tennis Academy, we believe that tennis is more than just a sport—it’s a path to physical wellness, mental resilience, and community connection. Our certified coaches tailor lessons to each student’s skill level, whether you’re picking up a racquet for the first time or competing at a collegiate level. By blending cutting-edge video analysis, AI-driven performance feedback, and compassionate mentorship, we ensure every player sees real, measurable progress.

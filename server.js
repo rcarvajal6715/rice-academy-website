@@ -65,6 +65,82 @@ app.get('/api/instructor-offdays', async (req, res) => {
   }
 });
 
+app.put('/api/admin/booking-payment/:id', async (req, res) => {
+  if (!req.session.user?.isAdmin) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+
+  const { id: bookingId } = req.params;
+  const { lesson_cost_from_req, amount_paid_from_req, mark_as_fully_paid } = req.body;
+
+  try {
+    const { rows: currentBookings } = await pool.query(
+      'SELECT lesson_cost, amount_paid, paid FROM bookings WHERE id = $1',
+      [bookingId]
+    );
+
+    if (currentBookings.length === 0) {
+      return res.status(404).json({ message: 'Booking not found.' });
+    }
+
+    const currentBooking = currentBookings[0];
+    let currentLessonCost = currentBooking.lesson_cost;
+    let currentAmountPaid = currentBooking.amount_paid;
+
+    let newLessonCost = lesson_cost_from_req !== undefined ? parseFloat(lesson_cost_from_req) : currentLessonCost;
+    let newAmountPaid = amount_paid_from_req !== undefined ? parseFloat(amount_paid_from_req) : currentAmountPaid;
+
+    newLessonCost = isNaN(newLessonCost) ? currentLessonCost : newLessonCost;
+    newAmountPaid = isNaN(newAmountPaid) ? currentAmountPaid : newAmountPaid;
+    
+    // Ensure they are numbers or null for lesson_cost
+    if (newLessonCost !== null && typeof newLessonCost !== 'number') newLessonCost = parseFloat(newLessonCost) || null;
+    if (typeof newAmountPaid !== 'number') newAmountPaid = parseFloat(newAmountPaid) || 0;
+
+
+    let newPaidStatus = currentBooking.paid; // Default to current status
+
+    if (mark_as_fully_paid === true) {
+        if (newLessonCost !== null && newLessonCost > 0) {
+            newAmountPaid = newLessonCost; 
+        } else if (newLessonCost === 0 || newLessonCost === null) { // For free items or if cost becomes null
+            newAmountPaid = 0;
+        }
+        newPaidStatus = true;
+    } else {
+        // If not explicitly marking as fully paid, determine status based on amounts
+        if (newLessonCost !== null && newLessonCost > 0) {
+            newPaidStatus = newAmountPaid >= newLessonCost;
+        } else if (newLessonCost === 0) { // Free item
+            newPaidStatus = true; // Considered paid if cost is 0
+        } else { // lesson_cost is null
+            newPaidStatus = false; // Cannot be considered paid if cost is unknown, unless marked_as_fully_paid
+        }
+    }
+    
+    // If an amount_paid_from_req was provided, and it's less than a positive lesson_cost,
+    // it might make the item unpaid unless mark_as_fully_paid was true.
+    if (amount_paid_from_req !== undefined && newLessonCost !== null && newLessonCost > 0 && newAmountPaid < newLessonCost && !mark_as_fully_paid) {
+        newPaidStatus = false;
+    }
+
+
+    const updatedBooking = await pool.query(
+      `UPDATE bookings 
+       SET lesson_cost = $1, amount_paid = $2, paid = $3 
+       WHERE id = $4 
+       RETURNING *`,
+      [newLessonCost, newAmountPaid, newPaidStatus, bookingId]
+    );
+
+    res.json(updatedBooking.rows[0]);
+
+  } catch (err) {
+    console.error('Error updating booking payment:', err);
+    res.status(500).json({ message: 'Failed to update booking payment due to a server error.' });
+  }
+});
+
 // Add or update an off-day (if same (coach, date, time) exists, update it)
 // Auth: must be logged in as this coach (ensure req.session.coachName matches body.coach_name)
 app.post('/api/instructor-offdays', async (req, res) => {
@@ -336,7 +412,7 @@ app.get('/api/admin/lessons', async (req, res) => {
   }
   try {
     const { rows } = await pool.query(`
-      SELECT id, program, coach, date, time, student, paid, email, phone
+      SELECT id, program, coach, date, time, student, paid, email, phone, lesson_cost, amount_paid
       FROM bookings
       ORDER BY date DESC, time DESC
     `);
@@ -605,9 +681,9 @@ app.post('/api/create-payment', async (req, res) => {
       // a) Insert booking as paid
       await pool.query(
         `INSERT INTO bookings
-           (email, phone, program, coach, date, time, session_id, paid, student)
-         VALUES ($1, $2, $3, $4, $5, $6, NULL, TRUE, $7)`,
-        [email, phone, program, coach, date, time, student]
+           (email, phone, program, coach, date, time, session_id, paid, student, lesson_cost, amount_paid)
+         VALUES ($1, $2, $3, $4, $5, $6, NULL, TRUE, $7, 0, 0)`,
+        [email, phone, program, coach, date, time, student, 0, 0]
       );
 
       // b) Notify coach via email-to-SMS
@@ -650,11 +726,12 @@ app.post('/api/create-payment', async (req, res) => {
     });
 
     // b) Record the booking as unpaid until webhook marks it paid
+    const lessonCost = entry.unit_amount / 100;
     await pool.query(
       `INSERT INTO bookings
-         (email, phone, program, coach, date, time, session_id, paid, student)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8)`,
-      [email, phone, program, coach, date, time, sessionObj.id, student]
+         (email, phone, program, coach, date, time, session_id, paid, student, lesson_cost, amount_paid)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8, $9, $10)`,
+      [email, phone, program, coach, date, time, sessionObj.id, student, lessonCost, 0]
     );
 
     // c) Notify coach via email-to-SMS
@@ -721,11 +798,17 @@ app.post('/api/book-pay-later', async (req, res) => {
     const dbDate = dateFromBody; // Assumed to be present
     const dbTime = timeFromBody || null;
 
+    let lessonCost = null; 
+    const productInfo = PRODUCTS[dbProgram]; 
+    if (productInfo && typeof productInfo.unit_amount === 'number') {
+        lessonCost = productInfo.unit_amount / 100;
+    }
+
     await pool.query(
       `INSERT INTO bookings
-         (email, phone, program, coach, date, time, session_id, paid, student)
-       VALUES ($1, $2, $3, $4, $5, $6, NULL, FALSE, $7)`,
-      [email, dbPhone, dbProgram, dbCoach, dbDate, dbTime, dbStudent]
+         (email, phone, program, coach, date, time, session_id, paid, student, lesson_cost, amount_paid)
+       VALUES ($1, $2, $3, $4, $5, $6, NULL, FALSE, $7, $8, $9)`,
+      [email, dbPhone, dbProgram, dbCoach, dbDate, dbTime, dbStudent, lessonCost, 0]
     );
 
     if (dbCoach) { // Use dbCoach here

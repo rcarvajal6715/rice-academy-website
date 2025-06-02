@@ -13,7 +13,6 @@
     nav a:hover { background-color: #0f4fa0; }
     section { flex: 1; padding: 40px 20px; max-width: 1400px; width: 90%; margin: auto; background: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
     h2 { color: #0c3c78; }
-    /* Form styles removed as form is removed from this page */
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { padding: 8px; border:1px solid #ddd; }
     thead th { background: #0c3c78; color: white; }
@@ -178,21 +177,21 @@ ul.nav-links-mobile li a {
 }
 
 .category-filter-button {
-  background-color: #f0f0f0; /* Light grey background */
-  color: #333;             /* Dark text */
+  background-color: #f0f0f0; 
+  color: #333;            
   border: 1px solid #ccc;
   padding: 8px 15px;
-  margin: 0 5px 10px 0; /* Margin for spacing */
+  margin: 0 5px 10px 0; 
   border-radius: 5px;
   cursor: pointer;
   font-size: 0.9rem;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 .category-filter-button:hover {
-  background-color: #e0e0e0; /* Slightly darker grey on hover */
+  background-color: #e0e0e0; 
 }
 .category-filter-button.active-filter-button {
-  background-color: #0c3c78; /* Admin blue for active */
+  background-color: #0c3c78; 
   color: white;
   border-color: #0c3c78;
   font-weight: bold;
@@ -201,7 +200,7 @@ ul.nav-links-mobile li a {
     margin-top: 20px;
     margin-bottom: 10px;
     font-weight: bold;
-    color: #0c3c78; /* Match other labels */
+    color: #0c3c78; 
 }
   </style>
 </head>
@@ -273,36 +272,23 @@ ul.nav-links-mobile li a {
 
   <script>
   let allFetchedPastLessons = []; 
-  let activeCategoryFilter = 'All'; // Default active filter
+  let activeCategoryFilter = 'All'; 
 
   function formatTime_12hr(timeStr) {
-    if (!timeStr || !timeStr.includes(':')) {
-      return timeStr; 
-    }
+    if (!timeStr || !timeStr.includes(':')) { return timeStr; }
     const parts = timeStr.split(':');
     let hours = parseInt(parts[0], 10);
     const minutes = parseInt(parts[1], 10);
-    
     const ampm = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12;
     hours = hours ? hours : 12; 
-    
     const minutesStr = minutes < 10 ? '0' + minutes : minutes;
-    
     return hours + ':' + minutesStr + ' ' + ampm;
   }
 
-  function renderLessonsTable(lessonsArray, containerId, placeholderMessage) {
-    console.log('HISTORY.HTML: renderLessonsTable START for container:', containerId, 'with lessons:', lessonsArray.length);
-    const coachColors = { 
-        'Ricardo Carvajalino': '#e0f7fa', 
-        'Jacob Capone': '#fff9c4',      
-        'Zach Capone': '#c8e6c9',        
-        'Zachary Capone': '#c8e6c9',     
-        'Matthew Abbey': '#ffccbc',     
-        'Paula Carvajalino': '#f3e5f5'  
-    };
-    const container = document.getElementById(containerId);
+  function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
+    console.log('HISTORY.HTML: renderPastLessonsTable START for container:', containerId, 'with lessons:', lessonsArray.length);
+    const container = document.getElementById(containerId); 
     if (!container) {
       console.error('Container not found for ID:', containerId);
       return;
@@ -336,12 +322,10 @@ ul.nav-links-mobile li a {
       const dateStr = new Date(les.date).toLocaleDateString();
       const paidText = les.paid ? 'Yes' : '<strong style="color: red;">NO - Pay Later</strong>';
       const formattedTime = formatTime_12hr(les.time);
-      
       let rowStyle = '';
       if (!les.paid) {
           rowStyle = 'background-color: #ffebee;'; 
       }
-
       html += `
         <tr data-id="${les.id}" ${rowStyle ? `style="${rowStyle}"` : ''}>
           <td style="padding:8px; border:1px solid #ddd;">${les.program}</td>
@@ -358,7 +342,6 @@ ul.nav-links-mobile li a {
         </tr>
       `;
     });
-
     html += `</tbody></table>`;
     container.innerHTML = html;
     console.log('HISTORY.HTML: Rendering actual table into:', containerId, 'HTML length:', html.length > 0 ? html.length : 'EMPTY!');
@@ -368,10 +351,7 @@ ul.nav-links-mobile li a {
     const res = await fetch('/api/admin/lessons', { credentials: 'include' });
     if (!res.ok) {
       const errorMsg = '<p style="color:red;">Could not load lessons data.</p>';
-      document.getElementById('private-lessons-table-container').innerHTML = errorMsg;
-      document.getElementById('camp-lessons-table-container').innerHTML = errorMsg;
-      document.getElementById('clinic-lessons-table-container').innerHTML = errorMsg;
-      document.getElementById('other-bookings-table-container').innerHTML = errorMsg;
+      document.getElementById('past-lessons-table-container').innerHTML = errorMsg;
       return;
     }
     const lessons = await res.json();
@@ -383,11 +363,9 @@ ul.nav-links-mobile li a {
         const dateStr = les.date.substring(0, 10); 
         const dateParts = dateStr.split('-');
         if (dateParts.length !== 3) return false; 
-
         const year = parseInt(dateParts[0]);
         const month = parseInt(dateParts[1]) - 1; 
         const day = parseInt(dateParts[2]);
-
         let hours = 23, minutes = 59, seconds = 59; 
         if (les.time) {
             const timeParts = les.time.split(':');
@@ -397,7 +375,6 @@ ul.nav-links-mobile li a {
                 seconds = timeParts[2] ? parseInt(timeParts[2]) : 0;
             }
         }
-
         try {
             const lessonDate = new Date(year, month, day, hours, minutes, seconds);
             if (lessonDate.toDateString() === now.toDateString()) { 
@@ -410,10 +387,8 @@ ul.nav-links-mobile li a {
         }
     });
     console.log('HISTORY.HTML: Filtered past lessons count:', pastLessons.length, pastLessons.slice(0,2));
-
     allFetchedPastLessons = [...pastLessons]; 
     console.log('HISTORY.HTML: Stored allFetchedPastLessons:', allFetchedPastLessons.length);
-    
     filterAndRenderHistory(''); 
   }
 
@@ -431,30 +406,37 @@ ul.nav-links-mobile li a {
   }
   
   function filterAndRenderHistory(searchTerm) {
-    let searchFilteredLessons; // Lessons filtered by search term first
+    console.log('HISTORY.HTML: filterAndRenderHistory called with searchTerm:', searchTerm, 'and activeCategoryFilter:', activeCategoryFilter);
+    let searchFilteredLessons;
     if (!searchTerm) {
         searchFilteredLessons = [...allFetchedPastLessons]; 
     } else {
         searchFilteredLessons = allFetchedPastLessons.filter(les => {
-            const dateStr = new Date(les.date).toLocaleDateString().toLowerCase();
+            if (!les) return false; 
+            const dateStr = les.date ? new Date(les.date).toLocaleDateString().toLowerCase() : '';
+            const programName = les.program ? les.program.toLowerCase() : '';
+            const coachName = les.coach ? les.coach.toLowerCase() : '';
+            const studentName = les.student ? les.student.toLowerCase() : '';
+            const emailAddr = les.email ? les.email.toLowerCase() : '';
+            const phoneNum = les.phone ? les.phone.toLowerCase() : '';
             return (
-                (les.program && les.program.toLowerCase().includes(searchTerm)) ||
-                (les.coach && les.coach.toLowerCase().includes(searchTerm)) ||
-                (les.student && les.student.toLowerCase().includes(searchTerm)) ||
-                (les.email && les.email.toLowerCase().includes(searchTerm)) ||
-                (dateStr.includes(searchTerm)) ||
-                (les.phone && les.phone.toLowerCase().includes(searchTerm))
+                programName.includes(searchTerm) ||
+                coachName.includes(searchTerm) ||
+                studentName.includes(searchTerm) ||
+                emailAddr.includes(searchTerm) ||
+                phoneNum.includes(searchTerm) ||
+                dateStr.includes(searchTerm)
             );
         });
     }
-    console.log('HISTORY.HTML: Searched/Filtered lessons count:', searchFilteredLessons.length, 'for term:', searchTerm);
 
-    let lessonsToCategorize; // Lessons to be fed into categorization logic
+    let finalDisplayLessons;
     if (activeCategoryFilter === 'All') {
-        lessonsToCategorize = [...searchFilteredLessons];
+        finalDisplayLessons = [...searchFilteredLessons];
     } else {
-        lessonsToCategorize = searchFilteredLessons.filter(les => {
-            const programName = les.program ? les.program.toLowerCase() : '';
+        finalDisplayLessons = searchFilteredLessons.filter(les => {
+            if (!les || !les.program) return false;
+            const programName = les.program.toLowerCase();
             if (activeCategoryFilter === 'Privates') {
                 return programName.includes('private') || programName.includes('tennis private');
             } else if (activeCategoryFilter === 'Camps') {
@@ -465,95 +447,13 @@ ul.nav-links-mobile li a {
             return false; 
         });
     }
-    // console.log('HISTORY.HTML: Lessons after category filter:', lessonsToCategorize.length, 'for category:', activeCategoryFilter);
-
-
-    const privateLessons = [];
-    const campLessons = [];
-    const clinicLessons = [];
-    const otherBookings = [];
-
-    // Categorize based on lessonsToCategorize
-    if (activeCategoryFilter === 'All') {
-        lessonsToCategorize.forEach(les => {
-            const programName = les.program ? les.program.toLowerCase() : '';
-            if (programName.includes('private') || programName.includes('tennis private')) {
-                privateLessons.push(les);
-            } else if (programName.includes('camp') || programName.includes('pass')) {
-                campLessons.push(les);
-            } else if (programName.includes('clinic') || programName.includes('high performance')) {
-                clinicLessons.push(les);
-            } else {
-                otherBookings.push(les);
-            }
-        });
-    } else if (activeCategoryFilter === 'Privates') {
-        lessonsToCategorize.forEach(les => privateLessons.push(les));
-    } else if (activeCategoryFilter === 'Camps') {
-        lessonsToCategorize.forEach(les => campLessons.push(les));
-    } else if (activeCategoryFilter === 'Clinics') {
-        lessonsToCategorize.forEach(les => clinicLessons.push(les));
-    }
-    
-    console.log('HISTORY.HTML: Final Categorized - Private:', privateLessons.length, 
-                'Camps:', campLessons.length, 
-                'Clinics:', clinicLessons.length, 
-                'Other:', otherBookings.length,
-                'based on active filter:', activeCategoryFilter);
-
-    const privateSection = document.getElementById('private-lessons-section');
-    if (privateLessons.length > 0 || (activeCategoryFilter === 'All' && searchTerm === '')) { // Show section if 'All' or has items
-        privateSection.style.display = 'block';
-        renderLessonsTable(privateLessons, 'private-lessons-table-container', 'No matching private lessons found.');
-    } else if (privateLessons.length === 0 && activeCategoryFilter === 'Privates') {
-        privateSection.style.display = 'block'; // Show section to display placeholder
-        renderLessonsTable(privateLessons, 'private-lessons-table-container', 'No matching private lessons found.');
-    }
-    else {
-        privateSection.style.display = 'none';
-        document.getElementById('private-lessons-table-container').innerHTML = ''; 
-    }
-
-    const campSection = document.getElementById('camp-lessons-section');
-    if (campLessons.length > 0 || (activeCategoryFilter === 'All' && searchTerm === '')) {
-        campSection.style.display = 'block';
-        renderLessonsTable(campLessons, 'camp-lessons-table-container', 'No matching camp or pass lessons found.');
-    } else if (campLessons.length === 0 && activeCategoryFilter === 'Camps') {
-        campSection.style.display = 'block';
-        renderLessonsTable(campLessons, 'camp-lessons-table-container', 'No matching camp or pass lessons found.');
-    }
-     else {
-        campSection.style.display = 'none';
-        document.getElementById('camp-lessons-table-container').innerHTML = '';
-    }
-
-    const clinicSection = document.getElementById('clinic-lessons-section');
-    if (clinicLessons.length > 0 || (activeCategoryFilter === 'All' && searchTerm === '')) {
-        clinicSection.style.display = 'block';
-        renderLessonsTable(clinicLessons, 'clinic-lessons-table-container', 'No matching clinic lessons found.');
-    } else if (clinicLessons.length === 0 && activeCategoryFilter === 'Clinics') {
-        clinicSection.style.display = 'block';
-        renderLessonsTable(clinicLessons, 'clinic-lessons-table-container', 'No matching clinic lessons found.');
-    }
-     else {
-        clinicSection.style.display = 'none';
-        document.getElementById('clinic-lessons-table-container').innerHTML = '';
-    }
-
-    const otherSection = document.getElementById('other-bookings-section');
-    // Show 'Other' only if 'All' is selected and it has items, or if it's specifically filtered to 'Other' (if such a filter existed)
-    if (activeCategoryFilter === 'All' && otherBookings.length > 0) {
-        otherSection.style.display = 'block';
-        renderLessonsTable(otherBookings, 'other-bookings-table-container', 'No other matching bookings found.');
-    } else {
-        otherSection.style.display = 'none';
-        document.getElementById('other-bookings-table-container').innerHTML = '';
-    }
-  }
+    console.log(`HISTORY.HTML: Displaying ${finalDisplayLessons.length} lessons for category '${activeCategoryFilter}' and search '${searchTerm}'`);
+        
+    renderPastLessonsTable(finalDisplayLessons, 'past-lessons-table-container', 'No matching past lessons found.');
+}
 
   window.addEventListener('DOMContentLoaded', () => {
     loadPastLessons(); 
-
     const searchInput = document.getElementById('historySearchInput');
     if (searchInput) {
         searchInput.addEventListener('input', () => {
@@ -561,15 +461,12 @@ ul.nav-links-mobile li a {
             filterAndRenderHistory(searchTerm);
         });
     }
-
     const filterButtons = document.querySelectorAll('#category-filters .category-filter-button');
     filterButtons.forEach(button => {
         button.addEventListener('click', () => {
             activeCategoryFilter = button.getAttribute('data-category');
-            
             filterButtons.forEach(btn => btn.classList.remove('active-filter-button'));
             button.classList.add('active-filter-button');
-            
             const currentSearchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
             filterAndRenderHistory(currentSearchTerm); 
         });
@@ -577,9 +474,8 @@ ul.nav-links-mobile li a {
   });
 </script>
   <script>
-  // This entire block to be added as a new script, or integrated if a single DOMContentLoaded is preferred.
+  // This entire block is for mobile menu and session management, remains unchanged.
   document.addEventListener('DOMContentLoaded', () => {
-      // --- Mobile Menu Toggle Script --- 
       const menuToggle = document.querySelector('.mobile-menu-toggle');
       const mobileMenuClose = document.querySelector('.mobile-menu-close');
       const mainNav = document.querySelector('nav.main-navigation');
@@ -596,7 +492,6 @@ ul.nav-links-mobile li a {
                   menuToggle.setAttribute('aria-label', 'Open navigation menu');
               }
           });
-
           mobileMenuClose.addEventListener('click', () => {
               mainNav.classList.remove('mobile-menu--open');
               if (menuToggle) {
@@ -606,7 +501,6 @@ ul.nav-links-mobile li a {
               }
           });
       }
-
       const mobileNavLinks = document.querySelectorAll('.mobile-menu-container a');
       if (mainNav && mobileNavLinks.length > 0) {
           mobileNavLinks.forEach(link => {
@@ -622,38 +516,27 @@ ul.nav-links-mobile li a {
               });
           });
       }
-
-      // --- checkSession and logout functions for Admin Portal --- 
       async function checkSession() {
           const existingGreeting = document.querySelector('.welcome-greeting');
           if (existingGreeting) existingGreeting.remove();
-           
           try {
               const res = await fetch('/api/check-session', { credentials: 'include' });
               const data = await res.json(); 
-
               const authContainerDesktop = document.getElementById('authContainerDesktop');
               const authContainerMobile = document.getElementById('authContainerMobile');
-              
               if (data && data.loggedIn === true && data.isAdmin === true) {
                   const portalButtonText = data.firstName ? 'Admin (' + data.firstName + ')' : 'Admin Portal';
-                  
                   const loggedInHTML = '<a href="admin.html"><button>' + portalButtonText + '</button></a><button onclick="logout()">Logout</button>';
                   const loggedInMobileHTML = loggedInHTML; 
-
                   if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInHTML;
                   if (authContainerMobile) authContainerMobile.innerHTML = loggedInMobileHTML;
-
                   const welcomeMessageText = data.firstName ? 'Welcome, ' + data.firstName + '!' : 'Welcome, Admin!';
-                  
                   const greeting = document.createElement('div');
                   greeting.className = 'welcome-greeting';
                   greeting.textContent = welcomeMessageText;
                   greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
-                  
                   const existingGreeting = document.querySelector('.welcome-greeting');
                   if (existingGreeting) existingGreeting.remove();
-
                   if(document.body.firstChild) { 
                       document.body.insertBefore(greeting, document.body.firstChild);
                   } else { 
@@ -675,7 +558,6 @@ ul.nav-links-mobile li a {
               if (authContainerMobile) authContainerMobile.innerHTML = loggedOutHTML;
           }
       }
-
       window.logout = function() { 
           fetch('/api/logout', { method: 'POST', credentials: 'include' })
               .then(() => {
@@ -685,7 +567,6 @@ ul.nav-links-mobile li a {
                   window.location.href = 'login.html'; 
               });
       }
-
       checkSession(); 
   });
   </script>

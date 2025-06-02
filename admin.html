@@ -429,17 +429,15 @@ ul.nav-links-mobile li a {
 
     lessonsArray.forEach(les => {
       const dateStr = new Date(les.date).toLocaleDateString();
-      const paidText = les.paid ? 'Yes' : 'NO - Pay Later';
+      const paidText = les.paid ? 'Yes' : '<strong style="color: red;">NO - Pay Later</strong>';
       const formattedTime = formatTime_12hr(les.time);
       
       let rowStyle = '';
       if (containerId === 'private-lessons-table-container' && les.coach && coachColors[les.coach]) {
           rowStyle = `background-color: ${coachColors[les.coach]};`;
-      }
-      // Unpaid style takes precedence if applicable
-      if (!les.paid) {
-          rowStyle = 'background-color: #ffebee;'; 
-      }
+      } 
+      // The general unpaid row background '#ffebee' is removed from here.
+      // Unpaid status is now indicated by the styled text in the 'Paid?' column.
 
       html += `
         <tr data-id="${les.id}" ${rowStyle ? `style="${rowStyle}"` : ''}>

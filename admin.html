@@ -535,17 +535,43 @@ ul.nav-links-mobile li a {
     console.log('ADMIN.HTML: Fetched total lessons:', lessons.length, lessons.slice(0,2));
 
     const now = new Date();
-    // Filter for upcoming/current lessons
     const upcomingLessons = lessons.filter(les => {
-        const lessonTime = les.time || '00:00:00'; // Default to midnight if no time
-        // Assuming les.date is 'YYYY-MM-DD' and les.time is 'HH:MM' or 'HH:MM:SS'
-        const lessonDateTimeStr = `${les.date}T${lessonTime}`;
+        if (!les.date) return false; // Skip if no date
+        const dateStr = les.date.substring(0, 10); // Take YYYY-MM-DD part
+        const dateParts = dateStr.split('-');
+        if (dateParts.length !== 3) return false; // Invalid date format
+
+        const year = parseInt(dateParts[0]);
+        const month = parseInt(dateParts[1]) - 1; // JS months are 0-indexed
+        const day = parseInt(dateParts[2]);
+
+        let hours = 0, minutes = 0, seconds = 0; // Default to start of day for upcoming
+        if (les.time) {
+            const timeParts = les.time.split(':');
+            if (timeParts.length >= 2) {
+                hours = parseInt(timeParts[0]);
+                minutes = parseInt(timeParts[1]);
+                seconds = timeParts[2] ? parseInt(timeParts[2]) : 0;
+            }
+        }
+        
         try {
-            const lessonDate = new Date(lessonDateTimeStr);
-            return lessonDate >= now;
+            const lessonDate = new Date(year, month, day, hours, minutes, seconds);
+            // For upcoming, if lessonDate is today, ensure it hasn't passed.
+            // If lessonDate is in the future, it's upcoming.
+            // Create a 'now' that is just date for comparing future days
+            const nowDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            if (lessonDate >= nowDateOnly) { // Lesson is today or in the future (date part)
+                 if (lessonDate.toDateString() === now.toDateString()) { // It's today
+                     return lessonDate >= now; // Compare with current time
+                 }
+                 return true; // It's a future date
+            }
+            return false;
+
         } catch (e) {
-            console.error(`Invalid date format for lesson: ${les.date} ${lessonTime}`, les);
-            return false; // Exclude if date is invalid
+            console.error(`ADMIN.HTML: Invalid date components for lesson: Y:${year} M:${month} D:${day} H:${hours} M:${minutes}`, les, e);
+            return false;
         }
     });
     console.log('ADMIN.HTML: Filtered upcoming lessons count:', upcomingLessons.length, upcomingLessons.slice(0,2));

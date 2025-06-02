@@ -361,14 +361,36 @@ ul.nav-links-mobile li a {
 
     const now = new Date();
     const pastLessons = lessons.filter(les => {
-        const lessonTime = les.time || '23:59:59'; 
-        const lessonDateTimeStr = `${les.date}T${lessonTime}`;
+        if (!les.date) return false; // Skip if no date
+        const dateStr = les.date.substring(0, 10); // Take YYYY-MM-DD part
+        const dateParts = dateStr.split('-');
+        if (dateParts.length !== 3) return false; // Invalid date format
+
+        const year = parseInt(dateParts[0]);
+        const month = parseInt(dateParts[1]) - 1; // JS months are 0-indexed
+        const day = parseInt(dateParts[2]);
+
+        let hours = 23, minutes = 59, seconds = 59; // Default to end of day for past
+        if (les.time) {
+            const timeParts = les.time.split(':');
+            if (timeParts.length >= 2) {
+                hours = parseInt(timeParts[0]);
+                minutes = parseInt(timeParts[1]);
+                seconds = timeParts[2] ? parseInt(timeParts[2]) : 0;
+            }
+        }
+
         try {
-            const lessonDate = new Date(lessonDateTimeStr);
-            return lessonDate < now; 
+            const lessonDate = new Date(year, month, day, hours, minutes, seconds);
+            // For past, if lessonDate is today, ensure it has passed.
+            // If lessonDate is in the past, it's a past lesson.
+            if (lessonDate.toDateString() === now.toDateString()) { // It's today
+                return lessonDate < now; // Compare with current time
+            }
+            return lessonDate < now; // It's a past date or today (already passed)
         } catch (e) {
-            console.error(`Invalid date format for lesson: ${les.date} ${lessonTime}`, les);
-            return false; 
+            console.error(`HISTORY.HTML: Invalid date components for lesson: Y:${year} M:${month} D:${day} H:${hours} M:${minutes}`, les, e);
+            return false;
         }
     });
     console.log('HISTORY.HTML: Filtered past lessons count:', pastLessons.length, pastLessons.slice(0,2));

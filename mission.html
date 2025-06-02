@@ -223,7 +223,7 @@
     .sticky-section {
       position: -webkit-sticky;
       position: sticky;
-      top: 0; /* Temporarily changed for diagnostics */
+      top: 0;
       min-height: 100vh;
     }
 
@@ -287,7 +287,6 @@
 
     /* ─── Mission Section ─── */
     .mission-section {
-  position: relative;    /* makes z-index:2 actually work */
   z-index: 2;            /* now this will sit on top of .hero */
   background-color: white;
   padding: 60px 20px;
@@ -307,6 +306,7 @@
   /* position: relative;  <-- you can drop this entirely */
   background-color: #f4f7fa;
   padding: 60px 20px;
+  margin-bottom: 100px;
 }
     .community-section h3 {
       text-align: center;

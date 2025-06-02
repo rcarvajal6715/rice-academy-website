@@ -387,6 +387,7 @@ ul.nav-links-mobile li a {
 
   // Helper function to render a table for a specific set of lessons
   function renderLessonsTable(lessonsArray, containerId, placeholderMessage) {
+    console.log('ADMIN.HTML: renderLessonsTable START for container:', containerId, 'with lessons:', lessonsArray.length);
     const coachColors = {
         'Ricardo Carvajalino': '#e0f7fa', // Light cyan/blue
         'Jacob Capone': '#fff9c4',      // Light yellow
@@ -402,6 +403,7 @@ ul.nav-links-mobile li a {
     }
 
     if (lessonsArray.length === 0) {
+      console.log('ADMIN.HTML: Rendering placeholder for:', containerId);
       container.innerHTML = `<p>${placeholderMessage}</p>`;
       return;
     }
@@ -503,6 +505,7 @@ ul.nav-links-mobile li a {
 
     html += `</tbody></table>`;
     container.innerHTML = html;
+    console.log('ADMIN.HTML: Rendering actual table into:', containerId, 'HTML length:', html.length > 0 ? html.length : 'EMPTY!');
 
     if (containerId === 'camp-lessons-table-container') {
         const checkboxes = document.querySelectorAll(`#${containerId} .attendance-checkbox`);
@@ -529,6 +532,7 @@ ul.nav-links-mobile li a {
       return;
     }
     const lessons = await res.json();
+    console.log('ADMIN.HTML: Fetched total lessons:', lessons.length, lessons.slice(0,2));
 
     const now = new Date();
     // Filter for upcoming/current lessons
@@ -544,6 +548,7 @@ ul.nav-links-mobile li a {
             return false; // Exclude if date is invalid
         }
     });
+    console.log('ADMIN.HTML: Filtered upcoming lessons count:', upcomingLessons.length, upcomingLessons.slice(0,2));
 
     const privateLessons = [];
     const campLessons = [];
@@ -562,6 +567,7 @@ ul.nav-links-mobile li a {
             otherBookings.push(les);
         }
     });
+    console.log('ADMIN.HTML: Categorized - Private:', privateLessons.length, 'Camps:', campLessons.length, 'Clinics:', clinicLessons.length, 'Other:', otherBookings.length);
 
     renderLessonsTable(privateLessons, 'private-lessons-table-container', 'No private lessons scheduled.');
     renderLessonsTable(campLessons, 'camp-lessons-table-container', 'No camp or pass lessons scheduled.');

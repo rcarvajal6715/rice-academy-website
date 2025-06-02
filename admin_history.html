@@ -13,13 +13,7 @@
     nav a:hover { background-color: #0f4fa0; }
     section { flex: 1; padding: 40px 20px; max-width: 1400px; width: 90%; margin: auto; background: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
     h2 { color: #0c3c78; }
-    form { margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    .full-width { grid-column: 1 / -1; }
-    label { display: block; font-weight: bold; color: #0c3c78; margin-bottom: 5px; }
-    input, select, button { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
-    button { background-color: #0c3c78; color: white; cursor: pointer; grid-column: 1 / -1; margin-top: 20px; }
-    button:hover { background-color: #0f4fa0; }
-    #student-name-container { display: none; }
+    /* Form styles removed as form is removed from this page */
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { padding: 8px; border:1px solid #ddd; }
     thead th { background: #0c3c78; color: white; }
@@ -40,7 +34,7 @@
      .site-title h1 { 
        font-size: 2.2em;    
        margin-top: 0;
-       margin-bottom: 0; /* Adjusted for portal pages with no subtitle */
+       margin-bottom: 0; 
        color: white; 
      } 
      .site-title p { 
@@ -48,7 +42,6 @@
        margin-top: 0;
        margin-bottom: 0;
        color: #f0f0f0;
-       /* display: none; /* Subtitle can be shown or hidden based on page */
      }
      
      .mobile-menu-toggle { display: none; background: none; border: none; color: white; font-size: 28px; cursor: pointer; padding: 5px; }
@@ -71,11 +64,10 @@
        right: 20px; 
        display: flex;
        align-items: center;
-       gap: 15px; /* Added gap property */
+       gap: 15px; 
      }
      .auth-buttons-desktop a button, .auth-buttons-desktop button {
        background-color: white; color: #0c3c78; border: none; padding: 10px 20px; 
-       /* margin-left: 15px; */ /* Removed margin-left */
        border-radius: 5px; font-weight: bold; cursor: pointer;
        transition: all 0.3s ease; white-space: nowrap;
      }
@@ -90,16 +82,16 @@
      .mobile-menu-close {
         display: block; 
         position: absolute; 
-        top: 10px; /* Adjusted */
-        right: 10px; /* Adjusted */
-        left: auto; /* Explicitly set */
-        bottom: auto; /* Explicitly set */
+        top: 10px; 
+        right: 10px; 
+        left: auto; 
+        bottom: auto; 
         background: none; 
         border: none; 
         color: white; 
         font-size: 28px; 
         cursor: pointer;
-        z-index: 10; /* Optionally add a z-index */
+        z-index: 10; 
      }
      ul.nav-links-mobile { list-style: none; padding: 0; margin: 50px 0 20px; }
      ul.nav-links-mobile li a {
@@ -116,9 +108,8 @@
      }
      .auth-buttons-mobile a button:hover, .auth-buttons-mobile button:hover { background-color: #c1da3b; }
      
-     
-     footer { /* Global footer style */
-        background-color: #0c3c78; color: white; text-align: center; padding: 20px; margin-top:auto; /* Pushes to bottom in flex if body is flex column */
+     footer { 
+        background-color: #0c3c78; color: white; text-align: center; padding: 20px; margin-top:auto; 
      }
 
      @media (max-width: 768px) {
@@ -135,73 +126,52 @@
        .nav-wrapper-desktop { display: none; }
        .auth-buttons-desktop { display: none; } 
        nav.main-navigation { padding: 0; background-color: transparent; }
-
-      /* Mobile-specific layout adjustments */
-      form {
-        grid-template-columns: 1fr; /* Change to single column layout */
-      }
-
       h2 {
-        margin-bottom: 20px; /* Add bottom margin for h2 */
+        margin-bottom: 20px; 
       }
-
       section {
-        padding: 20px 10px; /* Reduce padding for smaller screens */
-      }
-
-      #all-lessons-container {
-        overflow-x: auto; /* Allow horizontal scrolling only for the table container */
-        -webkit-overflow-scrolling: touch; /* Optional: for smoother scrolling on iOS */
+        padding: 20px 10px; 
       }
     }
-  /* Override the highlighted “Book” pill to be fully rounded */
 ul.nav-links-desktop li a.highlighted-nav {
   border-radius: 9999px;
 }
-
-/* If you also want the mobile “Book” link rounded, do: */
 ul.nav-links-mobile li a.highlighted-nav {
   border-radius: 9999px;
 }
-/* Make desktop nav links more pill-shaped */
 ul.nav-links-desktop li a {
   border-radius: 9999px;
 }
-
-/* Ensure highlighted tab stays pill-shaped */
 ul.nav-links-desktop li a.highlighted-nav {
   border-radius: 9999px;
 }
-
-/* Make mobile nav links match */
 ul.nav-links-mobile li a {
   border-radius: 9999px;
 }
-/* === End Global Header & Navigation Styles === */
 
 .explore-button {
   font-family: Arial, sans-serif;
   font-size: 1rem;
   font-weight: 400;
-  background-color: #3b82f6; /* Blue background */
-  color: white !important; /* Ensure white text overrules other <a> styles */
+  background-color: #3b82f6; 
+  color: white !important; 
   padding: 0.75rem 2rem;
   border: none;
-  border-radius: 9999px; /* Pill shape */
+  border-radius: 9999px; 
   box-shadow:
     0 10px 15px -3px rgba(0, 0, 0, 0.1),
     0   4px  6px -2px rgba(0, 0, 0, 0.05);
   cursor: pointer;
   transform-origin: center center;
   transition: background-color 0.2s ease, transform 0.2s ease;
-  text-decoration: none; /* Remove underline from <a> */
-  display: inline-block; /* Make <a> behave like a button */
+  text-decoration: none; 
+  display: inline-block; 
   text-align: center;
-  margin-top: 30px; /* Add some space above the button */
+  margin-top: 30px; 
 }
 
 .explore-button:hover {
-  background-color: #2563eb; /* Darker blue on hover */
+  background-color: #2563eb; 
   transform: scale(1.05);
   color: white !important;
   text-decoration: none;
@@ -213,15 +183,14 @@ ul.nav-links-mobile li a {
 <header>
   <div class="header-content">
     <div class="site-title">
-      <h1>Lesson History</h1> <!-- Specific title -->
-      <p>C2 Tennis Academy</p> <!-- Consistent subtitle -->
+      <h1>Lesson History</h1> 
+      <p>C2 Tennis Academy</p> 
     </div>
     <button class="mobile-menu-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mainNavigation">
-      &#9776; <!-- Hamburger icon -->
+      &#9776; 
     </button>
   </div>
   <div class="auth-buttons-desktop" id="authContainerDesktop">
-    <!-- Populated by checkSession JS - will show Logout, Admin Home etc. -->
   </div>
 </header>
 
@@ -233,7 +202,6 @@ ul.nav-links-mobile li a {
        <li><a href="programs.html">Programs</a></li>
        <li><a href="schedule.html">Schedule</a></li>
        <li><a href="contact.html">Contact</a></li>
-       <!-- No "Book" link by default for admin, can be added if needed -->
      </ul>
   </div>
   <div class="mobile-menu-container">
@@ -246,13 +214,11 @@ ul.nav-links-mobile li a {
       <li><a href="contact.html">Contact</a></li>
     </ul>
     <div class="auth-buttons-mobile" id="authContainerMobile">
-      <!-- Populated by checkSession JS -->
     </div>
   </div>
 </nav>
 
   <section>
-    <!-- All Scheduled Lessons -->
     <h2>Past Lesson History</h2>
     <div style="margin-bottom: 20px; margin-top: 10px;">
       <label for="historySearchInput" style="margin-right: 10px; font-weight: bold;">Search Past Lessons:</label>
@@ -277,9 +243,6 @@ ul.nav-links-mobile li a {
         <h3>Other Bookings</h3>
         <div id="other-bookings-table-container">Loading other bookings...</div>
     </div>
-    삭제됨 <div style="text-align: center; margin-top: 40px; margin-bottom: 20px;"> <!-- Wrapper for centering -->
-      삭제됨 <a href="admin_history.html" class="explore-button">View Lesson History</a>
-    삭제됨 </div>
   </section>
 
   <footer>
@@ -287,38 +250,7 @@ ul.nav-links-mobile li a {
   </footer>
 
   <script>
-    // Toggle student field
-    const programEl = document.getElementById('program');
-    const studentDiv = document.getElementById('student-name-container');
-    programEl.addEventListener('change', () => {
-      studentDiv.style.display = programEl.value === 'Private Lessons' ? 'block' : 'none';
-    });
-
-    // Submit new lesson
-    document.getElementById('lesson-form').addEventListener('submit', async e => {
-      e.preventDefault();
-      const payload = {
-        program: programEl.value,
-        coachName: document.getElementById('coach').value,
-        date: document.getElementById('date').value,
-        time: document.getElementById('time').value,
-        student: document.getElementById('student-name').value || ''
-      };
-      const res = await fetch('/api/admin/lessons', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        alert('Lesson saved');
-        loadAllLessons();
-        e.target.reset();
-        studentDiv.style.display = 'none';
-      } else {
-        alert('Save failed: ' + await res.text());
-      }
-    });
+  // This script block is intentionally left empty as the form-related JS was removed.
   </script>
 
   <script>
@@ -327,7 +259,7 @@ ul.nav-links-mobile li a {
   // Helper function to format time to 12-hour AM/PM
   function formatTime_12hr(timeStr) {
     if (!timeStr || !timeStr.includes(':')) {
-      return timeStr; // Return original if invalid
+      return timeStr; 
     }
     const parts = timeStr.split(':');
     let hours = parseInt(parts[0], 10);
@@ -335,15 +267,23 @@ ul.nav-links-mobile li a {
     
     const ampm = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12;
-    hours = hours ? hours : 12; // the hour '0' should be '12'
+    hours = hours ? hours : 12; 
     
     const minutesStr = minutes < 10 ? '0' + minutes : minutes;
     
     return hours + ':' + minutesStr + ' ' + ampm;
   }
 
-  // Helper function to render a table for a specific set of lessons
   function renderLessonsTable(lessonsArray, containerId, placeholderMessage) {
+    console.log('HISTORY.HTML: renderLessonsTable START for container:', containerId, 'with lessons:', lessonsArray.length);
+    const coachColors = { 
+        'Ricardo Carvajalino': '#e0f7fa', 
+        'Jacob Capone': '#fff9c4',      
+        'Zach Capone': '#c8e6c9',        
+        'Zachary Capone': '#c8e6c9',     
+        'Matthew Abbey': '#ffccbc',     
+        'Paula Carvajalino': '#f3e5f5'  
+    };
     const container = document.getElementById(containerId);
     if (!container) {
       console.error('Container not found for ID:', containerId);
@@ -351,6 +291,7 @@ ul.nav-links-mobile li a {
     }
 
     if (lessonsArray.length === 0) {
+      console.log('HISTORY.HTML: Rendering placeholder for:', containerId);
       container.innerHTML = `<p>${placeholderMessage}</p>`;
       return;
     }
@@ -368,7 +309,6 @@ ul.nav-links-mobile li a {
             <th style="padding:8px; border:1px solid #ddd;">Phone</th>
             <th style="padding:8px; border:1px solid #ddd;">Paid?</th>
             <th style="padding:8px; border:1px solid #ddd;">Actions</th>
-            삭제됨 ${containerId === 'camp-lessons-table-container' ? '<th style="padding:8px; border:1px solid #ddd;">Attendance / Pass Status</th>' : ''}
           </tr>
         </thead>
         <tbody>
@@ -378,8 +318,14 @@ ul.nav-links-mobile li a {
       const dateStr = new Date(les.date).toLocaleDateString();
       const paidText = les.paid ? 'Yes' : 'NO - Pay Later';
       const formattedTime = formatTime_12hr(les.time);
+      
+      let rowStyle = '';
+      if (!les.paid) {
+          rowStyle = 'background-color: #ffebee;'; 
+      }
+
       html += `
-        <tr data-id="${les.id}" ${!les.paid ? 'style="background-color: #ffebee;"' : ''}>
+        <tr data-id="${les.id}" ${rowStyle ? `style="${rowStyle}"` : ''}>
           <td style="padding:8px; border:1px solid #ddd;">${les.program}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.coach}</td>
           <td style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
@@ -391,23 +337,17 @@ ul.nav-links-mobile li a {
           <td style="padding:8px; border:1px solid #ddd;">
             <button onclick="deleteAdminLesson(${les.id})">Delete</button>
           </td>
+        </tr>
       `;
-      // Attendance UI removed for history page
-      // if (containerId === 'camp-lessons-table-container') { ... } 
-      html += `</tr>`;
     });
 
     html += `</tbody></table>`;
     container.innerHTML = html;
-
-    // Event listener attachment for checkboxes removed for history page
-    // if (containerId === 'camp-lessons-table-container') { ... }
+    console.log('HISTORY.HTML: Rendering actual table into:', containerId, 'HTML length:', html.length > 0 ? html.length : 'EMPTY!');
   }
 
-  // Load & render the admin lessons table
   async function loadPastLessons() {
     const res = await fetch('/api/admin/lessons', { credentials: 'include' });
-    // Initial error check (applies to all tables if fetch fails)
     if (!res.ok) {
       const errorMsg = '<p style="color:red;">Could not load lessons data.</p>';
       document.getElementById('private-lessons-table-container').innerHTML = errorMsg;
@@ -417,30 +357,31 @@ ul.nav-links-mobile li a {
       return;
     }
     const lessons = await res.json();
+    console.log('HISTORY.HTML: Fetched total lessons:', lessons.length, lessons.slice(0,2));
 
     const now = new Date();
-    // Filter for past lessons
     const pastLessons = lessons.filter(les => {
-        const lessonTime = les.time || '23:59:59'; // Default to end of day for past lessons
-        // Assuming les.date is 'YYYY-MM-DD' and les.time is 'HH:MM' or 'HH:MM:SS'
+        const lessonTime = les.time || '23:59:59'; 
         const lessonDateTimeStr = `${les.date}T${lessonTime}`;
         try {
             const lessonDate = new Date(lessonDateTimeStr);
-            return lessonDate < now; // Keep only lessons strictly in the past
+            return lessonDate < now; 
         } catch (e) {
             console.error(`Invalid date format for lesson: ${les.date} ${lessonTime}`, les);
-            return false; // Exclude if date is invalid
+            return false; 
         }
     });
+    console.log('HISTORY.HTML: Filtered past lessons count:', pastLessons.length, pastLessons.slice(0,2));
 
-    allFetchedPastLessons = [...pastLessons]; // Store a copy for filtering
+    allFetchedPastLessons = [...pastLessons]; 
+    console.log('HISTORY.HTML: Stored allFetchedPastLessons:', allFetchedPastLessons.length);
 
     const privateLessons = [];
     const campLessons = [];
     const clinicLessons = [];
     const otherBookings = [];
 
-    pastLessons.forEach(les => { // Initial render uses all past lessons
+    allFetchedPastLessons.forEach(les => { 
         const programName = les.program ? les.program.toLowerCase() : '';
         if (programName.includes('private') || programName.includes('tennis private')) {
             privateLessons.push(les);
@@ -452,14 +393,14 @@ ul.nav-links-mobile li a {
             otherBookings.push(les);
         }
     });
+    console.log('HISTORY.HTML: Initial Categorized - Private:', privateLessons.length, 'Camps:', campLessons.length, 'Clinics:', clinicLessons.length, 'Other:', otherBookings.length);
 
-    renderLessonsTable(privateLessons, 'private-lessons-table-container', 'No private lessons scheduled.');
-    renderLessonsTable(campLessons, 'camp-lessons-table-container', 'No camp or pass lessons scheduled.');
-    renderLessonsTable(clinicLessons, 'clinic-lessons-table-container', 'No clinic or other group lessons scheduled.');
-    renderLessonsTable(otherBookings, 'other-bookings-table-container', 'No other bookings.');
+    renderLessonsTable(privateLessons, 'private-lessons-table-container', 'No past private lessons found.');
+    renderLessonsTable(campLessons, 'camp-lessons-table-container', 'No past camp or pass lessons found.');
+    renderLessonsTable(clinicLessons, 'clinic-lessons-table-container', 'No past clinic lessons found.');
+    renderLessonsTable(otherBookings, 'other-bookings-table-container', 'No other past bookings found.');
   }
 
-  // Call the delete endpoint, then refresh the table
   async function deleteAdminLesson(id) {
     if (!confirm('Are you sure you want to delete this lesson?')) return;
     const res = await fetch(`/api/admin/lessons/${id}`, {
@@ -467,26 +408,13 @@ ul.nav-links-mobile li a {
       credentials: 'include'
     });
     if (res.ok) {
-      loadPastLessons();
+      loadPastLessons(); 
     } else {
       alert('Delete failed: ' + await res.text());
     }
   }
-
-  // Kick it off on page load
-  window.addEventListener('DOMContentLoaded', () => {
-    loadPastLessons(); // Initial load
-
-    const searchInput = document.getElementById('historySearchInput');
-    if (searchInput) {
-        searchInput.addEventListener('input', () => {
-            const searchTerm = searchInput.value.toLowerCase().trim();
-            filterAndRenderHistory(searchTerm);
-        });
-    }
-  });
-
-function filterAndRenderHistory(searchTerm) {
+  
+  function filterAndRenderHistory(searchTerm) {
     let filteredLessons;
     if (!searchTerm) {
         filteredLessons = [...allFetchedPastLessons]; 
@@ -498,12 +426,13 @@ function filterAndRenderHistory(searchTerm) {
                 (les.coach && les.coach.toLowerCase().includes(searchTerm)) ||
                 (les.student && les.student.toLowerCase().includes(searchTerm)) ||
                 (les.email && les.email.toLowerCase().includes(searchTerm)) ||
-                (dateStr.includes(searchTerm)) 
+                (dateStr.includes(searchTerm)) ||
+                (les.phone && les.phone.toLowerCase().includes(searchTerm))
             );
         });
     }
+    console.log('HISTORY.HTML: Searched/Filtered lessons count:', filteredLessons.length, 'for term:', searchTerm);
 
-    // Now, categorize and render 'filteredLessons'
     const privateLessons = [];
     const campLessons = [];
     const clinicLessons = [];
@@ -521,36 +450,28 @@ function filterAndRenderHistory(searchTerm) {
             otherBookings.push(les);
         }
     });
+    console.log('HISTORY.HTML: Search Categorized - Private:', privateLessons.length, 'Camps:', campLessons.length, 'Clinics:', clinicLessons.length, 'Other:', otherBookings.length);
 
     renderLessonsTable(privateLessons, 'private-lessons-table-container', 'No matching private lessons found.');
     renderLessonsTable(campLessons, 'camp-lessons-table-container', 'No matching camp or pass lessons found.');
     renderLessonsTable(clinicLessons, 'clinic-lessons-table-container', 'No matching clinic lessons found.');
     renderLessonsTable(otherBookings, 'other-bookings-table-container', 'No other matching bookings found.');
-}
+  }
 
-// TODO: BACKEND REQUIREMENT for full attendance tracking functionality:
-// This function currently only provides mock UI feedback and console logs.
-// For persistence, it should make an API call to a new backend endpoint, e.g.:
-// POST /api/admin/mark-attendance
-// Request body example: { "bookingId": bookingId, "dayIndex": dayIndex, "attended": isChecked }
-// The backend would then update the 'days_used' or a similar field/table for this booking in the database.
-function handleAttendanceChange(bookingId, dayIndex, isChecked) {
-    console.log(`Attendance change: Booking ID ${bookingId}, Day Index ${dayIndex}, Checked: ${isChecked}`);
-    // Mock UI update:
-    const daysUsedSpan = document.querySelector(`.days-used[data-booking-id="${bookingId}"]`);
-    const statusSpan = document.querySelector(`.attendance-status[data-booking-id="${bookingId}"]`);
+  window.addEventListener('DOMContentLoaded', () => {
+    loadPastLessons(); 
 
-    if (daysUsedSpan) { // For multi-day passes
-        let currentDaysUsed = 0;
-        // Recalculate based on all checkboxes for this booking
-        document.querySelectorAll(`.attendance-checkbox[data-booking-id="${bookingId}"]`).forEach(cb => {
-            if (cb.checked) currentDaysUsed++;
+    const searchInput = document.getElementById('historySearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            filterAndRenderHistory(searchTerm);
         });
-        daysUsedSpan.textContent = currentDaysUsed;
-    } else if (statusSpan) { // For single-day passes
-        statusSpan.textContent = isChecked ? 'Attended' : 'Not Attended';
     }
-}
+  });
+
+  // Attendance related functions (handleAttendanceChange) are removed as they are not used on this page.
+  // TODO comments related to attendance also removed.
 </script>
   <script>
   // This entire block to be added as a new script, or integrated if a single DOMContentLoaded is preferred.
@@ -601,14 +522,9 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
 
       // --- checkSession and logout functions for Admin Portal --- 
       async function checkSession() {
-          // Ensure existing greetings are removed before adding a new one to prevent duplicates from multiple calls
           const existingGreeting = document.querySelector('.welcome-greeting');
           if (existingGreeting) existingGreeting.remove();
            
-          // Original admin.html had <p>Admin Portal: Welcome Admin</p> in header.
-          // New header has "Admin Portal" as h1, "C2 Tennis Academy" as p.
-          // Greeting banner will add "Welcome, [firstName]" if available, or just "Welcome, Admin".
-
           try {
               const res = await fetch('/api/check-session', { credentials: 'include' });
               const data = await res.json(); 
@@ -617,16 +533,14 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
               const authContainerMobile = document.getElementById('authContainerMobile');
               
               if (data && data.loggedIn === true && data.isAdmin === true) {
-                  // Corrected logic for portal button text
                   const portalButtonText = data.firstName ? 'Admin (' + data.firstName + ')' : 'Admin Portal';
                   
                   const loggedInHTML = '<a href="admin.html"><button>' + portalButtonText + '</button></a><button onclick="logout()">Logout</button>';
-                  const loggedInMobileHTML = loggedInHTML; // Assuming it's the same
+                  const loggedInMobileHTML = loggedInHTML; 
 
                   if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInHTML;
                   if (authContainerMobile) authContainerMobile.innerHTML = loggedInMobileHTML;
 
-                  // Corrected logic for welcome message text
                   const welcomeMessageText = data.firstName ? 'Welcome, ' + data.firstName + '!' : 'Welcome, Admin!';
                   
                   const greeting = document.createElement('div');
@@ -634,18 +548,15 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
                   greeting.textContent = welcomeMessageText;
                   greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
                   
-                  // This logic for inserting the greeting is already here.
-                  // Ensure existing greetings are removed before adding a new one to prevent duplicates from multiple calls
                   const existingGreeting = document.querySelector('.welcome-greeting');
                   if (existingGreeting) existingGreeting.remove();
 
-                  if(document.body.firstChild) { // Attempt to insert before first child of body
+                  if(document.body.firstChild) { 
                       document.body.insertBefore(greeting, document.body.firstChild);
-                  } else { // Fallback if body has no children
+                  } else { 
                       document.body.appendChild(greeting);
                   }
               } else {
-                  // Not logged in as an Admin
                   window.location.href = 'login.html'; 
                   const loggedOutHTML = `<a href="login.html"><button>Login</button></a>`;
                   if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutHTML;
@@ -662,7 +573,7 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
           }
       }
 
-      window.logout = function() { // Make logout globally accessible
+      window.logout = function() { 
           fetch('/api/logout', { method: 'POST', credentials: 'include' })
               .then(() => {
                   const existingGreeting = document.querySelector('.welcome-greeting');

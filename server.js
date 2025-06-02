@@ -336,7 +336,7 @@ app.get('/api/admin/lessons', async (req, res) => {
   }
   try {
     const { rows } = await pool.query(`
-      SELECT id, program, coach, date, time, student, paid
+      SELECT id, program, coach, date, time, student, paid, email, phone
       FROM bookings
       ORDER BY date DESC, time DESC
     `);
@@ -682,6 +682,66 @@ app.post('/api/create-payment', async (req, res) => {
   }
 });
 
+app.post('/api/book-pay-later', async (req, res) => {
+  try {
+    const { student, program, coach, date, time } = req.body;
+
+    let email = req.body.email || (req.session.user && req.session.user.email);
+    if (!email) {
+      return res.status(400).json({ message: 'Missing email address.' });
+    }
+
+    let phone = null;
+    if (req.session.user && req.session.user.id) {
+      try {
+        const userQuery = await pool.query('SELECT phone FROM users WHERE id = $1', [req.session.user.id]);
+        if (userQuery.rows.length > 0) {
+          phone = userQuery.rows[0].phone;
+        }
+      } catch (dbError) {
+        console.error('Error fetching user phone for pay-later:', dbError);
+        if (req.body.phone) phone = req.body.phone; // Fallback to body phone
+      }
+    } else {
+      phone = req.body.phone; // Expect phone in body if not logged in
+    }
+    // Optional: Add a strict check for phone if it's absolutely required for pay-later
+    // if (!phone) { return res.status(400).json({ message: 'Missing phone number.' }); }
+
+
+    await pool.query(
+      `INSERT INTO bookings
+         (email, phone, program, coach, date, time, session_id, paid, student)
+       VALUES ($1, $2, $3, $4, $5, $6, NULL, FALSE, $7)`,
+      [email, phone, program, coach, date, time, student]
+    );
+
+    if (coach) {
+      const coachDetailsQuery = await pool.query(
+        `SELECT phone, carrier_gateway FROM coaches WHERE full_name = $1`,
+        [coach]
+      );
+      if (coachDetailsQuery.rows.length > 0 && coachDetailsQuery.rows[0].phone && coachDetailsQuery.rows[0].carrier_gateway) {
+        const smsTo = `${coachDetailsQuery.rows[0].phone.replace(/\D/g, '')}@${coachDetailsQuery.rows[0].carrier_gateway}`;
+        try {
+          await transporter.sendMail({
+            from: `"C2 Tennis Academy" <${process.env.GMAIL_USER}>`,
+            to: smsTo,
+            text: `PAY LATER Booking: ${student} | ${program} on ${date} at ${time}`
+          });
+        } catch (emailError) {
+          console.error('Failed to send pay-later SMS notification:', emailError);
+        }
+      }
+    }
+
+    res.status(200).json({ message: 'Booking successful for pay later.' });
+
+  } catch (err) {
+    console.error('Pay Later booking failed.', err);
+    res.status(500).json({ message: 'Booking failed due to a server error.' });
+  }
+});
 
 
 async function sendInvoiceEmail(toEmail, session) {

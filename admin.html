@@ -361,6 +361,8 @@ ul.nav-links-mobile li a {
             <th style="padding:8px; border:1px solid #ddd;">Date</th>
             <th style="padding:8px; border:1px solid #ddd;">Time</th>
             <th style="padding:8px; border:1px solid #ddd;">Student</th>
+            <th style="padding:8px; border:1px solid #ddd;">Email</th>
+            <th style="padding:8px; border:1px solid #ddd;">Phone</th>
             <th style="padding:8px; border:1px solid #ddd;">Paid?</th>
             <th style="padding:8px; border:1px solid #ddd;">Actions</th>
           </tr>
@@ -370,15 +372,17 @@ ul.nav-links-mobile li a {
 
     lessons.forEach(les => {
       const dateStr = new Date(les.date).toLocaleDateString();
-      const paidText = les.paid ? 'Yes' : 'No';
+      const paidText = les.paid ? 'Yes' : 'NO - Pay Later';
       const formattedTime = formatTime_12hr(les.time); // Use the helper function
       html += `
-        <tr data-id="${les.id}">
+        <tr data-id="${les.id}" ${!les.paid ? 'style="background-color: #ffebee;"' : ''}>
           <td style="padding:8px; border:1px solid #ddd;">${les.program}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.coach}</td>
           <td style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
           <td style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
+          <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td>
+          <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td>
           <td style="padding:8px; border:1px solid #ddd;">${paidText}</td>
           <td style="padding:8px; border:1px solid #ddd;">
             <button onclick="deleteAdminLesson(${les.id})">Delete</button>

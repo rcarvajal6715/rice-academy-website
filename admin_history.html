@@ -176,6 +176,33 @@ ul.nav-links-mobile li a {
   color: white !important;
   text-decoration: none;
 }
+
+.category-filter-button {
+  background-color: #f0f0f0; /* Light grey background */
+  color: #333;             /* Dark text */
+  border: 1px solid #ccc;
+  padding: 8px 15px;
+  margin: 0 5px 10px 0; /* Margin for spacing */
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.category-filter-button:hover {
+  background-color: #e0e0e0; /* Slightly darker grey on hover */
+}
+.category-filter-button.active-filter-button {
+  background-color: #0c3c78; /* Admin blue for active */
+  color: white;
+  border-color: #0c3c78;
+  font-weight: bold;
+}
+#category-filters-title {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    font-weight: bold;
+    color: #0c3c78; /* Match other labels */
+}
   </style>
 </head>
 <body>
@@ -224,6 +251,13 @@ ul.nav-links-mobile li a {
       <label for="historySearchInput" style="margin-right: 10px; font-weight: bold;">Search Past Lessons:</label>
       <input type="text" id="historySearchInput" placeholder="Enter keyword (student, program, coach, email, date)..." style="width: 50%; padding: 8px;">
     </div>
+    <div id="category-filters-title">Filters:</div>
+    <div id="category-filters" style="margin-bottom: 20px;">
+      <button class="category-filter-button active-filter-button" data-category="All">All</button>
+      <button class="category-filter-button" data-category="Privates">Private Lessons</button>
+      <button class="category-filter-button" data-category="Camps">Camps & Passes</button>
+      <button class="category-filter-button" data-category="Clinics">Clinics & Other</button>
+    </div>
     <div id="private-lessons-section" style="margin-bottom: 30px;">
         <h3>Private Lessons</h3>
         <div id="private-lessons-table-container">Loading private lessons...</div>
@@ -254,9 +288,9 @@ ul.nav-links-mobile li a {
   </script>
 
   <script>
-  let allFetchedPastLessons = []; // For storing all lessons to search through
+  let allFetchedPastLessons = []; 
+  let activeCategoryFilter = 'All'; // Default active filter
 
-  // Helper function to format time to 12-hour AM/PM
   function formatTime_12hr(timeStr) {
     if (!timeStr || !timeStr.includes(':')) {
       return timeStr; 
@@ -316,7 +350,7 @@ ul.nav-links-mobile li a {
 
     lessonsArray.forEach(les => {
       const dateStr = new Date(les.date).toLocaleDateString();
-      const paidText = les.paid ? 'Yes' : 'NO - Pay Later';
+      const paidText = les.paid ? 'Yes' : '<strong style="color: red;">NO - Pay Later</strong>';
       const formattedTime = formatTime_12hr(les.time);
       
       let rowStyle = '';
@@ -361,16 +395,16 @@ ul.nav-links-mobile li a {
 
     const now = new Date();
     const pastLessons = lessons.filter(les => {
-        if (!les.date) return false; // Skip if no date
-        const dateStr = les.date.substring(0, 10); // Take YYYY-MM-DD part
+        if (!les.date) return false; 
+        const dateStr = les.date.substring(0, 10); 
         const dateParts = dateStr.split('-');
-        if (dateParts.length !== 3) return false; // Invalid date format
+        if (dateParts.length !== 3) return false; 
 
         const year = parseInt(dateParts[0]);
-        const month = parseInt(dateParts[1]) - 1; // JS months are 0-indexed
+        const month = parseInt(dateParts[1]) - 1; 
         const day = parseInt(dateParts[2]);
 
-        let hours = 23, minutes = 59, seconds = 59; // Default to end of day for past
+        let hours = 23, minutes = 59, seconds = 59; 
         if (les.time) {
             const timeParts = les.time.split(':');
             if (timeParts.length >= 2) {
@@ -382,12 +416,10 @@ ul.nav-links-mobile li a {
 
         try {
             const lessonDate = new Date(year, month, day, hours, minutes, seconds);
-            // For past, if lessonDate is today, ensure it has passed.
-            // If lessonDate is in the past, it's a past lesson.
-            if (lessonDate.toDateString() === now.toDateString()) { // It's today
-                return lessonDate < now; // Compare with current time
+            if (lessonDate.toDateString() === now.toDateString()) { 
+                return lessonDate < now; 
             }
-            return lessonDate < now; // It's a past date or today (already passed)
+            return lessonDate < now; 
         } catch (e) {
             console.error(`HISTORY.HTML: Invalid date components for lesson: Y:${year} M:${month} D:${day} H:${hours} M:${minutes}`, les, e);
             return false;
@@ -397,30 +429,8 @@ ul.nav-links-mobile li a {
 
     allFetchedPastLessons = [...pastLessons]; 
     console.log('HISTORY.HTML: Stored allFetchedPastLessons:', allFetchedPastLessons.length);
-
-    const privateLessons = [];
-    const campLessons = [];
-    const clinicLessons = [];
-    const otherBookings = [];
-
-    allFetchedPastLessons.forEach(les => { 
-        const programName = les.program ? les.program.toLowerCase() : '';
-        if (programName.includes('private') || programName.includes('tennis private')) {
-            privateLessons.push(les);
-        } else if (programName.includes('camp') || programName.includes('pass')) {
-            campLessons.push(les);
-        } else if (programName.includes('clinic') || programName.includes('high performance')) {
-            clinicLessons.push(les);
-        } else {
-            otherBookings.push(les);
-        }
-    });
-    console.log('HISTORY.HTML: Initial Categorized - Private:', privateLessons.length, 'Camps:', campLessons.length, 'Clinics:', clinicLessons.length, 'Other:', otherBookings.length);
-
-    renderLessonsTable(privateLessons, 'private-lessons-table-container', 'No past private lessons found.');
-    renderLessonsTable(campLessons, 'camp-lessons-table-container', 'No past camp or pass lessons found.');
-    renderLessonsTable(clinicLessons, 'clinic-lessons-table-container', 'No past clinic lessons found.');
-    renderLessonsTable(otherBookings, 'other-bookings-table-container', 'No other past bookings found.');
+    
+    filterAndRenderHistory(''); 
   }
 
   async function deleteAdminLesson(id) {
@@ -437,11 +447,11 @@ ul.nav-links-mobile li a {
   }
   
   function filterAndRenderHistory(searchTerm) {
-    let filteredLessons;
+    let searchFilteredLessons; // Lessons filtered by search term first
     if (!searchTerm) {
-        filteredLessons = [...allFetchedPastLessons]; 
+        searchFilteredLessons = [...allFetchedPastLessons]; 
     } else {
-        filteredLessons = allFetchedPastLessons.filter(les => {
+        searchFilteredLessons = allFetchedPastLessons.filter(les => {
             const dateStr = new Date(les.date).toLocaleDateString().toLowerCase();
             return (
                 (les.program && les.program.toLowerCase().includes(searchTerm)) ||
@@ -453,31 +463,108 @@ ul.nav-links-mobile li a {
             );
         });
     }
-    console.log('HISTORY.HTML: Searched/Filtered lessons count:', filteredLessons.length, 'for term:', searchTerm);
+    console.log('HISTORY.HTML: Searched/Filtered lessons count:', searchFilteredLessons.length, 'for term:', searchTerm);
+
+    let lessonsToCategorize; // Lessons to be fed into categorization logic
+    if (activeCategoryFilter === 'All') {
+        lessonsToCategorize = [...searchFilteredLessons];
+    } else {
+        lessonsToCategorize = searchFilteredLessons.filter(les => {
+            const programName = les.program ? les.program.toLowerCase() : '';
+            if (activeCategoryFilter === 'Privates') {
+                return programName.includes('private') || programName.includes('tennis private');
+            } else if (activeCategoryFilter === 'Camps') {
+                return programName.includes('camp') || programName.includes('pass');
+            } else if (activeCategoryFilter === 'Clinics') {
+                return programName.includes('clinic') || programName.includes('high performance');
+            }
+            return false; 
+        });
+    }
+    // console.log('HISTORY.HTML: Lessons after category filter:', lessonsToCategorize.length, 'for category:', activeCategoryFilter);
+
 
     const privateLessons = [];
     const campLessons = [];
     const clinicLessons = [];
     const otherBookings = [];
 
-    filteredLessons.forEach(les => {
-        const programName = les.program ? les.program.toLowerCase() : '';
-        if (programName.includes('private') || programName.includes('tennis private')) {
-            privateLessons.push(les);
-        } else if (programName.includes('camp') || programName.includes('pass')) {
-            campLessons.push(les);
-        } else if (programName.includes('clinic') || programName.includes('high performance')) {
-            clinicLessons.push(les);
-        } else {
-            otherBookings.push(les);
-        }
-    });
-    console.log('HISTORY.HTML: Search Categorized - Private:', privateLessons.length, 'Camps:', campLessons.length, 'Clinics:', clinicLessons.length, 'Other:', otherBookings.length);
+    // Categorize based on lessonsToCategorize
+    if (activeCategoryFilter === 'All') {
+        lessonsToCategorize.forEach(les => {
+            const programName = les.program ? les.program.toLowerCase() : '';
+            if (programName.includes('private') || programName.includes('tennis private')) {
+                privateLessons.push(les);
+            } else if (programName.includes('camp') || programName.includes('pass')) {
+                campLessons.push(les);
+            } else if (programName.includes('clinic') || programName.includes('high performance')) {
+                clinicLessons.push(les);
+            } else {
+                otherBookings.push(les);
+            }
+        });
+    } else if (activeCategoryFilter === 'Privates') {
+        lessonsToCategorize.forEach(les => privateLessons.push(les));
+    } else if (activeCategoryFilter === 'Camps') {
+        lessonsToCategorize.forEach(les => campLessons.push(les));
+    } else if (activeCategoryFilter === 'Clinics') {
+        lessonsToCategorize.forEach(les => clinicLessons.push(les));
+    }
+    
+    console.log('HISTORY.HTML: Final Categorized - Private:', privateLessons.length, 
+                'Camps:', campLessons.length, 
+                'Clinics:', clinicLessons.length, 
+                'Other:', otherBookings.length,
+                'based on active filter:', activeCategoryFilter);
 
-    renderLessonsTable(privateLessons, 'private-lessons-table-container', 'No matching private lessons found.');
-    renderLessonsTable(campLessons, 'camp-lessons-table-container', 'No matching camp or pass lessons found.');
-    renderLessonsTable(clinicLessons, 'clinic-lessons-table-container', 'No matching clinic lessons found.');
-    renderLessonsTable(otherBookings, 'other-bookings-table-container', 'No other matching bookings found.');
+    const privateSection = document.getElementById('private-lessons-section');
+    if (privateLessons.length > 0 || (activeCategoryFilter === 'All' && searchTerm === '')) { // Show section if 'All' or has items
+        privateSection.style.display = 'block';
+        renderLessonsTable(privateLessons, 'private-lessons-table-container', 'No matching private lessons found.');
+    } else if (privateLessons.length === 0 && activeCategoryFilter === 'Privates') {
+        privateSection.style.display = 'block'; // Show section to display placeholder
+        renderLessonsTable(privateLessons, 'private-lessons-table-container', 'No matching private lessons found.');
+    }
+    else {
+        privateSection.style.display = 'none';
+        document.getElementById('private-lessons-table-container').innerHTML = ''; 
+    }
+
+    const campSection = document.getElementById('camp-lessons-section');
+    if (campLessons.length > 0 || (activeCategoryFilter === 'All' && searchTerm === '')) {
+        campSection.style.display = 'block';
+        renderLessonsTable(campLessons, 'camp-lessons-table-container', 'No matching camp or pass lessons found.');
+    } else if (campLessons.length === 0 && activeCategoryFilter === 'Camps') {
+        campSection.style.display = 'block';
+        renderLessonsTable(campLessons, 'camp-lessons-table-container', 'No matching camp or pass lessons found.');
+    }
+     else {
+        campSection.style.display = 'none';
+        document.getElementById('camp-lessons-table-container').innerHTML = '';
+    }
+
+    const clinicSection = document.getElementById('clinic-lessons-section');
+    if (clinicLessons.length > 0 || (activeCategoryFilter === 'All' && searchTerm === '')) {
+        clinicSection.style.display = 'block';
+        renderLessonsTable(clinicLessons, 'clinic-lessons-table-container', 'No matching clinic lessons found.');
+    } else if (clinicLessons.length === 0 && activeCategoryFilter === 'Clinics') {
+        clinicSection.style.display = 'block';
+        renderLessonsTable(clinicLessons, 'clinic-lessons-table-container', 'No matching clinic lessons found.');
+    }
+     else {
+        clinicSection.style.display = 'none';
+        document.getElementById('clinic-lessons-table-container').innerHTML = '';
+    }
+
+    const otherSection = document.getElementById('other-bookings-section');
+    // Show 'Other' only if 'All' is selected and it has items, or if it's specifically filtered to 'Other' (if such a filter existed)
+    if (activeCategoryFilter === 'All' && otherBookings.length > 0) {
+        otherSection.style.display = 'block';
+        renderLessonsTable(otherBookings, 'other-bookings-table-container', 'No other matching bookings found.');
+    } else {
+        otherSection.style.display = 'none';
+        document.getElementById('other-bookings-table-container').innerHTML = '';
+    }
   }
 
   window.addEventListener('DOMContentLoaded', () => {
@@ -490,10 +577,20 @@ ul.nav-links-mobile li a {
             filterAndRenderHistory(searchTerm);
         });
     }
-  });
 
-  // Attendance related functions (handleAttendanceChange) are removed as they are not used on this page.
-  // TODO comments related to attendance also removed.
+    const filterButtons = document.querySelectorAll('#category-filters .category-filter-button');
+    filterButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            activeCategoryFilter = button.getAttribute('data-category');
+            
+            filterButtons.forEach(btn => btn.classList.remove('active-filter-button'));
+            button.classList.add('active-filter-button');
+            
+            const currentSearchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+            filterAndRenderHistory(currentSearchTerm); 
+        });
+    });
+  });
 </script>
   <script>
   // This entire block to be added as a new script, or integrated if a single DOMContentLoaded is preferred.

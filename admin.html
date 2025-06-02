@@ -274,8 +274,26 @@ ul.nav-links-mobile li a {
     </form>
 
     <!-- All Scheduled Lessons -->
-    <h2>All Scheduled Lessons</h2>
-    <div id="all-lessons-container"></div>
+    <h2>Scheduled Lessons Overview</h2>
+    <div id="private-lessons-section" style="margin-bottom: 30px;">
+        <h3>Private Lessons</h3>
+        <div id="private-lessons-table-container">Loading private lessons...</div>
+    </div>
+
+    <div id="camp-lessons-section" style="margin-bottom: 30px;">
+        <h3>Camps & Passes</h3>
+        <div id="camp-lessons-table-container">Loading camp & pass lessons...</div>
+    </div>
+
+    <div id="clinic-lessons-section" style="margin-bottom: 30px;">
+        <h3>Clinics & Other Group Lessons</h3>
+        <div id="clinic-lessons-table-container">Loading clinic lessons...</div>
+    </div>
+
+    <div id="other-bookings-section" style="margin-bottom: 30px;">
+        <h3>Other Bookings</h3>
+        <div id="other-bookings-table-container">Loading other bookings...</div>
+    </div>
   </section>
 
   <footer>
@@ -336,19 +354,16 @@ ul.nav-links-mobile li a {
     return hours + ':' + minutesStr + ' ' + ampm;
   }
 
-  // Load & render the admin lessons table
-  async function loadAllLessons() {
-    const res = await fetch('/api/admin/lessons', { credentials: 'include' });
-    if (!res.ok) {
-      document.getElementById('all-lessons-container')
-        .innerHTML = '<p style="color:red;">Could not load lessons.</p>';
+  // Helper function to render a table for a specific set of lessons
+  function renderLessonsTable(lessonsArray, containerId, placeholderMessage) {
+    const container = document.getElementById(containerId);
+    if (!container) {
+      console.error('Container not found for ID:', containerId);
       return;
     }
-    const lessons = await res.json();
-    const container = document.getElementById('all-lessons-container');
 
-    if (lessons.length === 0) {
-      container.innerHTML = '<p>No lessons scheduled yet.</p>';
+    if (lessonsArray.length === 0) {
+      container.innerHTML = `<p>${placeholderMessage}</p>`;
       return;
     }
 
@@ -365,15 +380,16 @@ ul.nav-links-mobile li a {
             <th style="padding:8px; border:1px solid #ddd;">Phone</th>
             <th style="padding:8px; border:1px solid #ddd;">Paid?</th>
             <th style="padding:8px; border:1px solid #ddd;">Actions</th>
+            ${containerId === 'camp-lessons-table-container' ? '<th style="padding:8px; border:1px solid #ddd;">Attendance / Pass Status</th>' : ''}
           </tr>
         </thead>
         <tbody>
     `;
 
-    lessons.forEach(les => {
+    lessonsArray.forEach(les => {
       const dateStr = new Date(les.date).toLocaleDateString();
       const paidText = les.paid ? 'Yes' : 'NO - Pay Later';
-      const formattedTime = formatTime_12hr(les.time); // Use the helper function
+      const formattedTime = formatTime_12hr(les.time);
       html += `
         <tr data-id="${les.id}" ${!les.paid ? 'style="background-color: #ffebee;"' : ''}>
           <td style="padding:8px; border:1px solid #ddd;">${les.program}</td>
@@ -387,12 +403,106 @@ ul.nav-links-mobile li a {
           <td style="padding:8px; border:1px solid #ddd;">
             <button onclick="deleteAdminLesson(${les.id})">Delete</button>
           </td>
-        </tr>
       `;
+      if (containerId === 'camp-lessons-table-container') {
+        const programName = les.program ? les.program.toLowerCase() : '';
+        let isPassType = false;
+        let totalPassDays = 0;
+
+        // TODO: BACKEND REQUIREMENT for full attendance tracking functionality:
+        // - 'totalPassDays' is currently mocked based on program name (e.g., 5 for "Week Pass").
+        //   Ideally, the backend (/api/admin/lessons) should return 'total_pass_days' for each pass-type booking.
+        // - The 'days-used' span currently defaults to 0.
+        //   Ideally, the backend (/api/admin/lessons) should return 'days_used' (from DB) for each pass-type booking.
+        // - Checkbox 'checked' states are currently default (unchecked).
+        //   Ideally, these should be pre-set based on actual attendance data from the backend for each day of the pass,
+        //   e.g., if /api/admin/lessons returned an array like 'les.attendance_details = [true, false, true, ...]'
+        if (programName.includes('week pass')) {
+            isPassType = true;
+            totalPassDays = 5; 
+        } else if (programName.includes('day pass')) {
+            isPassType = true;
+            totalPassDays = 1;
+        }
+
+        if (isPassType) {
+            if (totalPassDays > 1) { // Week pass
+                html += '<td>';
+                html += `<div>Days: <span class="days-used" data-booking-id="${les.id}">0</span> / <span class="total-days">${totalPassDays}</span> used</div>`;
+                html += `<div class="attendance-markers" style="margin-top: 5px; display: flex; flex-wrap: wrap;">`;
+                for (let i = 0; i < totalPassDays; i++) {
+                    html += `<label style="display: inline-block; margin-right: 8px; font-size: 0.9em;">
+                               <input type="checkbox" class="attendance-checkbox" data-booking-id="${les.id}" data-day-index="${i}"> D${i + 1}
+                             </label>`;
+                }
+                html += `</div></td>`;
+            } else { // Day pass (totalPassDays === 1)
+                html += '<td>';
+                html += `<div>Status: <span class="attendance-status" data-booking-id="${les.id}">Not Attended</span></div>`;
+                html += `<div class="attendance-markers" style="margin-top: 5px;">
+                           <label style="display: inline-block; font-size: 0.9em;">
+                             <input type="checkbox" class="attendance-checkbox" data-booking-id="${les.id}" data-day-index="0"> Mark Attended
+                           </label>
+                         </div></td>`;
+            }
+        } else {
+            html += '<td>N/A</td>'; // Not a pass type, but in camp container
+        }
+      }
+      html += `</tr>`;
     });
 
     html += `</tbody></table>`;
     container.innerHTML = html;
+
+    if (containerId === 'camp-lessons-table-container') {
+        const checkboxes = document.querySelectorAll(`#${containerId} .attendance-checkbox`);
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', (event) => {
+                const bookingId = event.target.getAttribute('data-booking-id');
+                const dayIndex = parseInt(event.target.getAttribute('data-day-index'));
+                handleAttendanceChange(bookingId, dayIndex, event.target.checked);
+            });
+        });
+    }
+  }
+
+  // Load & render the admin lessons table
+  async function loadAllLessons() {
+    const res = await fetch('/api/admin/lessons', { credentials: 'include' });
+    // Initial error check (applies to all tables if fetch fails)
+    if (!res.ok) {
+      const errorMsg = '<p style="color:red;">Could not load lessons data.</p>';
+      document.getElementById('private-lessons-table-container').innerHTML = errorMsg;
+      document.getElementById('camp-lessons-table-container').innerHTML = errorMsg;
+      document.getElementById('clinic-lessons-table-container').innerHTML = errorMsg;
+      document.getElementById('other-bookings-table-container').innerHTML = errorMsg;
+      return;
+    }
+    const lessons = await res.json();
+
+    const privateLessons = [];
+    const campLessons = [];
+    const clinicLessons = [];
+    const otherBookings = [];
+
+    lessons.forEach(les => {
+        const programName = les.program ? les.program.toLowerCase() : '';
+        if (programName.includes('private') || programName.includes('tennis private')) {
+            privateLessons.push(les);
+        } else if (programName.includes('camp') || programName.includes('pass')) {
+            campLessons.push(les);
+        } else if (programName.includes('clinic') || programName.includes('high performance')) {
+            clinicLessons.push(les);
+        } else {
+            otherBookings.push(les);
+        }
+    });
+
+    renderLessonsTable(privateLessons, 'private-lessons-table-container', 'No private lessons scheduled.');
+    renderLessonsTable(campLessons, 'camp-lessons-table-container', 'No camp or pass lessons scheduled.');
+    renderLessonsTable(clinicLessons, 'clinic-lessons-table-container', 'No clinic or other group lessons scheduled.');
+    renderLessonsTable(otherBookings, 'other-bookings-table-container', 'No other bookings.');
   }
 
   // Call the delete endpoint, then refresh the table
@@ -411,6 +521,30 @@ ul.nav-links-mobile li a {
 
   // Kick it off on page load
   window.addEventListener('DOMContentLoaded', loadAllLessons);
+
+// TODO: BACKEND REQUIREMENT for full attendance tracking functionality:
+// This function currently only provides mock UI feedback and console logs.
+// For persistence, it should make an API call to a new backend endpoint, e.g.:
+// POST /api/admin/mark-attendance
+// Request body example: { "bookingId": bookingId, "dayIndex": dayIndex, "attended": isChecked }
+// The backend would then update the 'days_used' or a similar field/table for this booking in the database.
+function handleAttendanceChange(bookingId, dayIndex, isChecked) {
+    console.log(`Attendance change: Booking ID ${bookingId}, Day Index ${dayIndex}, Checked: ${isChecked}`);
+    // Mock UI update:
+    const daysUsedSpan = document.querySelector(`.days-used[data-booking-id="${bookingId}"]`);
+    const statusSpan = document.querySelector(`.attendance-status[data-booking-id="${bookingId}"]`);
+
+    if (daysUsedSpan) { // For multi-day passes
+        let currentDaysUsed = 0;
+        // Recalculate based on all checkboxes for this booking
+        document.querySelectorAll(`.attendance-checkbox[data-booking-id="${bookingId}"]`).forEach(cb => {
+            if (cb.checked) currentDaysUsed++;
+        });
+        daysUsedSpan.textContent = currentDaysUsed;
+    } else if (statusSpan) { // For single-day passes
+        statusSpan.textContent = isChecked ? 'Attended' : 'Not Attended';
+    }
+}
 </script>
   <script>
   // This entire block to be added as a new script, or integrated if a single DOMContentLoaded is preferred.

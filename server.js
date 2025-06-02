@@ -684,7 +684,7 @@ app.post('/api/create-payment', async (req, res) => {
 
 app.post('/api/book-pay-later', async (req, res) => {
   try {
-    const { student, program, coach, date, time } = req.body;
+    // const { student, program, coach, date, time } = req.body; // Original extraction
 
     let email = req.body.email || (req.session.user && req.session.user.email);
     if (!email) {
@@ -707,19 +707,31 @@ app.post('/api/book-pay-later', async (req, res) => {
     }
     // Optional: Add a strict check for phone if it's absolutely required for pay-later
     // if (!phone) { return res.status(400).json({ message: 'Missing phone number.' }); }
+    const dbPhone = phone || ''; // Default to empty string if phone is null
 
+    const studentFromBody = req.body.student;
+    const programFromBody = req.body.program;
+    const coachFromBody = req.body.coach;
+    const dateFromBody = req.body.date;
+    const timeFromBody = req.body.time;
+
+    const dbStudent = studentFromBody; // Assumed to be always present
+    const dbProgram = programFromBody; // Assumed to be always present
+    const dbCoach = coachFromBody || null;
+    const dbDate = dateFromBody; // Assumed to be present
+    const dbTime = timeFromBody || null;
 
     await pool.query(
       `INSERT INTO bookings
          (email, phone, program, coach, date, time, session_id, paid, student)
        VALUES ($1, $2, $3, $4, $5, $6, NULL, FALSE, $7)`,
-      [email, phone, program, coach, date, time, student]
+      [email, dbPhone, dbProgram, dbCoach, dbDate, dbTime, dbStudent]
     );
 
-    if (coach) {
+    if (dbCoach) { // Use dbCoach here
       const coachDetailsQuery = await pool.query(
         `SELECT phone, carrier_gateway FROM coaches WHERE full_name = $1`,
-        [coach]
+        [dbCoach] // Use dbCoach here
       );
       if (coachDetailsQuery.rows.length > 0 && coachDetailsQuery.rows[0].phone && coachDetailsQuery.rows[0].carrier_gateway) {
         const smsTo = `${coachDetailsQuery.rows[0].phone.replace(/\D/g, '')}@${coachDetailsQuery.rows[0].carrier_gateway}`;
@@ -727,7 +739,7 @@ app.post('/api/book-pay-later', async (req, res) => {
           await transporter.sendMail({
             from: `"C2 Tennis Academy" <${process.env.GMAIL_USER}>`,
             to: smsTo,
-            text: `PAY LATER Booking: ${student} | ${program} on ${date} at ${time}`
+            text: `PAY LATER Booking: ${dbStudent} | ${dbProgram} on ${dbDate} at ${dbTime}` // Use refined vars
           });
         } catch (emailError) {
           console.error('Failed to send pay-later SMS notification:', emailError);

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Portal - C2 Tennis Academy</title>
+  <title>Lesson History - Admin Portal - C2 Tennis Academy</title>
 
   <style>
     html, body { height: 100%; margin: 0; display: flex; flex-direction: column; font-family: Arial, sans-serif; }
@@ -213,7 +213,7 @@ ul.nav-links-mobile li a {
 <header>
   <div class="header-content">
     <div class="site-title">
-      <h1>Admin Portal</h1> <!-- Specific title -->
+      <h1>Lesson History</h1> <!-- Specific title -->
       <p>C2 Tennis Academy</p> <!-- Consistent subtitle -->
     </div>
     <button class="mobile-menu-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mainNavigation">
@@ -252,57 +252,12 @@ ul.nav-links-mobile li a {
 </nav>
 
   <section>
-    <h2>Add / Edit Lesson</h2>
-    <form id="lesson-form">
-      <input type="hidden" id="lesson-id" />
-
-      <!-- Program -->
-      <div class="full-width">
-        <label for="program">Program</label>
-        <select id="program" required>
-          <option value="" disabled selected>Choose a program</option>
-          <option>Private Lessons</option>
-          <option>Summer Camp / Group Lessons</option>
-          <option>High Performance Training</option>
-          <option>Adult Clinics</option>
-        </select>
-      </div>
-
-      <!-- Student (for Private Lessons) -->
-      <div id="student-name-container" class="full-width">
-        <label for="student-name">Student Name</label>
-        <input type="text" id="student-name" placeholder="Enter student name for private lesson" />
-      </div>
-
-      <!-- Coach -->
-      <div>
-        <label for="coach">Coach</label>
-        <select id="coach" required>
-          <option value="" disabled selected>Choose a coach</option>
-          <option>Ricardo Carvajalino</option>
-          <option>Jacob Capone</option>
-          <option>Zach Capone</option>
-          <option>Matthew Abbey</option>
-        </select>
-      </div>
-
-      <!-- Date -->
-      <div>
-        <label for="date">Date</label>
-        <input type="date" id="date" required />
-      </div>
-
-      <!-- Time -->
-      <div>
-        <label for="time">Time</label>
-        <input type="time" id="time" required />
-      </div>
-
-      <button type="submit">Save Lesson</button>
-    </form>
-
     <!-- All Scheduled Lessons -->
-    <h2>Scheduled Lessons Overview</h2>
+    <h2>Past Lesson History</h2>
+    <div style="margin-bottom: 20px; margin-top: 10px;">
+      <label for="historySearchInput" style="margin-right: 10px; font-weight: bold;">Search Past Lessons:</label>
+      <input type="text" id="historySearchInput" placeholder="Enter keyword (student, program, coach, email, date)..." style="width: 50%; padding: 8px;">
+    </div>
     <div id="private-lessons-section" style="margin-bottom: 30px;">
         <h3>Private Lessons</h3>
         <div id="private-lessons-table-container">Loading private lessons...</div>
@@ -322,9 +277,9 @@ ul.nav-links-mobile li a {
         <h3>Other Bookings</h3>
         <div id="other-bookings-table-container">Loading other bookings...</div>
     </div>
-    <div style="text-align: center; margin-top: 40px; margin-bottom: 20px;"> <!-- Wrapper for centering -->
-      <a href="admin_history.html" class="explore-button">View Lesson History</a>
-    </div>
+    삭제됨 <div style="text-align: center; margin-top: 40px; margin-bottom: 20px;"> <!-- Wrapper for centering -->
+      삭제됨 <a href="admin_history.html" class="explore-button">View Lesson History</a>
+    삭제됨 </div>
   </section>
 
   <footer>
@@ -367,6 +322,8 @@ ul.nav-links-mobile li a {
   </script>
 
   <script>
+  let allFetchedPastLessons = []; // For storing all lessons to search through
+
   // Helper function to format time to 12-hour AM/PM
   function formatTime_12hr(timeStr) {
     if (!timeStr || !timeStr.includes(':')) {
@@ -387,14 +344,6 @@ ul.nav-links-mobile li a {
 
   // Helper function to render a table for a specific set of lessons
   function renderLessonsTable(lessonsArray, containerId, placeholderMessage) {
-    const coachColors = {
-        'Ricardo Carvajalino': '#e0f7fa', // Light cyan/blue
-        'Jacob Capone': '#fff9c4',      // Light yellow
-        'Zach Capone': '#c8e6c9',        // Light green
-        'Zachary Capone': '#c8e6c9',     // Alias for Zach
-        'Matthew Abbey': '#ffccbc',     // Light red/coral
-        'Paula Carvajalino': '#f3e5f5'  // Light purple
-    };
     const container = document.getElementById(containerId);
     if (!container) {
       console.error('Container not found for ID:', containerId);
@@ -419,7 +368,7 @@ ul.nav-links-mobile li a {
             <th style="padding:8px; border:1px solid #ddd;">Phone</th>
             <th style="padding:8px; border:1px solid #ddd;">Paid?</th>
             <th style="padding:8px; border:1px solid #ddd;">Actions</th>
-            ${containerId === 'camp-lessons-table-container' ? '<th style="padding:8px; border:1px solid #ddd;">Attendance / Pass Status</th>' : ''}
+            삭제됨 ${containerId === 'camp-lessons-table-container' ? '<th style="padding:8px; border:1px solid #ddd;">Attendance / Pass Status</th>' : ''}
           </tr>
         </thead>
         <tbody>
@@ -429,18 +378,8 @@ ul.nav-links-mobile li a {
       const dateStr = new Date(les.date).toLocaleDateString();
       const paidText = les.paid ? 'Yes' : 'NO - Pay Later';
       const formattedTime = formatTime_12hr(les.time);
-      
-      let rowStyle = '';
-      if (containerId === 'private-lessons-table-container' && les.coach && coachColors[les.coach]) {
-          rowStyle = `background-color: ${coachColors[les.coach]};`;
-      }
-      // Unpaid style takes precedence if applicable
-      if (!les.paid) {
-          rowStyle = 'background-color: #ffebee;'; 
-      }
-
       html += `
-        <tr data-id="${les.id}" ${rowStyle ? `style="${rowStyle}"` : ''}>
+        <tr data-id="${les.id}" ${!les.paid ? 'style="background-color: #ffebee;"' : ''}>
           <td style="padding:8px; border:1px solid #ddd;">${les.program}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.coach}</td>
           <td style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
@@ -453,71 +392,20 @@ ul.nav-links-mobile li a {
             <button onclick="deleteAdminLesson(${les.id})">Delete</button>
           </td>
       `;
-      if (containerId === 'camp-lessons-table-container') {
-        const programName = les.program ? les.program.toLowerCase() : '';
-        let isPassType = false;
-        let totalPassDays = 0;
-
-        // TODO: BACKEND REQUIREMENT for full attendance tracking functionality:
-        // - 'totalPassDays' is currently mocked based on program name (e.g., 5 for "Week Pass").
-        //   Ideally, the backend (/api/admin/lessons) should return 'total_pass_days' for each pass-type booking.
-        // - The 'days-used' span currently defaults to 0.
-        //   Ideally, the backend (/api/admin/lessons) should return 'days_used' (from DB) for each pass-type booking.
-        // - Checkbox 'checked' states are currently default (unchecked).
-        //   Ideally, these should be pre-set based on actual attendance data from the backend for each day of the pass,
-        //   e.g., if /api/admin/lessons returned an array like 'les.attendance_details = [true, false, true, ...]'
-        if (programName.includes('week pass')) {
-            isPassType = true;
-            totalPassDays = 5; 
-        } else if (programName.includes('day pass')) {
-            isPassType = true;
-            totalPassDays = 1;
-        }
-
-        if (isPassType) {
-            if (totalPassDays > 1) { // Week pass
-                html += '<td>';
-                html += `<div>Days: <span class="days-used" data-booking-id="${les.id}">0</span> / <span class="total-days">${totalPassDays}</span> used</div>`;
-                html += `<div class="attendance-markers" style="margin-top: 5px; display: flex; flex-wrap: wrap;">`;
-                for (let i = 0; i < totalPassDays; i++) {
-                    html += `<label style="display: inline-block; margin-right: 8px; font-size: 0.9em;">
-                               <input type="checkbox" class="attendance-checkbox" data-booking-id="${les.id}" data-day-index="${i}"> D${i + 1}
-                             </label>`;
-                }
-                html += `</div></td>`;
-            } else { // Day pass (totalPassDays === 1)
-                html += '<td>';
-                html += `<div>Status: <span class="attendance-status" data-booking-id="${les.id}">Not Attended</span></div>`;
-                html += `<div class="attendance-markers" style="margin-top: 5px;">
-                           <label style="display: inline-block; font-size: 0.9em;">
-                             <input type="checkbox" class="attendance-checkbox" data-booking-id="${les.id}" data-day-index="0"> Mark Attended
-                           </label>
-                         </div></td>`;
-            }
-        } else {
-            html += '<td>N/A</td>'; // Not a pass type, but in camp container
-        }
-      }
+      // Attendance UI removed for history page
+      // if (containerId === 'camp-lessons-table-container') { ... } 
       html += `</tr>`;
     });
 
     html += `</tbody></table>`;
     container.innerHTML = html;
 
-    if (containerId === 'camp-lessons-table-container') {
-        const checkboxes = document.querySelectorAll(`#${containerId} .attendance-checkbox`);
-        checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', (event) => {
-                const bookingId = event.target.getAttribute('data-booking-id');
-                const dayIndex = parseInt(event.target.getAttribute('data-day-index'));
-                handleAttendanceChange(bookingId, dayIndex, event.target.checked);
-            });
-        });
-    }
+    // Event listener attachment for checkboxes removed for history page
+    // if (containerId === 'camp-lessons-table-container') { ... }
   }
 
   // Load & render the admin lessons table
-  async function loadAllLessons() {
+  async function loadPastLessons() {
     const res = await fetch('/api/admin/lessons', { credentials: 'include' });
     // Initial error check (applies to all tables if fetch fails)
     if (!res.ok) {
@@ -531,26 +419,28 @@ ul.nav-links-mobile li a {
     const lessons = await res.json();
 
     const now = new Date();
-    // Filter for upcoming/current lessons
-    const upcomingLessons = lessons.filter(les => {
-        const lessonTime = les.time || '00:00:00'; // Default to midnight if no time
+    // Filter for past lessons
+    const pastLessons = lessons.filter(les => {
+        const lessonTime = les.time || '23:59:59'; // Default to end of day for past lessons
         // Assuming les.date is 'YYYY-MM-DD' and les.time is 'HH:MM' or 'HH:MM:SS'
         const lessonDateTimeStr = `${les.date}T${lessonTime}`;
         try {
             const lessonDate = new Date(lessonDateTimeStr);
-            return lessonDate >= now;
+            return lessonDate < now; // Keep only lessons strictly in the past
         } catch (e) {
             console.error(`Invalid date format for lesson: ${les.date} ${lessonTime}`, les);
             return false; // Exclude if date is invalid
         }
     });
 
+    allFetchedPastLessons = [...pastLessons]; // Store a copy for filtering
+
     const privateLessons = [];
     const campLessons = [];
     const clinicLessons = [];
     const otherBookings = [];
 
-    upcomingLessons.forEach(les => {
+    pastLessons.forEach(les => { // Initial render uses all past lessons
         const programName = les.program ? les.program.toLowerCase() : '';
         if (programName.includes('private') || programName.includes('tennis private')) {
             privateLessons.push(les);
@@ -577,14 +467,66 @@ ul.nav-links-mobile li a {
       credentials: 'include'
     });
     if (res.ok) {
-      loadAllLessons();
+      loadPastLessons();
     } else {
       alert('Delete failed: ' + await res.text());
     }
   }
 
   // Kick it off on page load
-  window.addEventListener('DOMContentLoaded', loadAllLessons);
+  window.addEventListener('DOMContentLoaded', () => {
+    loadPastLessons(); // Initial load
+
+    const searchInput = document.getElementById('historySearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            filterAndRenderHistory(searchTerm);
+        });
+    }
+  });
+
+function filterAndRenderHistory(searchTerm) {
+    let filteredLessons;
+    if (!searchTerm) {
+        filteredLessons = [...allFetchedPastLessons]; 
+    } else {
+        filteredLessons = allFetchedPastLessons.filter(les => {
+            const dateStr = new Date(les.date).toLocaleDateString().toLowerCase();
+            return (
+                (les.program && les.program.toLowerCase().includes(searchTerm)) ||
+                (les.coach && les.coach.toLowerCase().includes(searchTerm)) ||
+                (les.student && les.student.toLowerCase().includes(searchTerm)) ||
+                (les.email && les.email.toLowerCase().includes(searchTerm)) ||
+                (dateStr.includes(searchTerm)) 
+            );
+        });
+    }
+
+    // Now, categorize and render 'filteredLessons'
+    const privateLessons = [];
+    const campLessons = [];
+    const clinicLessons = [];
+    const otherBookings = [];
+
+    filteredLessons.forEach(les => {
+        const programName = les.program ? les.program.toLowerCase() : '';
+        if (programName.includes('private') || programName.includes('tennis private')) {
+            privateLessons.push(les);
+        } else if (programName.includes('camp') || programName.includes('pass')) {
+            campLessons.push(les);
+        } else if (programName.includes('clinic') || programName.includes('high performance')) {
+            clinicLessons.push(les);
+        } else {
+            otherBookings.push(les);
+        }
+    });
+
+    renderLessonsTable(privateLessons, 'private-lessons-table-container', 'No matching private lessons found.');
+    renderLessonsTable(campLessons, 'camp-lessons-table-container', 'No matching camp or pass lessons found.');
+    renderLessonsTable(clinicLessons, 'clinic-lessons-table-container', 'No matching clinic lessons found.');
+    renderLessonsTable(otherBookings, 'other-bookings-table-container', 'No other matching bookings found.');
+}
 
 // TODO: BACKEND REQUIREMENT for full attendance tracking functionality:
 // This function currently only provides mock UI feedback and console logs.

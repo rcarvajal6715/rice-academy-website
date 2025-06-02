@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Our Mission - C2 Tennis Academy</title>
+
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="C2 Tennis Academy’s mission is to help players of all ages improve their game, support underprivileged kids with equipment, and promote long, happy lives through tennis.">
+  <meta name="keywords" content="C2 Tennis Academy, tennis mission, community outreach, tennis for all, underprivileged kids">
+  <meta name="author" content="C2 Tennis Academy">
+  <meta property="og:title" content="C2 Tennis Academy | Our Mission">
+  <meta property="og:description" content="We are a tennis academy dedicated to helping everyone—no matter age or background—improve at tennis so they can live longer, happier lives.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://c2tennisacademy.com/mission.html">
+
+  <style>
+    /* ─── Base Styles ─── */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      line-height: 1.6;
+      color: #333;
+    }
+    a {
+      color: #0c3c78;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    h2, h3, h4 {
+      margin-bottom: 0.5em;
+    }
+    p {
+      margin-bottom: 1em;
+    }
+
+    /* ─── Header & Navigation ─── */
+    header {
+      background-color: #0c3c78;
+      color: white;
+      padding: 30px 20px;
+      text-align: center;
+      position: relative;
+      z-index: 10;
+    }
+    .header-content {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      max-width: 1200px;
+      margin: 0 auto;
+      position: relative;
+    }
+    .site-title h1 {
+      font-size: 2.2em;
+      margin: 0;
+      color: white;
+    }
+    .site-title p {
+      font-size: 1em;
+      margin: 0;
+      color: #f0f0f0;
+    }
+    .mobile-menu-toggle {
+      display: none;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 28px;
+      cursor: pointer;
+      padding: 5px;
+      position: absolute;
+      right: 20px;
+      top: 20px;
+    }
+    nav.main-navigation {
+      background-color: #092e5e;
+      z-index: 9;
+    }
+    .nav-wrapper-desktop {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+      box-sizing: border-box;
+    }
+    ul.nav-links-desktop {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+    }
+    ul.nav-links-desktop li a {
+      color: white;
+      padding: 14px 20px;
+      display: block;
+      border-radius: 9999px;
+      transition: background-color 0.2s ease;
+    }
+    ul.nav-links-desktop li a:hover {
+      background-color: #0f4fa0;
+    }
+    ul.nav-links-desktop li a.highlighted-nav {
+      background-color: #d8f352;
+      color: black;
+      font-weight: bold;
+      border-radius: 9999px;
+    }
+    ul.nav-links-desktop li a.highlighted-nav:hover {
+      background-color: #c1da3b;
+    }
+    .mobile-menu-container {
+      display: none;
+      background-color: #092e5e;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 9;
+      padding-top: 20px;
+      box-sizing: border-box;
+      overflow-y: auto;
+      text-align: center;
+    }
+    nav.main-navigation.mobile-menu--open .mobile-menu-container {
+      display: block;
+    }
+    .mobile-menu-close {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 28px;
+      cursor: pointer;
+    }
+    ul.nav-links-mobile {
+      list-style: none;
+      padding: 0;
+      margin: 20px 0;
+    }
+    ul.nav-links-mobile li a {
+      color: white;
+      padding: 15px 20px;
+      display: block;
+      border-bottom: 1px solid #0c3c78;
+      border-radius: 9999px;
+    }
+    ul.nav-links-mobile li a:hover {
+      background-color: #0f4fa0;
+    }
+    .auth-buttons-desktop {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      align-items: center;
+    }
+    .auth-buttons-desktop a button,
+    .auth-buttons-desktop button {
+      background-color: white;
+      color: #0c3c78;
+      border: none;
+      padding: 10px 20px;
+      margin-left: 10px;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    .auth-buttons-desktop a button:hover,
+    .auth-buttons-desktop button:hover {
+      background-color: #0f4fa0;
+      color: white;
+    }
+    .auth-buttons-mobile {
+      padding: 20px;
+    }
+    .auth-buttons-mobile a button,
+    .auth-buttons-mobile button {
+      background-color: #d8f352;
+      color: #0c3c78;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      display: block;
+      width: 80%;
+      max-width: 250px;
+      margin: 10px auto;
+      box-sizing: border-box;
+    }
+    .auth-buttons-mobile a button:hover,
+    .auth-buttons-mobile button:hover {
+      background-color: #c1da3b;
+    }
+
+    @media (max-width: 768px) {
+      .mobile-menu-toggle {
+        display: block;
+      }
+      .nav-wrapper-desktop {
+        display: none;
+      }
+      .auth-buttons-desktop {
+        display: none;
+      }
+      nav.main-navigation {
+        padding: 0;
+        background-color: transparent;
+      }
+    }
+
+    /* ─── Sticky Sections ─── */
+    .sticky-section {
+      position: -webkit-sticky;
+      position: sticky;
+      top: 0;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ─── Hero / Banner with black overlay ─── */
+    .hero {
+      /* Make it exactly one viewport high */
+      height: 100vh;
+      background: url('mission.png') no-repeat center center/cover;
+      color: white;
+      text-align: center;
+
+      /* Center content with Flexbox */
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0, 0, 0, 0.4); /* black at 40% opacity */
+      z-index: 0;
+    }
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 20px; /* ensure some horizontal breathing room */
+    }
+    .hero-content h2 {
+      font-size: 2.8em;
+      margin-bottom: 0.5em;
+      color: white;
+    }
+    .hero-content p {
+      font-size: 1.25em;
+      line-height: 1.5;
+      margin-bottom: 1.5em;
+      color: white;
+    }
+    .hero-content .cta-button {
+      background-color: #d8f352;
+      color: #0c3c78;
+      padding: 12px 32px;
+      font-weight: bold;
+      font-size: 1.125em;
+      border: none;
+      border-radius: 9999px;
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.2s ease;
+    }
+    .hero-content .cta-button:hover {
+      background-color: #c1da3b;
+      transform: scale(1.05);
+    }
+
+    /* ─── Mission Section ─── */
+    .mission-section {
+      background-color: white;
+      padding: 60px 20px;
+      text-align: center;
+      z-index: 1;
+    }
+    .mission-section .mission-text {
+      font-size: 1.125em;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto 2em;
+    }
+
+    /* ─── Community Outreach ─── */
+    .community-section {
+      background-color: #f4f7fa;
+      padding: 60px 20px;
+      z-index: 1;
+    }
+    .community-section h3 {
+      text-align: center;
+      margin-bottom: 1em;
+      color: #0c3c78;
+    }
+    .community-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 30px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    .community-card {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+      text-align: left;
+    }
+    .community-card h4 {
+      margin-top: 0;
+      margin-bottom: 0.5em;
+      color: #0c3c78;
+    }
+    .community-card p {
+      margin-bottom: 0.75em;
+      color: #333;
+    }
+
+    /* ─── Footer ─── */
+    footer {
+      background-color: #0c3c78;
+      color: white;
+      text-align: center;
+      padding: 20px;
+      margin-top: 60px;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── HEADER & NAVIGATION ─── -->
+  <header>
+    <div class="header-content">
+      <div class="site-title">
+        <h1>C2 Tennis Academy</h1>
+        <p>Developing Champions On and Off the Court</p>
+      </div>
+      <button class="mobile-menu-toggle"
+              aria-label="Open navigation menu"
+              aria-expanded="false"
+              aria-controls="mainNavigation">
+        &#9776;
+      </button>
+    </div>
+    <div class="auth-buttons-desktop" id="authContainerDesktop">
+      <a href="register.html"><button id="registerBtnDesktop">Register</button></a>
+      <a href="login.html"><button id="loginBtnDesktop">Login</button></a>
+    </div>
+  </header>
+  <nav class="main-navigation" id="mainNavigation">
+    <div class="nav-wrapper-desktop">
+      <ul class="nav-links-desktop">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="programs.html">Programs</a></li>
+        <li><a href="schedule.html">Schedule</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li><a href="booking.html" class="highlighted-nav">Book</a></li>
+      </ul>
+    </div>
+    <div class="mobile-menu-container">
+      <button class="mobile-menu-close" aria-label="Close navigation menu">&times;</button>
+      <ul class="nav-links-mobile">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="programs.html">Programs</a></li>
+        <li><a href="schedule.html">Schedule</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li><a href="booking.html">Book</a></li>
+      </ul>
+      <div class="auth-buttons-mobile" id="authContainerMobile">
+        <a href="register.html"><button id="registerBtnMobile">Register</button></a>
+        <a href="login.html"><button id="loginBtnMobile">Login</button></a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ─── HERO / BANNER (now true 100vh sticky) ─── -->
+  <section class="hero sticky-section">
+    <div class="hero-content">
+      <h2>Our Mission</h2>
+      <p>
+        We are a tennis academy dedicated to helping people—no matter their age or background—improve at tennis so they can live longer, healthier, and happier lives.
+      </p>
+      <button class="cta-button" onclick="location.href='programs.html'">
+        See Our Programs
+      </button>
+    </div>
+  </section>
+
+  <!-- ─── MISSION STATEMENT ─── -->
+  <section class="mission-section sticky-section">
+    <div class="mission-text">
+      <p>
+        At C2 Tennis Academy, we believe that tennis is more than just a sport—it’s a path to physical wellness, mental resilience, and community connection. Our certified coaches tailor lessons to each student’s skill level, whether you’re picking up a racquet for the first time or competing at a collegiate level. By blending cutting-edge video analysis, AI-driven performance feedback, and compassionate mentorship, we ensure every player sees real, measurable progress.
+      </p>
+      <p>
+        But our commitment goes beyond the court: we’re passionate about giving back. That’s why we partner with local schools and nonprofits to support underprivileged children. We provide free or low-cost clinics, supply racquets and equipment to those who can’t afford them, and offer scholarships to promising young athletes who need financial assistance. Because everyone—regardless of age or income—deserves the chance to experience the joy and lifelong benefits of tennis.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─── COMMUNITY OUTREACH ─── -->
+  <section class="community-section sticky-section">
+    <h3>Community Outreach</h3>
+    <div class="community-grid">
+      <!-- Card 1 -->
+      <div class="community-card">
+        <h4>Equipment Donation Drive</h4>
+        <p>
+          Throughout the year, we organize donation events where players and families can drop off gently used racquets, tennis shoes, and balls. Every item collected is refurbished and distributed to local youth centers in underserved neighborhoods.
+        </p>
+      </div>
+      <!-- Card 2 -->
+      <div class="community-card">
+        <h4>Free Youth Clinics</h4>
+        <p>
+          Once a month, our coaches run free clinics for kids who otherwise wouldn’t have access to tennis lessons. These clinics cover basic techniques, sportsmanship, and healthy habits—giving each child a solid foundation.
+        </p>
+      </div>
+      <!-- Card 3 -->
+      <div class="community-card">
+        <h4>Scholarship Program</h4>
+        <p>
+          Talented young athletes often face financial barriers. We award partial tuition scholarships to students who demonstrate dedication and athletic promise, covering up to 50% of coaching fees.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── FOOTER ─── -->
+  <footer>
+    <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
+  </footer>
+
+  <!-- ─── MOBILE MENU & SESSION SCRIPT ─── -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const menuToggle = document.querySelector('.mobile-menu-toggle');
+      const mobileMenuClose = document.querySelector('.mobile-menu-close');
+      const mainNav = document.querySelector('nav.main-navigation');
+
+      if (menuToggle && mainNav && mobileMenuClose) {
+        menuToggle.addEventListener('click', () => {
+          const isOpen = mainNav.classList.toggle('mobile-menu--open');
+          menuToggle.setAttribute('aria-expanded', String(isOpen));
+        });
+        mobileMenuClose.addEventListener('click', () => {
+          mainNav.classList.remove('mobile-menu--open');
+          menuToggle.setAttribute('aria-expanded', 'false');
+        });
+      }
+
+      document.querySelectorAll('.mobile-menu-container a').forEach(link => {
+        link.addEventListener('click', () => {
+          if (mainNav.classList.contains('mobile-menu--open')) {
+            mainNav.classList.remove('mobile-menu--open');
+            menuToggle.setAttribute('aria-expanded', 'false');
+          }
+        });
+      });
+
+      // Session Check (same as other pages)
+      async function checkSession() {
+        try {
+          const res = await fetch('/api/check-session', { credentials: 'include' });
+          const data = await res.json();
+          const authDesktop = document.getElementById('authContainerDesktop');
+          const authMobile = document.getElementById('authContainerMobile');
+
+          const portal = data.isAdmin ? 'admin.html'
+                        : data.isCoach ? 'instructor_portal.html'
+                        : 'parent_portal.html';
+          const portalName = data.isAdmin ? 'Admin Portal'
+                          : data.isCoach ? 'Instructor Portal'
+                          : 'Parent Portal';
+
+          const inHTML = `<a href="${portal}"><button>${portalName}</button></a>
+                          <button onclick="logout()">Logout</button>`;
+          const inMobileHTML = `<a href="${portal}"><button>${portalName}</button></a>
+                                <button onclick="logout()">Logout</button>`;
+          const outHTML = `<a href="register.html"><button id="registerBtnDesktop">Register</button></a>
+                           <a href="login.html"><button id="loginBtnDesktop">Login</button></a>`;
+          const outMobileHTML = `<a href="register.html"><button id="registerBtnMobile">Register</button></a>
+                                 <a href="login.html"><button id="loginBtnMobile">Login</button></a>`;
+
+          if (data.loggedIn) {
+            authDesktop.innerHTML = inHTML;
+            authMobile.innerHTML = inMobileHTML;
+            const existing = document.querySelector('.welcome-greeting');
+            if (existing) existing.remove();
+            if (data.firstName && data.firstName.trim()) {
+              const greet = document.createElement('div');
+              greet.className = 'welcome-greeting';
+              greet.textContent = 'Welcome, ' + data.firstName + '!';
+              greet.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
+              document.body.insertBefore(greet, document.body.firstChild);
+            }
+          } else {
+            authDesktop.innerHTML = outHTML;
+            authMobile.innerHTML = outMobileHTML;
+            const existing = document.querySelector('.welcome-greeting');
+            if (existing) existing.remove();
+          }
+        } catch (err) {
+          console.log('Session error:', err.message);
+          const authDesktop = document.getElementById('authContainerDesktop');
+          const authMobile = document.getElementById('authContainerMobile');
+          authDesktop.innerHTML = `<a href="register.html"><button id="registerBtnDesktop">Register</button></a>
+                                   <a href="login.html"><button id="loginBtnDesktop">Login</button></a>`;
+          authMobile.innerHTML = `<a href="register.html"><button id="registerBtnMobile">Register</button></a>
+                                  <a href="login.html"><button id="loginBtnMobile">Login</button></a>`;
+          const existing = document.querySelector('.welcome-greeting');
+          if (existing) existing.remove();
+        }
+      }
+      checkSession();
+    });
+
+    function logout() {
+      fetch('/api/logout', { method: 'POST', credentials: 'include' }).then(() => {
+        document.cookie = "userFirstName=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        const existing = document.querySelector('.welcome-greeting');
+        if (existing) existing.remove();
+        location.reload();
+      });
+    }
+  </script>
+</body>
+</html>

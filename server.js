@@ -40,6 +40,11 @@ const pool = new Pool({
 });
 // ────────────────────────────────────────────────────────────
 
+pool.on('error', (err, client) => {
+  console.error('ADMIN_HISTORY_DEBUG: Unexpected error on idle pg client', err.stack);
+  // process.exit(-1); // Commenting out process.exit for now to avoid unintended server restarts during debugging, but it's good for production.
+});
+
 
 // ---- Instructor Off-Days API ----
 // Requires: instructor_offdays table migrated into PostgreSQL before use
@@ -66,6 +71,7 @@ app.get('/api/instructor-offdays', async (req, res) => {
 });
 
 app.put('/api/admin/booking-payment/:id', async (req, res) => {
+  console.log('ADMIN_HISTORY_DEBUG: PUT /api/admin/booking-payment/:id route hit. Booking ID:', req.params.id, 'Request body:', req.body);
   if (!req.session.user?.isAdmin) {
     return res.status(403).json({ message: 'Forbidden' });
   }
@@ -111,7 +117,7 @@ app.put('/api/admin/booking-payment/:id', async (req, res) => {
     res.json(updatedBookingResult.rows[0]);
 
   } catch (err) {
-    console.error('Error updating booking payment:', err);
+    console.error('ADMIN_HISTORY_DEBUG: Error updating booking payment. Booking ID:', req.params.id, 'Error Message:', err.message, 'Stack:', err.stack, 'Error Code:', err.code, 'Detail:', err.detail, 'Routine:', err.routine, 'Full Error:', err);
     res.status(500).json({ message: 'Failed to update booking payment due to a server error.' });
   }
 });

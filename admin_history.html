@@ -456,7 +456,7 @@ ul.nav-links-mobile li a {
     try {
         const res = await fetch(`/api/admin/booking-payment/${bookingId}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
+            headers: { 'Content-Type': 'application/json' }, credentials: 'include',
             body: JSON.stringify(payload)
         });
 

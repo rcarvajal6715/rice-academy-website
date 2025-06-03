@@ -70,70 +70,41 @@ app.put('/api/admin/booking-payment/:id', async (req, res) => {
     return res.status(403).json({ message: 'Forbidden' });
   }
 
-  const { id: bookingId } = req.params;
-  const { lesson_cost_from_req, amount_paid_from_req, mark_as_fully_paid } = req.body;
+  const bookingId = req.params.id;
+  const { lesson_cost, paid: paid_from_req } = req.body; 
 
   try {
-    const { rows: currentBookings } = await pool.query(
-      'SELECT lesson_cost, amount_paid, paid FROM bookings WHERE id = $1',
-      [bookingId]
-    );
-
-    if (currentBookings.length === 0) {
-      return res.status(404).json({ message: 'Booking not found.' });
-    }
-
-    const currentBooking = currentBookings[0];
-    let currentLessonCost = currentBooking.lesson_cost;
-    let currentAmountPaid = currentBooking.amount_paid;
-
-    let newLessonCost = lesson_cost_from_req !== undefined ? parseFloat(lesson_cost_from_req) : currentLessonCost;
-    let newAmountPaid = amount_paid_from_req !== undefined ? parseFloat(amount_paid_from_req) : currentAmountPaid;
-
-    newLessonCost = isNaN(newLessonCost) ? currentLessonCost : newLessonCost;
-    newAmountPaid = isNaN(newAmountPaid) ? currentAmountPaid : newAmountPaid;
-    
-    // Ensure they are numbers or null for lesson_cost
-    if (newLessonCost !== null && typeof newLessonCost !== 'number') newLessonCost = parseFloat(newLessonCost) || null;
-    if (typeof newAmountPaid !== 'number') newAmountPaid = parseFloat(newAmountPaid) || 0;
-
-
-    let newPaidStatus = currentBooking.paid; // Default to current status
-
-    if (mark_as_fully_paid === true) {
-        if (newLessonCost !== null && newLessonCost > 0) {
-            newAmountPaid = newLessonCost; 
-        } else if (newLessonCost === 0 || newLessonCost === null) { // For free items or if cost becomes null
-            newAmountPaid = 0;
+    const fieldsToUpdate = {};
+    if (lesson_cost !== undefined) {
+        const cost = parseFloat(lesson_cost);
+        if (isNaN(cost)) {
+            return res.status(400).json({ message: 'Invalid lesson_cost format.' });
         }
-        newPaidStatus = true;
-    } else {
-        // If not explicitly marking as fully paid, determine status based on amounts
-        if (newLessonCost !== null && newLessonCost > 0) {
-            newPaidStatus = newAmountPaid >= newLessonCost;
-        } else if (newLessonCost === 0) { // Free item
-            newPaidStatus = true; // Considered paid if cost is 0
-        } else { // lesson_cost is null
-            newPaidStatus = false; // Cannot be considered paid if cost is unknown, unless marked_as_fully_paid
-        }
+        fieldsToUpdate.lesson_cost = cost;
     }
+    if (paid_from_req !== undefined && typeof paid_from_req === 'boolean') {
+        fieldsToUpdate.paid = paid_from_req;
+    }
+
+    if (Object.keys(fieldsToUpdate).length === 0) {
+        return res.status(400).json({ message: 'No valid fields provided for update.' });
+    }
+
+    const setClauses = Object.keys(fieldsToUpdate).map((key, index) => `${key} = $${index + 1}`).join(', ');
+    const values = Object.values(fieldsToUpdate);
+    values.push(bookingId); // For the WHERE clause
+
+    const sqlQuery = `UPDATE bookings SET ${setClauses} WHERE id = $${values.length} RETURNING *`;
     
-    // If an amount_paid_from_req was provided, and it's less than a positive lesson_cost,
-    // it might make the item unpaid unless mark_as_fully_paid was true.
-    if (amount_paid_from_req !== undefined && newLessonCost !== null && newLessonCost > 0 && newAmountPaid < newLessonCost && !mark_as_fully_paid) {
-        newPaidStatus = false;
+    const updatedBookingResult = await pool.query(sqlQuery, values);
+
+    if (updatedBookingResult.rows.length === 0) {
+        // This could happen if the ID doesn't exist, or if the SET clause was empty 
+        // (though we check for empty fieldsToUpdate above).
+        // More likely, ID not found.
+        return res.status(404).json({ message: 'Booking not found or no update made.' });
     }
-
-
-    const updatedBooking = await pool.query(
-      `UPDATE bookings 
-       SET lesson_cost = $1, amount_paid = $2, paid = $3 
-       WHERE id = $4 
-       RETURNING *`,
-      [newLessonCost, newAmountPaid, newPaidStatus, bookingId]
-    );
-
-    res.json(updatedBooking.rows[0]);
+    res.json(updatedBookingResult.rows[0]);
 
   } catch (err) {
     console.error('Error updating booking payment:', err);
@@ -412,7 +383,7 @@ app.get('/api/admin/lessons', async (req, res) => {
   }
   try {
     const { rows } = await pool.query(`
-      SELECT id, program, coach, date, time, student, paid, email, phone
+      SELECT id, program, coach, date, time, student, paid, email, phone, lesson_cost
       FROM bookings
       ORDER BY date DESC, time DESC
     `);
@@ -681,9 +652,9 @@ app.post('/api/create-payment', async (req, res) => {
       // a) Insert booking as paid
       await pool.query(
         `INSERT INTO bookings
-           (email, phone, program, coach, date, time, session_id, paid, student, lesson_cost, amount_paid)
-         VALUES ($1, $2, $3, $4, $5, $6, NULL, TRUE, $7, 0, 0)`,
-        [email, phone, program, coach, date, time, student, 0, 0]
+           (email, phone, program, coach, date, time, session_id, paid, student, lesson_cost)
+         VALUES ($1, $2, $3, $4, $5, $6, NULL, TRUE, $7, $8)`,
+        [email, phone, program, coach, date, time, student, 0]
       );
 
       // b) Notify coach via email-to-SMS
@@ -729,9 +700,9 @@ app.post('/api/create-payment', async (req, res) => {
     const lessonCost = entry.unit_amount / 100;
     await pool.query(
       `INSERT INTO bookings
-         (email, phone, program, coach, date, time, session_id, paid, student, lesson_cost, amount_paid)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8, $9, $10)`,
-      [email, phone, program, coach, date, time, sessionObj.id, student, lessonCost, 0]
+         (email, phone, program, coach, date, time, session_id, paid, student, lesson_cost)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8, $9)`,
+      [email, phone, program, coach, date, time, sessionObj.id, student, lessonCost]
     );
 
     // c) Notify coach via email-to-SMS
@@ -806,9 +777,9 @@ app.post('/api/book-pay-later', async (req, res) => {
 
     await pool.query(
       `INSERT INTO bookings
-         (email, phone, program, coach, date, time, session_id, paid, student, lesson_cost, amount_paid)
-       VALUES ($1, $2, $3, $4, $5, $6, NULL, FALSE, $7, $8, $9)`,
-      [email, dbPhone, dbProgram, dbCoach, dbDate, dbTime, dbStudent, lessonCost, 0]
+         (email, phone, program, coach, date, time, session_id, paid, student, lesson_cost)
+       VALUES ($1, $2, $3, $4, $5, $6, NULL, FALSE, $7, $8)`,
+      [email, dbPhone, dbProgram, dbCoach, dbDate, dbTime, dbStudent, lessonCost]
     );
 
     if (dbCoach) { // Use dbCoach here
@@ -883,4 +854,4 @@ app.get('/:page', (req, res) => {
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server running on http://0.0.0.0:${PORT}`);
-});  
+});

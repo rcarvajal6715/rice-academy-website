@@ -206,6 +206,18 @@ ul.nav-links-mobile li a {
   color: white !important;
   text-decoration: none;
 }
+.update-payment-btn {
+    background-color: #4CAF50; /* Green */
+    color: white;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+.update-payment-btn:hover {
+    background-color: #45a049;
+}
   </style>
 </head>
 <body>
@@ -324,7 +336,6 @@ ul.nav-links-mobile li a {
     </div>
     <div style="text-align: center; margin-top: 40px; margin-bottom: 20px;"> <!-- Wrapper for centering -->
       <a href="admin_history.html" class="explore-button">View Lesson History</a>
-      <a href="finances.html" class="explore-button" style="margin-left: 10px;">View Financials</a>
     </div>
   </section>
 
@@ -420,6 +431,8 @@ ul.nav-links-mobile li a {
             <th style="padding:8px; border:1px solid #ddd;">Student</th>
             <th style="padding:8px; border:1px solid #ddd;">Email</th>
             <th style="padding:8px; border:1px solid #ddd;">Phone</th>
+            <th style="padding:8px; border:1px solid #ddd;">Lesson Cost</th>
+            <th style="padding:8px; border:1px solid #ddd;">Amount Paid</th>
             <th style="padding:8px; border:1px solid #ddd;">Paid?</th>
             <th style="padding:8px; border:1px solid #ddd;">Actions</th>
             ${containerId === 'camp-lessons-table-container' ? '<th style="padding:8px; border:1px solid #ddd;">Attendance / Pass Status</th>' : ''}
@@ -449,9 +462,12 @@ ul.nav-links-mobile li a {
           <td style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td>
+          <td style="padding:8px; border:1px solid #ddd;"><input type="number" class="lesson-cost-input" data-booking-id="${les.id}" value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" placeholder="N/A" style="width: 70px;"></td>
+          <td style="padding:8px; border:1px solid #ddd;"><input type="number" class="amount-paid-input" data-booking-id="${les.id}" value="${les.amount_paid !== null && les.amount_paid !== undefined ? les.amount_paid : 0}" style="width: 70px;"></td>
           <td style="padding:8px; border:1px solid #ddd;">${paidText}</td>
           <td style="padding:8px; border:1px solid #ddd;">
             <button onclick="deleteAdminLesson(${les.id})">Delete</button>
+            <button class="update-payment-btn" data-booking-id="${les.id}" style="margin-left: 5px;">Update Payment</button>
           </td>
       `;
       if (containerId === 'camp-lessons-table-container') {
@@ -506,6 +522,15 @@ ul.nav-links-mobile li a {
     container.innerHTML = html;
     console.log('ADMIN.HTML: Rendering actual table into:', containerId, 'HTML length:', html.length > 0 ? html.length : 'EMPTY!');
 
+    // Attach listeners for Update Payment buttons
+    const updateButtons = container.querySelectorAll('.update-payment-btn');
+    updateButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const bookingId = button.getAttribute('data-booking-id');
+            handleUpdatePayment(bookingId);
+        });
+    });
+
     if (containerId === 'camp-lessons-table-container') {
         const checkboxes = document.querySelectorAll(`#${containerId} .attendance-checkbox`);
         checkboxes.forEach(checkbox => {
@@ -556,15 +581,12 @@ ul.nav-links-mobile li a {
         
         try {
             const lessonDate = new Date(year, month, day, hours, minutes, seconds);
-            // For upcoming, if lessonDate is today, ensure it hasn't passed.
-            // If lessonDate is in the future, it's upcoming.
-            // Create a 'now' that is just date for comparing future days
             const nowDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            if (lessonDate >= nowDateOnly) { // Lesson is today or in the future (date part)
-                 if (lessonDate.toDateString() === now.toDateString()) { // It's today
-                     return lessonDate >= now; // Compare with current time
+            if (lessonDate >= nowDateOnly) { 
+                 if (lessonDate.toDateString() === now.toDateString()) { 
+                     return lessonDate >= now; 
                  }
-                 return true; // It's a future date
+                 return true; 
             }
             return false;
 
@@ -600,7 +622,6 @@ ul.nav-links-mobile li a {
     renderLessonsTable(otherBookings, 'other-bookings-table-container', 'No other bookings.');
   }
 
-  // Call the delete endpoint, then refresh the table
   async function deleteAdminLesson(id) {
     if (!confirm('Are you sure you want to delete this lesson?')) return;
     const res = await fetch(`/api/admin/lessons/${id}`, {
@@ -614,15 +635,60 @@ ul.nav-links-mobile li a {
     }
   }
 
-  // Kick it off on page load
+  async function handleUpdatePayment(bookingId) {
+    const costInput = document.querySelector(`.lesson-cost-input[data-booking-id="${bookingId}"]`);
+    const paidInput = document.querySelector(`.amount-paid-input[data-booking-id="${bookingId}"]`);
+
+    const payload = {};
+    if (costInput && costInput.value !== '') { // Only include if value is not empty
+        payload.lesson_cost_from_req = parseFloat(costInput.value);
+        if (isNaN(payload.lesson_cost_from_req)) {
+            alert('Invalid Lesson Cost. Please enter a valid number or leave empty.');
+            return;
+        }
+    }
+    if (paidInput && paidInput.value !== '') { // Only include if value is not empty
+        payload.amount_paid_from_req = parseFloat(paidInput.value);
+        if (isNaN(payload.amount_paid_from_req)) {
+            alert('Invalid Amount Paid. Please enter a valid number or leave empty.');
+            return;
+        }
+    }
+    // Future: Add checkbox for mark_as_fully_paid
+    // if (markAsPaidCheckbox && markAsPaidCheckbox.checked) {
+    //     payload.mark_as_fully_paid = true;
+    // }
+
+
+    if (Object.keys(payload).length === 0) {
+        alert('No payment information to update. Please enter a cost or amount paid.');
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/admin/booking-payment/${bookingId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Credentials': 'include' }, // Corrected Credentials header
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.message || `Error ${res.status}`);
+        }
+        alert('Payment information updated successfully!');
+        if (typeof loadAllLessons === 'function') { 
+            loadAllLessons();
+        } else if (typeof loadPastLessons === 'function') { 
+            loadPastLessons();
+        }
+    } catch (err) {
+        console.error('Failed to update payment:', err);
+        alert(`Failed to update payment: ${err.message}`);
+    }
+  }
+
   window.addEventListener('DOMContentLoaded', loadAllLessons);
 
-// TODO: BACKEND REQUIREMENT for full attendance tracking functionality:
-// This function currently only provides mock UI feedback and console logs.
-// For persistence, it should make an API call to a new backend endpoint, e.g.:
-// POST /api/admin/mark-attendance
-// Request body example: { "bookingId": bookingId, "dayIndex": dayIndex, "attended": isChecked }
-// The backend would then update the 'days_used' or a similar field/table for this booking in the database.
 function handleAttendanceChange(bookingId, dayIndex, isChecked) {
     console.log(`Attendance change: Booking ID ${bookingId}, Day Index ${dayIndex}, Checked: ${isChecked}`);
     // Mock UI update:
@@ -631,7 +697,6 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
 
     if (daysUsedSpan) { // For multi-day passes
         let currentDaysUsed = 0;
-        // Recalculate based on all checkboxes for this booking
         document.querySelectorAll(`.attendance-checkbox[data-booking-id="${bookingId}"]`).forEach(cb => {
             if (cb.checked) currentDaysUsed++;
         });

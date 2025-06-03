@@ -412,7 +412,7 @@ app.get('/api/admin/lessons', async (req, res) => {
   }
   try {
     const { rows } = await pool.query(`
-      SELECT id, program, coach, date, time, student, paid, email, phone, lesson_cost, amount_paid
+      SELECT id, program, coach, date, time, student, paid, email, phone
       FROM bookings
       ORDER BY date DESC, time DESC
     `);

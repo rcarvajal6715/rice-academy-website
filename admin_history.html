@@ -202,6 +202,18 @@ ul.nav-links-mobile li a {
     font-weight: bold;
     color: #0c3c78; 
 }
+.update-payment-btn {
+    background-color: #4CAF50; /* Green */
+    color: white;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+.update-payment-btn:hover {
+    background-color: #45a049;
+}
   </style>
 </head>
 <body>
@@ -311,6 +323,8 @@ ul.nav-links-mobile li a {
             <th style="padding:8px; border:1px solid #ddd;">Student</th>
             <th style="padding:8px; border:1px solid #ddd;">Email</th>
             <th style="padding:8px; border:1px solid #ddd;">Phone</th>
+            <th style="padding:8px; border:1px solid #ddd;">Lesson Cost</th>
+            <th style="padding:8px; border:1px solid #ddd;">Amount Paid</th>
             <th style="padding:8px; border:1px solid #ddd;">Paid?</th>
             <th style="padding:8px; border:1px solid #ddd;">Actions</th>
           </tr>
@@ -335,9 +349,12 @@ ul.nav-links-mobile li a {
           <td style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td>
+          <td style="padding:8px; border:1px solid #ddd;"><input type="number" class="lesson-cost-input" data-booking-id="${les.id}" value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" placeholder="N/A" style="width: 70px;"></td>
+          <td style="padding:8px; border:1px solid #ddd;"><input type="number" class="amount-paid-input" data-booking-id="${les.id}" value="${les.amount_paid !== null && les.amount_paid !== undefined ? les.amount_paid : 0}" style="width: 70px;"></td>
           <td style="padding:8px; border:1px solid #ddd;">${paidText}</td>
           <td style="padding:8px; border:1px solid #ddd;">
             <button onclick="deleteAdminLesson(${les.id})">Delete</button>
+            <button class="update-payment-btn" data-booking-id="${les.id}" style="margin-left: 5px;">Update Payment</button>
           </td>
         </tr>
       `;
@@ -345,6 +362,15 @@ ul.nav-links-mobile li a {
     html += `</tbody></table>`;
     container.innerHTML = html;
     console.log('HISTORY.HTML: Rendering actual table into:', containerId, 'HTML length:', html.length > 0 ? html.length : 'EMPTY!');
+    
+    // Attach listeners for Update Payment buttons
+    const updateButtons = container.querySelectorAll('.update-payment-btn');
+    updateButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const bookingId = button.getAttribute('data-booking-id');
+            handleUpdatePayment(bookingId);
+        });
+    });
   }
 
   async function loadPastLessons() {
@@ -405,6 +431,53 @@ ul.nav-links-mobile li a {
     }
   }
   
+  async function handleUpdatePayment(bookingId) {
+    const costInput = document.querySelector(`.lesson-cost-input[data-booking-id="${bookingId}"]`);
+    const paidInput = document.querySelector(`.amount-paid-input[data-booking-id="${bookingId}"]`);
+
+    const payload = {};
+    if (costInput && costInput.value !== '') { 
+        payload.lesson_cost_from_req = parseFloat(costInput.value);
+        if (isNaN(payload.lesson_cost_from_req)) {
+            alert('Invalid Lesson Cost. Please enter a valid number or leave empty.');
+            return;
+        }
+    }
+    if (paidInput && paidInput.value !== '') { 
+        payload.amount_paid_from_req = parseFloat(paidInput.value);
+        if (isNaN(payload.amount_paid_from_req)) {
+            alert('Invalid Amount Paid. Please enter a valid number or leave empty.');
+            return;
+        }
+    }
+
+    if (Object.keys(payload).length === 0) {
+        alert('No payment information to update. Please enter a cost or amount paid.');
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/admin/booking-payment/${bookingId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Credentials': 'include' }, 
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.message || `Error ${res.status}`);
+        }
+        alert('Payment information updated successfully!');
+        if (typeof loadAllLessons === 'function') { 
+            loadAllLessons();
+        } else if (typeof loadPastLessons === 'function') { 
+            loadPastLessons();
+        }
+    } catch (err) {
+        console.error('Failed to update payment:', err);
+        alert(`Failed to update payment: ${err.message}`);
+    }
+  }
+
   function filterAndRenderHistory(searchTerm) {
     console.log('HISTORY.HTML: filterAndRenderHistory called with searchTerm:', searchTerm, 'and activeCategoryFilter:', activeCategoryFilter);
     let searchFilteredLessons;
@@ -450,7 +523,7 @@ ul.nav-links-mobile li a {
     console.log(`HISTORY.HTML: Displaying ${finalDisplayLessons.length} lessons for category '${activeCategoryFilter}' and search '${searchTerm}'`);
         
     renderPastLessonsTable(finalDisplayLessons, 'past-lessons-table-container', 'No matching past lessons found.');
-}
+  }
 
   window.addEventListener('DOMContentLoaded', () => {
     loadPastLessons(); 

@@ -71,15 +71,19 @@ app.put('/api/admin/booking-payment/:id', async (req, res) => {
   }
 
   const bookingId = req.params.id;
-  const { lesson_cost, paid: paid_from_req } = req.body; 
+  // Modify variable destructuring
+  const { lesson_cost_from_req, paid: paid_from_req } = req.body; 
 
   try {
     const fieldsToUpdate = {};
-    if (lesson_cost !== undefined) {
-        const cost = parseFloat(lesson_cost);
+    // Modify condition for lesson_cost
+    if (lesson_cost_from_req !== undefined) {
+        // Modify parsing of lesson_cost
+        const cost = parseFloat(lesson_cost_from_req);
         if (isNaN(cost)) {
             return res.status(400).json({ message: 'Invalid lesson_cost format.' });
         }
+        // Ensure correct assignment to fieldsToUpdate (key 'lesson_cost' is DB column name)
         fieldsToUpdate.lesson_cost = cost;
     }
     if (paid_from_req !== undefined && typeof paid_from_req === 'boolean') {

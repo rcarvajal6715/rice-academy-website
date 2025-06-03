@@ -324,8 +324,6 @@ ul.nav-links-mobile li a {
             <th style="padding:8px; border:1px solid #ddd;">Email</th>
             <th style="padding:8px; border:1px solid #ddd;">Phone</th>
             <th style="padding:8px; border:1px solid #ddd;">Lesson Cost</th>
-            <th style="padding:8px; border:1px solid #ddd;">Amount Paid</th>
-            <th style="padding:8px; border:1px solid #ddd;">Paid?</th>
             <th style="padding:8px; border:1px solid #ddd;">Actions</th>
           </tr>
         </thead>
@@ -334,10 +332,11 @@ ul.nav-links-mobile li a {
 
     lessonsArray.forEach(les => {
       const dateStr = new Date(les.date).toLocaleDateString();
-      const paidText = les.paid ? 'Yes' : '<strong style="color: red;">NO - Pay Later</strong>';
       const formattedTime = formatTime_12hr(les.time);
       let rowStyle = '';
-      if (!les.paid) {
+      // The specific styling for unpaid rows might be redundant now with the button,
+      // but we'll keep it for now as it might still be desired for overall row visibility.
+      if (!les.paid) { // This condition might need re-evaluation if 'Paid?' column is truly gone
           rowStyle = 'background-color: #ffebee;'; 
       }
       html += `
@@ -350,11 +349,9 @@ ul.nav-links-mobile li a {
           <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td>
           <td style="padding:8px; border:1px solid #ddd;"><input type="number" class="lesson-cost-input" data-booking-id="${les.id}" value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" placeholder="N/A" style="width: 70px;"></td>
-          <td style="padding:8px; border:1px solid #ddd;"><input type="number" class="amount-paid-input" data-booking-id="${les.id}" value="${les.amount_paid !== null && les.amount_paid !== undefined ? les.amount_paid : 0}" style="width: 70px;"></td>
-          <td style="padding:8px; border:1px solid #ddd;">${paidText}</td>
           <td style="padding:8px; border:1px solid #ddd;">
             <button onclick="deleteAdminLesson(${les.id})">Delete</button>
-            <button class="update-payment-btn" data-booking-id="${les.id}" style="margin-left: 5px;">Update Payment</button>
+            <button class="update-cost-btn" data-booking-id="${les.id}" style="margin-left: 5px;">Update Cost</button>
           </td>
         </tr>
       `;
@@ -363,12 +360,12 @@ ul.nav-links-mobile li a {
     container.innerHTML = html;
     console.log('HISTORY.HTML: Rendering actual table into:', containerId, 'HTML length:', html.length > 0 ? html.length : 'EMPTY!');
     
-    // Attach listeners for Update Payment buttons
-    const updateButtons = container.querySelectorAll('.update-payment-btn');
-    updateButtons.forEach(button => {
+    // Attach listeners for Update Cost buttons
+    const updateCostButtons = container.querySelectorAll('.update-cost-btn');
+    updateCostButtons.forEach(button => {
         button.addEventListener('click', () => {
             const bookingId = button.getAttribute('data-booking-id');
-            handleUpdatePayment(bookingId);
+            handleUpdateCost(bookingId);
         });
     });
   }
@@ -431,50 +428,51 @@ ul.nav-links-mobile li a {
     }
   }
   
-  async function handleUpdatePayment(bookingId) {
+  // Removed handleUpdatePayment(bookingId) function (if any was left)
+  // Removed markAsPaid(bookingId) function (if any was left)
+
+  async function handleUpdateCost(bookingId) {
     const costInput = document.querySelector(`.lesson-cost-input[data-booking-id="${bookingId}"]`);
-    const paidInput = document.querySelector(`.amount-paid-input[data-booking-id="${bookingId}"]`);
-
-    const payload = {};
-    if (costInput && costInput.value !== '') { 
-        payload.lesson_cost_from_req = parseFloat(costInput.value);
-        if (isNaN(payload.lesson_cost_from_req)) {
-            alert('Invalid Lesson Cost. Please enter a valid number or leave empty.');
-            return;
-        }
-    }
-    if (paidInput && paidInput.value !== '') { 
-        payload.amount_paid_from_req = parseFloat(paidInput.value);
-        if (isNaN(payload.amount_paid_from_req)) {
-            alert('Invalid Amount Paid. Please enter a valid number or leave empty.');
-            return;
-        }
-    }
-
-    if (Object.keys(payload).length === 0) {
-        alert('No payment information to update. Please enter a cost or amount paid.');
+    if (!costInput) {
+        console.error('Cost input field not found for booking ID:', bookingId);
+        alert('An error occurred. Cost input field not found.');
         return;
     }
+
+    const costValue = costInput.value.trim();
+    if (costValue === '') {
+        alert('Please enter a lesson cost to update.');
+        return;
+    }
+
+    const newCost = parseFloat(costValue);
+    if (isNaN(newCost)) {
+        alert('Invalid Lesson Cost. Please enter a valid number.');
+        return;
+    }
+
+    const payload = { lesson_cost_from_req: newCost };
 
     try {
         const res = await fetch(`/api/admin/booking-payment/${bookingId}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Credentials': 'include' }, 
+            headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
             body: JSON.stringify(payload)
         });
+
         if (!res.ok) {
-            const errorData = await res.json();
-            throw new Error(errorData.message || `Error ${res.status}`);
+            let errorMsg = `Error ${res.status}`;
+            try {
+                const errorData = await res.json();
+                errorMsg = errorData.message || errorMsg;
+            } catch (e) { /* Ignore if response is not JSON, use status text or default */ }
+            throw new Error(errorMsg);
         }
-        alert('Payment information updated successfully!');
-        if (typeof loadAllLessons === 'function') { 
-            loadAllLessons();
-        } else if (typeof loadPastLessons === 'function') { 
-            loadPastLessons();
-        }
+        alert('Lesson cost updated successfully!');
+        loadPastLessons(); // Refresh the table
     } catch (err) {
-        console.error('Failed to update payment:', err);
-        alert(`Failed to update payment: ${err.message}`);
+        console.error('Failed to update lesson cost:', err);
+        alert(`Failed to update lesson cost: ${err.message}`);
     }
   }
 

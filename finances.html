@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Financials - C2 Tennis Academy</title>
+  <style>
+    html, body { height: 100%; margin: 0; display: flex; flex-direction: column; font-family: Arial, sans-serif; }
+    header, footer { background-color: #0c3c78; color: white; text-align: center; padding: 20px; }
+    nav { background-color: #092e5e; display: flex; justify-content: center; }
+    nav a { color: white; padding: 14px 20px; text-decoration: none; }
+    nav a:hover { background-color: #0f4fa0; }
+    section { flex: 1; padding: 40px 20px; max-width: 1400px; width: 90%; margin: auto; background: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    h2 { color: #0c3c78; }
+    form { margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .full-width { grid-column: 1 / -1; }
+    label { display: block; font-weight: bold; color: #0c3c78; margin-bottom: 5px; }
+    input, select, button { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
+    button { background-color: #0c3c78; color: white; cursor: pointer; grid-column: 1 / -1; margin-top: 20px; }
+    button:hover { background-color: #0f4fa0; }
+    #student-name-container { display: none; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 8px; border:1px solid #ddd; }
+    thead th { background: #0c3c78; color: white; }
+/* === Global Header & Navigation Styles (Finalized Version) === */
+     header {
+       background-color: #0c3c78; 
+       color: white; 
+       padding: 30px 20px; 
+       position: relative; 
+       text-align: center; 
+     }
+     .header-content { 
+       display: flex; justify-content: center; align-items: center; 
+       max-width: 1200px; margin: 0 auto;
+       position: relative; 
+     }
+     .site-title { text-align: center; } 
+     .site-title h1 { 
+       font-size: 2.2em;    
+       margin-top: 0;
+       margin-bottom: 0; /* Adjusted for portal pages with no subtitle */
+       color: white; 
+     } 
+     .site-title p { 
+       font-size: 1em;    
+       margin-top: 0;
+       margin-bottom: 0;
+       color: #f0f0f0;
+       /* display: none; /* Subtitle can be shown or hidden based on page */
+     }
+     
+     .mobile-menu-toggle { display: none; background: none; border: none; color: white; font-size: 28px; cursor: pointer; padding: 5px; }
+     nav.main-navigation { background-color: #092e5e; }
+     .nav-wrapper-desktop { 
+         display: flex; justify-content: center; align-items: center;
+         width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 20px; box-sizing: border-box;
+     }
+     ul.nav-links-desktop { list-style: none; margin: 0; padding: 0; display: flex; }
+     ul.nav-links-desktop li a { color: white; padding: 14px 20px; text-decoration: none; display: block; } 
+     ul.nav-links-desktop li a:hover { background-color: #0f4fa0; }
+     ul.nav-links-desktop li a.highlighted-nav, ul.nav-links-desktop li a.current-page { 
+        background-color: #d8f352; color: black; font-weight: bold; border-radius: 5px; 
+     }
+     ul.nav-links-desktop li a.highlighted-nav:hover, ul.nav-links-desktop li a.current-page:hover { background-color: #c1da3b; }
+     
+     .auth-buttons-desktop { 
+       position: absolute;
+       top: 20px; 
+       right: 20px; 
+       display: flex;
+       align-items: center;
+       gap: 15px; /* Added gap property */
+     }
+     .auth-buttons-desktop a button, .auth-buttons-desktop button {
+       background-color: white; color: #0c3c78; border: none; padding: 10px 20px; 
+       /* margin-left: 15px; */ /* Removed margin-left */
+       border-radius: 5px; font-weight: bold; cursor: pointer;
+       transition: all 0.3s ease; white-space: nowrap;
+     }
+     .auth-buttons-desktop a button:hover, .auth-buttons-desktop button:hover { background-color: #0f4fa0; color: white; }
+     .mobile-menu-container {
+       display: none; background-color: #092e5e; position: fixed;
+       top: 0; left: 0; width: 100%; height: 100%;
+       z-index: 1000; padding-top: 20px;
+       box-sizing: border-box; overflow-y: auto; text-align: center;
+     }
+     nav.main-navigation.mobile-menu--open .mobile-menu-container { display: block; }
+     .mobile-menu-close {
+        display: block; 
+        position: absolute; 
+        top: 10px; /* Adjusted */
+        right: 10px; /* Adjusted */
+        left: auto; /* Explicitly set */
+        bottom: auto; /* Explicitly set */
+        background: none; 
+        border: none; 
+        color: white; 
+        font-size: 28px; 
+        cursor: pointer;
+        z-index: 10; /* Optionally add a z-index */
+     }
+     ul.nav-links-mobile { list-style: none; padding: 0; margin: 50px 0 20px; }
+     ul.nav-links-mobile li a {
+       color: white; padding: 15px 20px; text-decoration: none; display: block;
+       border-bottom: 1px solid #0c3c78;
+     }
+     ul.nav-links-mobile li:last-child a { border-bottom: none; }
+     ul.nav-links-mobile li a:hover { background-color: #0f4fa0; }
+     .auth-buttons-mobile { padding: 20px; }
+     .auth-buttons-mobile a button, .auth-buttons-mobile button {
+       background-color: #d8f352; color: #0c3c78; border: none; padding: 12px 20px;
+       border-radius: 5px; font-weight: bold; cursor: pointer; display: block;
+       width: 80%; max-width: 250px; margin: 10px auto; box-sizing: border-box;
+     }
+     .auth-buttons-mobile a button:hover, .auth-buttons-mobile button:hover { background-color: #c1da3b; }
+     
+     
+     footer { /* Global footer style */
+        background-color: #0c3c78; color: white; text-align: center; padding: 20px; margin-top:auto; /* Pushes to bottom in flex if body is flex column */
+     }
+
+     @media (max-width: 768px) {
+       body { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; } 
+       header { padding: 10px 15px; } 
+       .header-content {
+         justify-content: space-between; 
+         width:100%; 
+       }
+       .site-title { text-align: left; }
+       .site-title h1 { font-size: 1.2em; margin-bottom: 0; }
+       .site-title p { display: none; } 
+       .mobile-menu-toggle { display: block; }
+       .nav-wrapper-desktop { display: none; }
+       .auth-buttons-desktop { display: none; } 
+       nav.main-navigation { padding: 0; background-color: transparent; }
+
+      /* Mobile-specific layout adjustments */
+      form {
+        grid-template-columns: 1fr; /* Change to single column layout */
+      }
+
+      h2 {
+        margin-bottom: 20px; /* Add bottom margin for h2 */
+      }
+
+      section {
+        padding: 20px 10px; /* Reduce padding for smaller screens */
+      }
+
+      #all-lessons-container {
+        overflow-x: auto; /* Allow horizontal scrolling only for the table container */
+        -webkit-overflow-scrolling: touch; /* Optional: for smoother scrolling on iOS */
+      }
+    }
+  /* Override the highlighted “Book” pill to be fully rounded */
+ul.nav-links-desktop li a.highlighted-nav {
+  border-radius: 9999px;
+}
+
+/* If you also want the mobile “Book” link rounded, do: */
+ul.nav-links-mobile li a.highlighted-nav {
+  border-radius: 9999px;
+}
+/* Make desktop nav links more pill-shaped */
+ul.nav-links-desktop li a {
+  border-radius: 9999px;
+}
+
+/* Ensure highlighted tab stays pill-shaped */
+ul.nav-links-desktop li a.highlighted-nav {
+  border-radius: 9999px;
+}
+
+/* Make mobile nav links match */
+ul.nav-links-mobile li a {
+  border-radius: 9999px;
+}
+/* === End Global Header & Navigation Styles === */
+
+.explore-button {
+  font-family: Arial, sans-serif;
+  font-size: 1rem;
+  font-weight: 400;
+  background-color: #3b82f6; /* Blue background */
+  color: white !important; /* Ensure white text overrules other <a> styles */
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: 9999px; /* Pill shape */
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0   4px  6px -2px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transform-origin: center center;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  text-decoration: none; /* Remove underline from <a> */
+  display: inline-block; /* Make <a> behave like a button */
+  text-align: center;
+  margin-top: 30px; /* Add some space above the button */
+}
+
+.explore-button:hover {
+  background-color: #2563eb; /* Darker blue on hover */
+  transform: scale(1.05);
+  color: white !important;
+  text-decoration: none;
+}
+fieldset {
+    border: 1px solid #ccc;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+}
+legend {
+    font-weight: bold;
+    color: #0c3c78;
+    padding: 0 10px;
+}
+.input-group div {
+    margin-bottom: 15px;
+}
+.input-group label {
+    margin-bottom: 5px;
+}
+.input-group input[type="number"] {
+    width: 100%;
+}
+.display-group div {
+    margin-bottom: 10px;
+    font-size: 1.1em;
+}
+.display-group label {
+    font-weight: bold;
+    color: #0c3c78;
+}
+.display-group span {
+    font-weight: normal;
+    color: #333;
+    margin-left: 10px;
+}
+.dashboard-item {
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    background-color: #f9f9f9;
+}
+.dashboard-item span {
+    display: inline-block;
+    min-width: 200px;
+}
+.dashboard-item .value {
+    font-weight: bold;
+    margin-left: 5px;
+}
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-content">
+    <div class="site-title">
+      <h1>Admin Portal</h1> <!-- Specific title -->
+      <p>C2 Tennis Academy</p> <!-- Consistent subtitle -->
+    </div>
+    <button class="mobile-menu-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mainNavigation">
+      &#9776; <!-- Hamburger icon -->
+    </button>
+  </div>
+  <div class="auth-buttons-desktop" id="authContainerDesktop">
+    <!-- Populated by checkSession JS - will show Logout, Admin Home etc. -->
+  </div>
+</header>
+
+<nav class="main-navigation" id="mainNavigation">
+  <div class="nav-wrapper-desktop"> 
+     <ul class="nav-links-desktop">
+       <li><a href="index.html">Home</a></li>
+       <li><a href="about.html">About</a></li>
+       <li><a href="programs.html">Programs</a></li>
+       <li><a href="schedule.html">Schedule</a></li>
+       <li><a href="contact.html">Contact</a></li>
+       <li><a href="admin.html" class="current-page">Admin Home</a></li>
+     </ul>
+  </div>
+  <div class="mobile-menu-container">
+    <button class="mobile-menu-close" aria-label="Close navigation menu">&times;</button>
+    <ul class="nav-links-mobile">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="about.html">About</a></li>
+      <li><a href="programs.html">Programs</a></li>
+      <li><a href="schedule.html">Schedule</a></li>
+      <li><a href="contact.html">Contact</a></li>
+      <li><a href="admin.html" class="current-page">Admin Home</a></li>
+    </ul>
+    <div class="auth-buttons-mobile" id="authContainerMobile">
+      <!-- Populated by checkSession JS -->
+    </div>
+  </div>
+</nav>
+
+<section>
+  <h2>Financial Overview</h2>
+
+  <form id="financials-form" class="full-width">
+    <div class="input-group full-width">
+      <fieldset>
+        <legend>Lesson Price Inputs</legend>
+        <div>
+          <label for="kids_group_fee">Kids Group Lesson Fee</label>
+          <input type="number" id="kids_group_fee" placeholder="$ per kid" min="0" step="0.01">
+        </div>
+        <div>
+          <label for="adult_group_fee">Adult Group Lesson Fee</label>
+          <input type="number" id="adult_group_fee" placeholder="$ per adult" min="0" step="0.01">
+        </div>
+        <div>
+          <label for="private_lesson_rate">Private Lesson Hourly Rate</label>
+          <input type="number" id="private_lesson_rate" placeholder="$ per hour" min="0" step="0.01">
+        </div>
+        <div>
+          <label for="clinic_camp_fee">Clinic/Camp Fee per Participant</label>
+          <input type="number" id="clinic_camp_fee" placeholder="$ per participant" min="0" step="0.01">
+        </div>
+      </fieldset>
+    </div>
+
+    <div class="input-group full-width">
+      <fieldset>
+        <legend>Enrollment / Hours Inputs</legend>
+        <div>
+          <label for="num_kids_enrolled">Number of kids enrolled</label>
+          <input type="number" id="num_kids_enrolled" placeholder="Total kids" min="0" step="1">
+        </div>
+        <div>
+          <label for="num_adults_enrolled">Number of adults enrolled</label>
+          <input type="number" id="num_adults_enrolled" placeholder="Total adults" min="0" step="1">
+        </div>
+        <div>
+          <label for="total_private_hours">Total private-lesson hours</label>
+          <input type="number" id="total_private_hours" placeholder="Total hours" min="0" step="0.01">
+        </div>
+        <div>
+          <label for="num_clinic_participants">Number of clinic/camp participants</label>
+          <input type="number" id="num_clinic_participants" placeholder="Total participants" min="0" step="1">
+        </div>
+      </fieldset>
+    </div>
+    
+    <div class="input-group full-width">
+      <fieldset>
+        <legend>Coach Payout Rates</legend>
+        <div>
+          <label for="coach_kids_group_rate">Kids Group Lesson Coach Rate <span title="amount paid per enrolled kid to the coach.">(?)</span></label>
+          <input type="number" id="coach_kids_group_rate" placeholder="$ per kid" min="0" step="0.01">
+        </div>
+        <div>
+          <label for="coach_adult_group_rate">Adult Group Lesson Coach Rate <span title="amount paid per enrolled adult to the coach.">(?)</span></label>
+          <input type="number" id="coach_adult_group_rate" placeholder="$ per adult" min="0" step="0.01">
+        </div>
+        <div>
+          <label for="coach_private_hourly_pay">Private Lesson Coach Hourly Pay <span title="hourly wage for each private-lesson hour taught.">(?)</span></label>
+          <input type="number" id="coach_private_hourly_pay" placeholder="$ per hour" min="0" step="0.01">
+        </div>
+        <div>
+          <label for="coach_clinic_camp_fee">Clinic/Camp Coach Fee <span title="flat or per-participant fee paid to coaches running clinics.">(?)</span></label>
+          <input type="number" id="coach_clinic_camp_fee" placeholder="$ per participant/camp" min="0" step="0.01">
+        </div>
+      </fieldset>
+    </div>
+
+    <div class="input-group full-width">
+      <fieldset>
+        <legend>Fixed Overhead Inputs</legend>
+        <div>
+          <label for="director_salary">Head Coach/Director Salary</label>
+          <input type="number" id="director_salary" placeholder="$ monthly" min="0" step="0.01">
+        </div>
+        <div>
+          <label for="admin_expenses">Office/Admin Expenses</label>
+          <input type="number" id="admin_expenses" placeholder="$ monthly" min="0" step="0.01">
+        </div>
+        <div>
+          <label>Total Overhead <span title="sums all monthly non-coach costs (Director salary + admin)">(?)</span>:</label> 
+          <span id="display_total_overhead">$0.00</span>
+        </div>
+      </fieldset>
+    </div>
+  </form>
+
+  <div class="display-group full-width">
+    <fieldset>
+      <legend>Financial Summary</legend>
+      <div><label>Kids Group Revenue:</label> <span id="display_kids_group_revenue">$0.00</span></div>
+      <div><label>Adult Group Revenue:</label> <span id="display_adult_group_revenue">$0.00</span></div>
+      <div><label>Private Lesson Revenue:</label> <span id="display_private_lesson_revenue">$0.00</span></div>
+      <div><label>Clinic/Camp Revenue:</label> <span id="display_clinic_camp_revenue">$0.00</span></div>
+      <div><label>Total Revenue:</label> <span id="display_total_revenue">$0.00</span></div>
+      <hr>
+      <div><label>Kids Group Coach Pay:</label> <span id="display_kids_group_coach_pay">$0.00</span></div>
+      <div><label>Adult Group Coach Pay:</label> <span id="display_adult_group_coach_pay">$0.00</span></div>
+      <div><label>Private Lesson Coach Pay:</label> <span id="display_private_lesson_coach_pay">$0.00</span></div>
+      <div><label>Clinic/Camp Coach Pay:</label> <span id="display_clinic_camp_coach_pay">$0.00</span></div>
+      <div><label>Total Coach Payroll:</label> <span id="display_total_coach_payroll">$0.00</span></div>
+      <hr>
+      <div><label>Gross Profit (Revenue - Coach Payroll):</label> <span id="display_gross_profit">$0.00</span></div>
+      <div><label>Net Profit (Gross Profit - Total Overhead):</label> <span id="display_net_profit">$0.00</span></div>
+      <div><label>Profit Margin:</label> <span id="display_profit_margin">0.00%</span></div>
+    </fieldset>
+  </div>
+
+  <div class="display-group full-width">
+    <fieldset>
+      <legend>Dashboard</legend>
+      <div class="dashboard-item"><span>Kids Group Revenue:</span> <span class="value" id="dash_kids_revenue">$0.00</span> | <span>Kids Group Coach Pay:</span> <span class="value" id="dash_kids_coach_pay">$0.00</span></div>
+      <div class="dashboard-item"><span>Adult Group Revenue:</span> <span class="value" id="dash_adult_revenue">$0.00</span> | <span>Adult Group Coach Pay:</span> <span class="value" id="dash_adult_coach_pay">$0.00</span></div>
+      <div class="dashboard-item"><span>Private Lesson Revenue:</span> <span class="value" id="dash_private_revenue">$0.00</span> | <span>Private Lesson Coach Pay:</span> <span class="value" id="dash_private_coach_pay">$0.00</span></div>
+      <div class="dashboard-item"><span>Clinic/Camp Revenue:</span> <span class="value" id="dash_camp_revenue">$0.00</span> | <span>Clinic/Camp Coach Pay:</span> <span class="value" id="dash_camp_coach_pay">$0.00</span></div>
+      <hr>
+      <div class="dashboard-item"><span>Total Revenue:</span> <span class="value" id="dash_total_revenue">$0.00</span> | <span>Total Coach Payroll:</span> <span class="value" id="dash_total_payroll">$0.00</span></div>
+      <div class="dashboard-item"><span>Gross Profit:</span> <span class="value" id="dash_gross_profit">$0.00</span> | <span>Fixed Overhead:</span> <span class="value" id="dash_fixed_overhead">$0.00</span> | <span>Net Profit:</span> <span class="value" id="dash_net_profit">$0.00</span></div>
+      <div class="dashboard-item"><span>Profit Margin (%):</span> <span class="value" id="dash_profit_margin">0.00%</span></div>
+    </fieldset>
+  </div>
+
+</section>
+
+<footer>
+  <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
+</footer>
+
+<script>
+  // This entire block to be added as a new script, or integrated if a single DOMContentLoaded is preferred.
+  document.addEventListener('DOMContentLoaded', () => {
+      // --- Mobile Menu Toggle Script --- 
+      const menuToggle = document.querySelector('.mobile-menu-toggle');
+      const mobileMenuClose = document.querySelector('.mobile-menu-close');
+      const mainNav = document.querySelector('nav.main-navigation');
+
+      if (menuToggle && mainNav && mobileMenuClose) {
+          menuToggle.addEventListener('click', () => {
+              const isMenuOpen = mainNav.classList.toggle('mobile-menu--open');
+              menuToggle.setAttribute('aria-expanded', isMenuOpen);
+              if (isMenuOpen) {
+                  menuToggle.innerHTML = '&times;'; 
+                  menuToggle.setAttribute('aria-label', 'Close navigation menu');
+              } else {
+                  menuToggle.innerHTML = '&#9776;'; 
+                  menuToggle.setAttribute('aria-label', 'Open navigation menu');
+              }
+          });
+
+          mobileMenuClose.addEventListener('click', () => {
+              mainNav.classList.remove('mobile-menu--open');
+              if (menuToggle) {
+                 menuToggle.setAttribute('aria-expanded', 'false');
+                 menuToggle.innerHTML = '&#9776;'; 
+                 menuToggle.setAttribute('aria-label', 'Open navigation menu');
+              }
+          });
+      }
+
+      const mobileNavLinks = document.querySelectorAll('.mobile-menu-container a');
+      if (mainNav && mobileNavLinks.length > 0) {
+          mobileNavLinks.forEach(link => {
+              link.addEventListener('click', () => {
+                  if (mainNav.classList.contains('mobile-menu--open')) {
+                      mainNav.classList.remove('mobile-menu--open');
+                      if (menuToggle) {
+                          menuToggle.setAttribute('aria-expanded', 'false');
+                          menuToggle.innerHTML = '&#9776;';
+                          menuToggle.setAttribute('aria-label', 'Open navigation menu');
+                      }
+                  }
+              });
+          });
+      }
+
+      // --- checkSession and logout functions for Admin Portal --- 
+      async function checkSession() {
+          // Ensure existing greetings are removed before adding a new one to prevent duplicates from multiple calls
+          const existingGreeting = document.querySelector('.welcome-greeting');
+          if (existingGreeting) existingGreeting.remove();
+           
+          // Original admin.html had <p>Admin Portal: Welcome Admin</p> in header.
+          // New header has "Admin Portal" as h1, "C2 Tennis Academy" as p.
+          // Greeting banner will add "Welcome, [firstName]" if available, or just "Welcome, Admin".
+
+          try {
+              const res = await fetch('/api/check-session', { credentials: 'include' });
+              const data = await res.json(); 
+
+              const authContainerDesktop = document.getElementById('authContainerDesktop');
+              const authContainerMobile = document.getElementById('authContainerMobile');
+              
+              if (data && data.loggedIn === true && data.isAdmin === true) {
+                  // Corrected logic for portal button text
+                  const portalButtonText = data.firstName ? 'Admin (' + data.firstName + ')' : 'Admin Portal';
+                  
+                  const loggedInHTML = '<a href="admin.html"><button>' + portalButtonText + '</button></a><button onclick="logout()">Logout</button>';
+                  const loggedInMobileHTML = loggedInHTML; // Assuming it's the same
+
+                  if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInHTML;
+                  if (authContainerMobile) authContainerMobile.innerHTML = loggedInMobileHTML;
+
+                  // Corrected logic for welcome message text
+                  const welcomeMessageText = data.firstName ? 'Welcome, ' + data.firstName + '!' : 'Welcome, Admin!';
+                  
+                  const greeting = document.createElement('div');
+                  greeting.className = 'welcome-greeting';
+                  greeting.textContent = welcomeMessageText;
+                  greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
+                  
+                  // This logic for inserting the greeting is already here.
+                  // Ensure existing greetings are removed before adding a new one to prevent duplicates from multiple calls
+                  const existingGreeting = document.querySelector('.welcome-greeting');
+                  if (existingGreeting) existingGreeting.remove();
+
+                  if(document.body.firstChild) { // Attempt to insert before first child of body
+                      document.body.insertBefore(greeting, document.body.firstChild);
+                  } else { // Fallback if body has no children
+                      document.body.appendChild(greeting);
+                  }
+              } else {
+                  // Not logged in as an Admin
+                  window.location.href = 'login.html'; 
+                  const loggedOutHTML = `<a href="login.html"><button>Login</button></a>`;
+                  if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutHTML;
+                  if (authContainerMobile) authContainerMobile.innerHTML = loggedOutHTML;
+              }
+          } catch (err) {
+              console.error('Session check failed, redirecting to login:', err);
+              window.location.href = 'login.html'; 
+              const authContainerDesktop = document.getElementById('authContainerDesktop');
+              const authContainerMobile = document.getElementById('authContainerMobile');
+              const loggedOutHTML = `<a href="login.html"><button>Login</button></a>`;
+              if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutHTML;
+              if (authContainerMobile) authContainerMobile.innerHTML = loggedOutHTML;
+          }
+      }
+
+      window.logout = function() { // Make logout globally accessible
+          fetch('/api/logout', { method: 'POST', credentials: 'include' })
+              .then(() => {
+                  const existingGreeting = document.querySelector('.welcome-greeting');
+                  if (existingGreeting) existingGreeting.remove();
+                  document.cookie = "userFirstName=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                  window.location.href = 'login.html'; 
+              });
+      }
+
+      checkSession(); 
+  });
+  </script>
+</body>
+</html>

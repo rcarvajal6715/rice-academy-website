@@ -431,9 +431,6 @@ ul.nav-links-mobile li a {
             <th style="padding:8px; border:1px solid #ddd;">Student</th>
             <th style="padding:8px; border:1px solid #ddd;">Email</th>
             <th style="padding:8px; border:1px solid #ddd;">Phone</th>
-            <th style="padding:8px; border:1px solid #ddd;">Lesson Cost</th>
-            <th style="padding:8px; border:1px solid #ddd;">Paid?</th>
-            <th style="padding:8px; border:1px solid #ddd;">Actions</th>
             ${containerId === 'camp-lessons-table-container' ? '<th style="padding:8px; border:1px solid #ddd;">Attendance / Pass Status</th>' : ''}
           </tr>
         </thead>
@@ -442,9 +439,9 @@ ul.nav-links-mobile li a {
 
     lessonsArray.forEach(les => {
       const dateStr = new Date(les.date).toLocaleDateString();
-      const paidCellContent = les.paid 
-            ? 'Paid' 
-            : `<button class="mark-as-paid-btn" data-booking-id="${les.id}" style="background-color: #ffc107; color: black; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em;">Mark as Paid</button>`;
+      // const paidCellContent = les.paid // This logic is no longer needed as the column is removed
+      //       ? 'Paid' 
+      //       : `<button class="mark-as-paid-btn" data-booking-id="${les.id}" style="background-color: #ffc107; color: black; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em;">Mark as Paid</button>`;
       const formattedTime = formatTime_12hr(les.time);
       
       let rowStyle = '';
@@ -463,13 +460,8 @@ ul.nav-links-mobile li a {
           <td style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td>
-          <td style="padding:8px; border:1px solid #ddd;"><input type="number" class="lesson-cost-input" data-booking-id="${les.id}" value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" placeholder="N/A" style="width: 70px;"></td>
-          <td style="padding:8px; border:1px solid #ddd;">${paidCellContent}</td>
-          <td style="padding:8px; border:1px solid #ddd;">
-            <button onclick="deleteAdminLesson(${les.id})">Delete</button>
-            <button class="update-payment-btn" data-booking-id="${les.id}" style="margin-left: 5px;">Update Cost</button>
-          </td>
       `;
+      // Removed Lesson Cost, Paid?, and Actions cells
       if (containerId === 'camp-lessons-table-container') {
         const programName = les.program ? les.program.toLowerCase() : '';
         let isPassType = false;
@@ -522,23 +514,7 @@ ul.nav-links-mobile li a {
     container.innerHTML = html;
     console.log('ADMIN.HTML: Rendering actual table into:', containerId, 'HTML length:', html.length > 0 ? html.length : 'EMPTY!');
 
-    // Attach listeners for Update Payment buttons
-    const updateButtons = container.querySelectorAll('.update-payment-btn');
-    updateButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const bookingId = button.getAttribute('data-booking-id');
-            handleUpdatePayment(bookingId); // This will be the modified handleUpdatePayment
-        });
-    });
-
-    // Attach listeners for Mark as Paid buttons
-    const markAsPaidButtons = container.querySelectorAll('.mark-as-paid-btn');
-    markAsPaidButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const bookingId = button.getAttribute('data-booking-id');
-            markAsPaid(bookingId);
-        });
-    });
+    // Removed event listeners for .update-payment-btn and .mark-as-paid-btn as buttons are gone.
 
     if (containerId === 'camp-lessons-table-container') {
         const checkboxes = document.querySelectorAll(`#${containerId} .attendance-checkbox`);
@@ -644,65 +620,8 @@ ul.nav-links-mobile li a {
     }
   }
 
-  async function handleUpdatePayment(bookingId) {
-    const costInput = document.querySelector(`.lesson-cost-input[data-booking-id="${bookingId}"]`);
-    const payload = {};
-
-    if (costInput && costInput.value.trim() !== '') {
-        payload.lesson_cost_from_req = parseFloat(costInput.value);
-        if (isNaN(payload.lesson_cost_from_req)) {
-            alert('Invalid Lesson Cost. Please enter a valid number.');
-            return;
-        }
-    } else {
-        alert('Please enter a lesson cost to update.');
-        return;
-    }
-
-    try {
-        const res = await fetch(`/api/admin/booking-payment/${bookingId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
-            body: JSON.stringify(payload)
-        });
-        if (!res.ok) {
-            let errorMsg = `Error ${res.status}`;
-            try {
-                const errorData = await res.json();
-                errorMsg = errorData.message || errorMsg;
-            } catch (e) { /* Ignore if response is not JSON */ }
-            throw new Error(errorMsg);
-        }
-        alert('Lesson cost updated successfully!');
-        loadAllLessons(); // Refresh the table
-    } catch (err) {
-        console.error('Failed to update lesson cost:', err);
-        alert(`Failed to update lesson cost: ${err.message}`);
-    }
-  }
-
-  async function markAsPaid(bookingId) {
-    try {
-        const res = await fetch(`/api/admin/booking-payment/${bookingId}/mark-paid`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
-            body: JSON.stringify({}) // Empty JSON object as payload
-        });
-        if (!res.ok) {
-            let errorMsg = `Error ${res.status}`;
-            try {
-                const errorData = await res.json();
-                errorMsg = errorData.message || errorMsg;
-            } catch (e) { /* Ignore if response is not JSON */ }
-            throw new Error(errorMsg);
-        }
-        alert('Lesson marked as paid successfully!');
-        loadAllLessons(); // Refresh the table
-    } catch (err) {
-        console.error('Failed to mark as paid:', err);
-        alert(`Failed to mark as paid: ${err.message}`);
-    }
-  }
+  // Removed handleUpdatePayment(bookingId) function
+  // Removed markAsPaid(bookingId) function
 
   window.addEventListener('DOMContentLoaded', loadAllLessons);
 

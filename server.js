@@ -24,6 +24,7 @@ const transporter = nodemailer.createTransport({
   }
 });
 const session = require('express-session');
+const pgSession = require('connect-pg-simple')(session);
 
 const app = express();
 app.set('trust proxy', 1);
@@ -43,6 +44,12 @@ const pool = new Pool({
 pool.on('error', (err, client) => {
   console.error('ADMIN_HISTORY_DEBUG: Unexpected error on idle pg client', err.stack);
   // process.exit(-1); // Commenting out process.exit for now to avoid unintended server restarts during debugging, but it's good for production.
+});
+
+const sessionStore = new pgSession({
+  pool: pool, // Use the existing PostgreSQL connection pool
+  tableName: 'user_sessions', // You can choose a different name if you prefer
+  createTableIfMissing: true, // Automatically creates the table if it doesn't exist
 });
 
 
@@ -223,6 +230,7 @@ app.use(cors({
 app.options('*', cors());
 
 app.use(session({
+  store: sessionStore,
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,

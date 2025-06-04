@@ -167,6 +167,7 @@ app.get('/api/financials', async (req, res) => {
         const nowForPeriod = new Date();
         calculatedPeriodQuery = `${nowForPeriod.getFullYear()}-${String(nowForPeriod.getMonth() + 1).padStart(2, '0')}`;
     }
+    const summaryQueryPeriodParam = calculatedPeriodQuery + '-01';
 
     // Fetch enrollment and hours data from enrollments_summary table
     const summaryQuery = `
@@ -178,7 +179,7 @@ app.get('/api/financials', async (req, res) => {
       FROM enrollments_summary
       WHERE period = $1
     `;
-    const summaryResult = await pool.query(summaryQuery, [calculatedPeriodQuery]);
+    const summaryResult = await pool.query(summaryQuery, [summaryQueryPeriodParam]);
     const summary = summaryResult.rows[0] || {};
 
     const num_kids_enrolled = parseInt(summary.num_kids_enrolled) || 0;

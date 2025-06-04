@@ -218,6 +218,44 @@ ul.nav-links-mobile li a {
 .update-payment-btn:hover {
     background-color: #45a049;
 }
+
+/* Styles for the universal update button */
+.universal-update-prices-btn {
+  font-family: Arial, sans-serif;
+  font-size: 1rem; /* Match explore-button */
+  font-weight: 400; /* Match explore-button */
+  background-color: #4CAF50; /* Green */
+  color: white !important;
+  padding: 0.75rem 2rem; /* Match explore-button */
+  border: none;
+  border-radius: 9999px; /* Pill shape - Match explore-button */
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0   4px  6px -2px rgba(0, 0, 0, 0.05); /* Match explore-button */
+  cursor: pointer;
+  transform-origin: center center;
+  transition: background-color 0.2s ease, transform 0.2s ease; /* Match explore-button */
+  text-decoration: none;
+  display: inline-block; /* Prevent full-width */
+  text-align: center;
+  /* margin-top: 10px; /* Optional: adjust as needed */
+  /* margin-bottom: 10px; /* Optional: adjust as needed */
+}
+
+.universal-update-prices-btn:hover {
+  background-color: #45a049; /* Darker green on hover */
+  transform: scale(1.05); /* Match explore-button */
+  color: white !important;
+  text-decoration: none;
+}
+
+.universal-update-prices-btn:disabled {
+   background-color: #cccccc; /* Grey out when disabled */
+   color: #666666;
+   cursor: not-allowed;
+   transform: none; /* No hover effect when disabled */
+   box-shadow: none; /* No shadow when disabled */
+}
   </style>
 </head>
 <body>
@@ -315,35 +353,26 @@ ul.nav-links-mobile li a {
 
     <!-- All Scheduled Lessons -->
     <h2>Scheduled Lessons Overview</h2>
+    <div style="text-align: left; margin-bottom: 15px;"> <!-- Changed text-align to left and adjusted margin -->
+        <button id="universal-update-btn" class="universal-update-prices-btn" disabled>Update All Changed Prices</button>
+    </div>
     <div id="private-lessons-section" style="margin-bottom: 30px;">
         <h3>Private Lessons</h3>
-        <div style="text-align: right; margin-bottom: 5px;">
-            <button class="bulk-update-costs-btn" data-table-id="private-lessons-table-container" disabled>Update All Changed Prices</button>
-        </div>
         <div id="private-lessons-table-container">Loading private lessons...</div>
     </div>
 
     <div id="camp-lessons-section" style="margin-bottom: 30px;">
         <h3>Camps & Passes</h3>
-        <div style="text-align: right; margin-bottom: 5px;">
-            <button class="bulk-update-costs-btn" data-table-id="camp-lessons-table-container" disabled>Update All Changed Prices</button>
-        </div>
         <div id="camp-lessons-table-container">Loading camp & pass lessons...</div>
     </div>
 
     <div id="clinic-lessons-section" style="margin-bottom: 30px;">
         <h3>Clinics & Other Group Lessons</h3>
-        <div style="text-align: right; margin-bottom: 5px;">
-            <button class="bulk-update-costs-btn" data-table-id="clinic-lessons-table-container" disabled>Update All Changed Prices</button>
-        </div>
         <div id="clinic-lessons-table-container">Loading clinic lessons...</div>
     </div>
 
     <div id="other-bookings-section" style="margin-bottom: 30px;">
         <h3>Other Bookings</h3>
-        <div style="text-align: right; margin-bottom: 5px;">
-            <button class="bulk-update-costs-btn" data-table-id="other-bookings-table-container" disabled>Update All Changed Prices</button>
-        </div>
         <div id="other-bookings-table-container">Loading other bookings...</div>
     </div>
     <div style="text-align: center; margin-top: 40px; margin-bottom: 20px;"> <!-- Wrapper for centering -->
@@ -410,57 +439,64 @@ ul.nav-links-mobile li a {
     return hours + ':' + minutesStr + ' ' + ampm;
   }
 
+  // Helper function to check for input changes across all tables and update the universal button state
+  function checkGlobalInputChanges() {
+    const universalUpdateButton = document.getElementById('universal-update-btn');
+    if (!universalUpdateButton) {
+        console.error('checkGlobalInputChanges: Universal update button not found.');
+        return;
+    }
+
+    const allTableContainerIds = [
+        'private-lessons-table-container',
+        'camp-lessons-table-container',
+        'clinic-lessons-table-container',
+        'other-bookings-table-container'
+    ];
+    let hasOverallChanges = false;
+
+    for (const containerId of allTableContainerIds) {
+        const container = document.getElementById(containerId);
+        if (!container) {
+            // console.warn(`checkGlobalInputChanges: Container not found for ID: ${containerId}`); // Optional: warn if a table is missing
+            continue; // Skip if a container is not found
+        }
+
+        const inputs = container.querySelectorAll('.lesson-cost-input');
+        for (const inputField of inputs) {
+            const originalCostStr = inputField.getAttribute('data-original-cost');
+            const originalCost = parseFloat(originalCostStr);
+            const currentValue = inputField.value.trim();
+
+            if (currentValue === '' && (originalCostStr === '' || isNaN(originalCost))) {
+                continue;
+            }
+            if (currentValue === '' && (originalCostStr !== '' && !isNaN(originalCost)) ) {
+                hasOverallChanges = true;
+                break;
+            }
+            const currentCost = parseFloat(currentValue);
+            if (isNaN(currentCost) && currentValue !== '') {
+                // This case means the input is not a valid number but is not empty.
+                // Depending on requirements, you might want to flag this as a change or prevent submission.
+                // For now, it's not counted as a "valid change" for enabling the button.
+                continue;
+            }
+            if (currentValue !== '' && isNaN(originalCost) && !isNaN(currentCost)) { // New valid price for previously empty
+                hasOverallChanges = true;
+                break;
+            }
+            if (!isNaN(originalCost) && !isNaN(currentCost) && currentCost !== originalCost) { // Different numeric values
+                hasOverallChanges = true;
+                break;
+            }
+        }
+        if (hasOverallChanges) break; // If changes found in one table, no need to check others
+    }
+    universalUpdateButton.disabled = !hasOverallChanges;
+  }
+
   // Helper function to render a table for a specific set of lessons
-  function checkTableInputChanges(tableContainerId) {
-    const container = document.getElementById(tableContainerId);
-    if (!container) {
-        console.error(`checkTableInputChanges: Container not found for ID: ${tableContainerId}`);
-        return;
-    }
-
-    const bulkButton = document.querySelector(`.bulk-update-costs-btn[data-table-id="${tableContainerId}"]`);
-    if (!bulkButton) {
-        console.error(`checkTableInputChanges: Bulk update button not found for table ID: ${tableContainerId}`);
-        return;
-    }
-
-    const inputs = container.querySelectorAll('.lesson-cost-input');
-    let hasChanges = false;
-
-    for (const inputField of inputs) {
-        const originalCostStr = inputField.getAttribute('data-original-cost');
-        const originalCost = parseFloat(originalCostStr); // NaN if empty or invalid
-
-        const currentValue = inputField.value.trim();
-        
-        if (currentValue === '' && (originalCostStr === '' || isNaN(originalCost))) {
-            // Both original and current are effectively "empty" or "not set"
-            continue;
-        }
-        if (currentValue === '' && (originalCostStr !== '' && !isNaN(originalCost)) ) {
-            // Original had a value, now it's cleared
-            hasChanges = true;
-            break;
-        }
-
-        const currentCost = parseFloat(currentValue);
-
-        if (isNaN(currentCost) && currentValue !== '') { // Invalid non-empty input
-            continue; // Or potentially set hasChanges = true if you want to flag this
-        }
-        
-        if (currentValue !== '' && isNaN(originalCost) && !isNaN(currentCost)) { // New valid price for previously empty
-             hasChanges = true;
-             break;
-        }
-        if (!isNaN(originalCost) && !isNaN(currentCost) && currentCost !== originalCost) { // Different numeric values
-             hasChanges = true;
-             break;
-        }
-    }
-    bulkButton.disabled = !hasChanges;
-}
-
   function renderLessonsTable(lessonsArray, containerId, placeholderMessage) {
     console.log('ADMIN.HTML: renderLessonsTable START for container:', containerId, 'with lessons:', lessonsArray.length);
     const coachColors = {
@@ -575,6 +611,7 @@ ul.nav-links-mobile li a {
 
     html += `</tbody></table>`;
     container.innerHTML = html;
+    checkGlobalInputChanges(); // Add this line
     console.log('ADMIN.HTML: Rendering actual table into:', containerId, 'HTML length:', html.length > 0 ? html.length : 'EMPTY!');
 
     // Event listeners for .update-cost-btn are removed as the buttons themselves are removed.
@@ -582,11 +619,10 @@ ul.nav-links-mobile li a {
     const costInputsInTable = container.querySelectorAll('.lesson-cost-input');
     costInputsInTable.forEach(input => {
         input.addEventListener('input', function() {
-            checkTableInputChanges(containerId);
+            checkGlobalInputChanges(); // Changed from checkTableInputChanges
         });
     });
-    // Initial check for button state when table loads
-    checkTableInputChanges(containerId);
+    // Initial check for button state when table loads will be handled by a call after innerHTML is set
 
     if (containerId === 'camp-lessons-table-container') {
         const checkboxes = document.querySelectorAll(`#${containerId} .attendance-checkbox`);
@@ -677,6 +713,7 @@ ul.nav-links-mobile li a {
     renderLessonsTable(campLessons, 'camp-lessons-table-container', 'No camp or pass lessons scheduled.');
     renderLessonsTable(clinicLessons, 'clinic-lessons-table-container', 'No clinic or other group lessons scheduled.');
     renderLessonsTable(otherBookings, 'other-bookings-table-container', 'No other bookings.');
+    checkGlobalInputChanges(); // Add this line
   }
 
   async function deleteAdminLesson(id) {
@@ -697,53 +734,64 @@ ul.nav-links-mobile li a {
 
   // Old handleUpdateCost function is removed.
 
-  async function handleBulkUpdatePrices(tableContainerId) {
-    const container = document.getElementById(tableContainerId);
-    if (!container) {
-        console.error('Table container not found for ID:', tableContainerId);
-        return;
-    }
-
-    const inputFields = container.querySelectorAll('.lesson-cost-input');
+  async function handleBulkUpdatePrices() {
+    const allTableContainerIds = [
+        'private-lessons-table-container',
+        'camp-lessons-table-container',
+        'clinic-lessons-table-container',
+        'other-bookings-table-container'
+    ];
     const pendingUpdates = [];
     const results = { successes: [], failures: [] };
 
-    inputFields.forEach(inputField => {
-        const bookingId = inputField.getAttribute('data-booking-id');
-        const originalCostStr = inputField.getAttribute('data-original-cost');
-        const originalCost = parseFloat(originalCostStr); // Will be NaN if originalCostStr is empty or not a number
-        
-        const currentValue = inputField.value.trim();
-
-        if (currentValue === '') { // If input is empty, treat as no change or invalid, skip.
-            return; 
+    for (const containerId of allTableContainerIds) {
+        const container = document.getElementById(containerId);
+        if (!container) {
+            console.warn('Table container not found for ID during bulk update:', containerId); // Warn instead of error, continue
+            continue;
         }
 
-        const currentCost = parseFloat(currentValue);
+        const inputFields = container.querySelectorAll('.lesson-cost-input');
 
-        if (isNaN(currentCost)) {
-            results.failures.push(`Booking ID ${bookingId}: Invalid cost format ('${currentValue}').`);
-            return;
-        }
+        inputFields.forEach(inputField => {
+            const bookingId = inputField.getAttribute('data-booking-id');
+            const originalCostStr = inputField.getAttribute('data-original-cost');
+            const originalCost = parseFloat(originalCostStr); // Will be NaN if originalCostStr is empty or not a number
+            
+            const currentValue = inputField.value.trim();
 
-        // Change detection logic:
-        // 1. If originalCost was not a number (e.g., empty field initially) AND currentCost is a number, it's an update.
-        // 2. If originalCost was a number AND currentCost is different, it's an update.
-        let isChanged = false;
-        if (isNaN(originalCost) && !isNaN(currentCost)) {
-             isChanged = true;
-        } else if (!isNaN(originalCost) && currentCost !== originalCost) {
-             isChanged = true;
-        }
+            if (currentValue === '') { // If input is empty, treat as no change or invalid, skip.
+                return; 
+            }
 
+            const currentCost = parseFloat(currentValue);
 
-        if (isChanged) {
-            pendingUpdates.push({ bookingId, newCost: currentCost });
-        }
-    });
+            if (isNaN(currentCost)) {
+                // results.failures.push(`Booking ID ${bookingId}: Invalid cost format ('${currentValue}').`); // Failure will be caught by checkGlobalInputChanges, or can be added if specific feedback per field is desired here
+                return; // Skip if not a valid number
+            }
+
+            // Change detection logic:
+            // 1. If originalCost was not a number (e.g., empty field initially) AND currentCost is a number, it's an update.
+            // 2. If originalCost was a number AND currentCost is different, it's an update.
+            let isChanged = false;
+            if (isNaN(originalCost) && !isNaN(currentCost)) {
+                 isChanged = true;
+            } else if (!isNaN(originalCost) && currentCost !== originalCost) {
+                 isChanged = true;
+            }
+
+            if (isChanged) {
+                pendingUpdates.push({ bookingId, newCost: currentCost });
+            }
+        });
+    }
 
     if (pendingUpdates.length === 0) {
         alert("No changes detected to update.");
+        // Ensure button is disabled if called when no changes (e.g. programmatic call)
+        const universalUpdateButton = document.getElementById('universal-update-btn');
+        if (universalUpdateButton) universalUpdateButton.disabled = true;
         return;
     }
 
@@ -803,18 +851,13 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
   <script>
   // This entire block to be added as a new script, or integrated if a single DOMContentLoaded is preferred.
   document.addEventListener('DOMContentLoaded', () => {
-      // Attach listeners for bulk update buttons
-      const bulkUpdateButtons = document.querySelectorAll('.bulk-update-costs-btn');
-      bulkUpdateButtons.forEach(button => {
-          button.addEventListener('click', function() {
-              const tableId = this.getAttribute('data-table-id');
-              if (tableId) {
-                  handleBulkUpdatePrices(tableId);
-              } else {
-                  console.error('Bulk update button clicked without a data-table-id attribute.');
-              }
+      // Attach listener for the universal update button
+      const universalUpdateButton = document.getElementById('universal-update-btn');
+      if (universalUpdateButton) {
+          universalUpdateButton.addEventListener('click', function() {
+              handleBulkUpdatePrices(); // Call without arguments
           });
-      });
+      }
 
       // --- Mobile Menu Toggle Script --- 
       const menuToggle = document.querySelector('.mobile-menu-toggle');

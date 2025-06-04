@@ -405,7 +405,7 @@ ul.nav-links-mobile li a {
                       // Insert greeting after the main navigation for portal pages
                       const mainNavigationElement = document.querySelector('nav.main-navigation');
                       if (mainNavigationElement && mainNavigationElement.parentNode) {
-                           mainNavigationElement.parentNode.insertBefore(greeting, mainNavigationElement.nextSibling);
+                           mainNavigationElement.parentNode.insertBefore(greeting, mainNavigationElement);
                       } else { // Fallback if nav isn't found
                            document.body.insertBefore(greeting, document.body.firstChild);
                       }

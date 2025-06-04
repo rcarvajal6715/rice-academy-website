@@ -31,6 +31,117 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+// ---- Admin Update Enrollments Summary Route ----
+app.post('/api/admin/update-enrollments-summary', async (req, res) => {
+  if (!req.session || !req.session.user || !req.session.user.isAdmin) {
+    return res.status(401).json({ message: 'Unauthorized: Admin access required.' });
+  }
+
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // 1. Aggregate Bookings Data
+      const aggregationQuery = `
+        SELECT
+            TO_CHAR(date, 'YYYY-MM') AS period_month,
+            SUM(CASE
+                WHEN LOWER(program) LIKE '%kids camp%' OR
+                     LOWER(program) LIKE '%summer camp%' OR
+                     LOWER(program) LIKE '%junior%' OR
+                     LOWER(program) LIKE '%summer camp / group lessons%' THEN 1
+                ELSE 0
+            END) AS num_kids_enrolled,
+            SUM(CASE
+                WHEN LOWER(program) LIKE '%adult clinic%' THEN 1
+                ELSE 0
+            END) AS num_adults_enrolled,
+            SUM(CASE
+                WHEN LOWER(program) LIKE '%private%' OR
+                     LOWER(program) LIKE '%private lesson%' OR
+                     LOWER(program) LIKE '%tennis private%' THEN 1
+                ELSE 0
+            END) AS total_private_hours, -- Count of private lessons
+            SUM(CASE
+                WHEN LOWER(program) LIKE '%camp%' OR       -- Catches Kids Camp, Summer Camp
+                     LOWER(program) LIKE '%clinic%' OR    -- Catches Adult Clinics
+                     LOWER(program) LIKE '%high performance%' THEN 1
+                ELSE 0
+            END) AS num_clinic_participants
+        FROM
+            bookings
+        WHERE
+            date IS NOT NULL
+        GROUP BY
+            TO_CHAR(date, 'YYYY-MM')
+        ORDER BY
+            period_month;
+      `;
+      const aggregationResult = await client.query(aggregationQuery);
+      const aggregatedData = aggregationResult.rows;
+
+      if (aggregatedData.length === 0) {
+        await client.query('COMMIT');
+        return res.status(200).json({ message: 'No booking data found to process. Enrollments summary remains unchanged.' });
+      }
+
+      // 2. Prepare and Update enrollments_summary Table
+      // Delete all existing records from enrollments_summary.
+      // A more targeted delete (only for periods found in new aggregation) could be done,
+      // but deleting all is simpler for a full refresh.
+      await client.query('DELETE FROM enrollments_summary');
+
+      let updatedPeriodsCount = 0;
+      for (const row of aggregatedData) {
+        const period = `${row.period_month}-01`; // Format as YYYY-MM-01
+        const {
+          num_kids_enrolled,
+          num_adults_enrolled,
+          total_private_hours,
+          num_clinic_participants
+        } = row;
+
+        const insertQuery = `
+          INSERT INTO enrollments_summary (
+            period,
+            num_kids_enrolled,
+            num_adults_enrolled,
+            total_private_hours,
+            num_clinic_participants
+          ) VALUES ($1, $2, $3, $4, $5)
+          ON CONFLICT (period) DO UPDATE SET
+            num_kids_enrolled = EXCLUDED.num_kids_enrolled,
+            num_adults_enrolled = EXCLUDED.num_adults_enrolled,
+            total_private_hours = EXCLUDED.total_private_hours,
+            num_clinic_participants = EXCLUDED.num_clinic_participants;
+        `;
+        await client.query(insertQuery, [
+          period,
+          parseInt(num_kids_enrolled) || 0,
+          parseInt(num_adults_enrolled) || 0,
+          parseFloat(total_private_hours) || 0, // Assuming this might be non-integer in future
+          parseInt(num_clinic_participants) || 0
+        ]);
+        updatedPeriodsCount++;
+      }
+
+      await client.query('COMMIT');
+      res.status(200).json({ message: `Enrollments summary updated successfully for ${updatedPeriodsCount} periods.` });
+
+    } catch (dbError) {
+      await client.query('ROLLBACK');
+      console.error('Database error during enrollments summary update:', dbError);
+      res.status(500).json({ message: 'Database error during summary update.' });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Error in /api/admin/update-enrollments-summary endpoint:', error);
+    res.status(500).json({ message: 'Failed to update enrollments summary due to a server error.' });
+  }
+});
+
 // PostgreSQL Pool Initialization
 const pool = new Pool({
   host:     process.env.DB_HOST,

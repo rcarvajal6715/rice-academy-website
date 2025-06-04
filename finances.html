@@ -690,53 +690,87 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchFinancialData(selectedPeriod = null) {
         setLoadingState(true);
-        if (errorBanner) errorBanner.style.display = 'none'; 
+        if (errorBanner) errorBanner.style.display = 'none';
 
-        let apiUrl = '/api/financials';
-        if (selectedPeriod) {
-            apiUrl += '?period=' + selectedPeriod;
+        let periodForUpdateAndFetch = selectedPeriod;
+        if (!periodForUpdateAndFetch) {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+            periodForUpdateAndFetch = `${currentYear}-${currentMonth}`;
         }
 
         try {
-            const response = await fetch(apiUrl, { credentials: 'include' });
+            // Step 1: Update enrollments summary for the target period
+            const summaryUpdateResponse = await fetch('/api/admin/update-enrollments-summary', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // 'Credentials': 'include' // Not needed for same-origin, browser handles cookies
+                },
+                body: JSON.stringify({ period: periodForUpdateAndFetch })
+            });
 
-            if (response.status === 401) {
+            if (!summaryUpdateResponse.ok) {
+                const errorData = await summaryUpdateResponse.json().catch(() => ({ message: 'Summary update failed, and error response was not valid JSON.' }));
+                let errorMessage = `Failed to update financial summaries for period ${periodForUpdateAndFetch}.`;
+                if (errorData && errorData.message) {
+                    errorMessage += ` Details: ${errorData.message}`;
+                } else {
+                    const textError = await summaryUpdateResponse.text().catch(() => '');
+                    if (textError) errorMessage += ` Raw error: ${textError}`;
+                }
+                displayError(errorMessage);
+                // setLoadingState(false) will be handled by the finally block
+                return; // Stop further execution
+            }
+            
+            // Optional: Log success of summary update
+            // const summaryUpdateResult = await summaryUpdateResponse.json();
+            // console.log(summaryUpdateResult.message || `Enrollments summary for period ${periodForUpdateAndFetch} updated successfully.`);
+
+            // Step 2: Fetch financial data for the target period
+            let apiUrl = '/api/financials';
+            if (periodForUpdateAndFetch) { // Always true here due to logic above, but good for clarity
+                apiUrl += '?period=' + periodForUpdateAndFetch;
+            }
+            
+            const financialsResponse = await fetch(apiUrl, { credentials: 'include' });
+
+            if (financialsResponse.status === 401) {
                 window.location.href = 'login.html';
-                return; 
+                return;
             }
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => null);
-                displayError(errorData?.message || `Error ${response.status}: Failed to load financial data.`);
-                if (loadingMessage) loadingMessage.style.display = 'none'; 
-                return; 
+            if (!financialsResponse.ok) {
+                const errorData = await financialsResponse.json().catch(() => null);
+                displayError(errorData?.message || `Error ${financialsResponse.status}: Failed to load financial data for period ${periodForUpdateAndFetch}.`);
+                return;
             }
 
-            const data = await response.json();
+            const data = await financialsResponse.json();
 
             inputFieldIds.forEach(id => {
                 const element = document.getElementById(id);
                 if (element && data[id] !== undefined) {
                     element.value = data[id];
                 } else if (element) {
-                    element.value = ''; 
+                    element.value = '';
                 }
             });
             
-            updateFinancialDashboard(); // Initial calculation after populating form
-            formInputs.forEach(input => { input.disabled = false; }); // SUCCESS: Re-enable inputs
+            updateFinancialDashboard(); // Calculate and display after populating form
+            // formInputs are re-enabled in finally block by setLoadingState(false)
 
         } catch (error) {
-            console.error('Network or other error fetching financials:', error);
-            displayError('Network error or problem fetching data. Please try again.');
+            console.error('Error during financial data processing:', error);
+            displayError(`A network or processing error occurred: ${error.message}. Please try again.`);
         } finally {
-            if (loadingMessage && loadingMessage.style.display === 'block') {
-                loadingMessage.style.display = 'none';
-            }
+            setLoadingState(false); // This ensures inputs are re-enabled and loading message hidden
         }
     }
 
-    if (financialsForm) { 
+    if (financialsForm) {
         // Pre-fill year and month with current date
         const now = new Date();
         if (selectYear) selectYear.value = now.getFullYear();

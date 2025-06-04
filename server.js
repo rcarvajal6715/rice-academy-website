@@ -38,19 +38,41 @@ app.post('/api/admin/update-enrollments-summary', async (req, res) => {
   }
 
   try {
+    const { period: requestedPeriod } = req.body; // e.g., "YYYY-MM"
+    let targetPeriodForDb = null; // e.g., "YYYY-MM-01"
+    let periodFilterSql = "";
+    const queryParams = [];
+
+    if (requestedPeriod) {
+      if (!/^\d{4}-\d{2}$/.test(requestedPeriod)) {
+        return res.status(400).json({ message: 'Invalid period format. Use YYYY-MM.' });
+      }
+      // Validate month is between 1 and 12
+      const [year, month] = requestedPeriod.split('-').map(Number);
+      if (month < 1 || month > 12) {
+          return res.status(400).json({ message: 'Invalid month in period.' });
+      }
+      // Ensure year is reasonable, e.g. not before a certain year or too far in future
+      if (year < 2000 || year > 2100) { 
+          return res.status(400).json({ message: 'Invalid year in period.' });
+      }
+
+      targetPeriodForDb = `${requestedPeriod}-01`;
+      periodFilterSql = `AND TO_CHAR(date, 'YYYY-MM') = $1`;
+      queryParams.push(requestedPeriod);
+    }
+
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
       // 1. Aggregate Bookings Data
+      // Added LIKE ANY (ARRAY[...]) for cleaner multiple LIKE conditions
       const aggregationQuery = `
         SELECT
             TO_CHAR(date, 'YYYY-MM') AS period_month,
             SUM(CASE
-                WHEN LOWER(program) LIKE '%kids camp%' OR
-                     LOWER(program) LIKE '%summer camp%' OR
-                     LOWER(program) LIKE '%junior%' OR
-                     LOWER(program) LIKE '%summer camp / group lessons%' THEN 1
+                WHEN LOWER(program) LIKE ANY (ARRAY['%kids camp%', '%summer camp%', '%junior%', '%summer camp / group lessons%']) THEN 1
                 ELSE 0
             END) AS num_kids_enrolled,
             SUM(CASE
@@ -58,43 +80,48 @@ app.post('/api/admin/update-enrollments-summary', async (req, res) => {
                 ELSE 0
             END) AS num_adults_enrolled,
             SUM(CASE
-                WHEN LOWER(program) LIKE '%private%' OR
-                     LOWER(program) LIKE '%private lesson%' OR
-                     LOWER(program) LIKE '%tennis private%' THEN 1
+                WHEN LOWER(program) LIKE ANY (ARRAY['%private%', '%private lesson%', '%tennis private%']) THEN 1
                 ELSE 0
             END) AS total_private_hours, -- Count of private lessons
             SUM(CASE
-                WHEN LOWER(program) LIKE '%camp%' OR       -- Catches Kids Camp, Summer Camp
-                     LOWER(program) LIKE '%clinic%' OR    -- Catches Adult Clinics
-                     LOWER(program) LIKE '%high performance%' THEN 1
+                WHEN LOWER(program) LIKE ANY (ARRAY['%camp%', '%clinic%', '%high performance%']) THEN 1
                 ELSE 0
             END) AS num_clinic_participants
         FROM
             bookings
         WHERE
             date IS NOT NULL
+            ${periodFilterSql} -- This will be empty or "AND TO_CHAR(date, 'YYYY-MM') = $1"
         GROUP BY
             TO_CHAR(date, 'YYYY-MM')
         ORDER BY
             period_month;
       `;
-      const aggregationResult = await client.query(aggregationQuery);
+      const aggregationResult = await client.query(aggregationQuery, queryParams);
       const aggregatedData = aggregationResult.rows;
 
       if (aggregatedData.length === 0) {
         await client.query('COMMIT');
-        return res.status(200).json({ message: 'No booking data found to process. Enrollments summary remains unchanged.' });
+        let message = 'No booking data found to process.';
+        if (requestedPeriod) {
+          message += ` For period ${requestedPeriod}.`;
+        }
+        message += ' Enrollments summary remains unchanged.';
+        return res.status(200).json({ message });
       }
 
       // 2. Prepare and Update enrollments_summary Table
-      // Delete all existing records from enrollments_summary.
-      // A more targeted delete (only for periods found in new aggregation) could be done,
-      // but deleting all is simpler for a full refresh.
-      await client.query('DELETE FROM enrollments_summary');
+      if (targetPeriodForDb) {
+        // If a specific period is requested, delete only that period's summary.
+        await client.query('DELETE FROM enrollments_summary WHERE period = $1', [targetPeriodForDb]);
+      } else {
+        // If no specific period, it's a full refresh, so delete all.
+        await client.query('DELETE FROM enrollments_summary');
+      }
 
       let updatedPeriodsCount = 0;
       for (const row of aggregatedData) {
-        const period = `${row.period_month}-01`; // Format as YYYY-MM-01
+        const summaryPeriod = `${row.period_month}-01`; // Format as YYYY-MM-01
         const {
           num_kids_enrolled,
           num_adults_enrolled,
@@ -117,17 +144,23 @@ app.post('/api/admin/update-enrollments-summary', async (req, res) => {
             num_clinic_participants = EXCLUDED.num_clinic_participants;
         `;
         await client.query(insertQuery, [
-          period,
+          summaryPeriod,
           parseInt(num_kids_enrolled) || 0,
           parseInt(num_adults_enrolled) || 0,
-          parseFloat(total_private_hours) || 0, // Assuming this might be non-integer in future
+          parseFloat(total_private_hours) || 0,
           parseInt(num_clinic_participants) || 0
         ]);
         updatedPeriodsCount++;
       }
 
       await client.query('COMMIT');
-      res.status(200).json({ message: `Enrollments summary updated successfully for ${updatedPeriodsCount} periods.` });
+      let successMessage = 'Enrollments summary updated successfully';
+      if (requestedPeriod) {
+        successMessage += ` for period ${requestedPeriod}.`;
+      } else {
+        successMessage += ` for ${updatedPeriodsCount} periods.`;
+      }
+      res.status(200).json({ message: successMessage });
 
     } catch (dbError) {
       await client.query('ROLLBACK');

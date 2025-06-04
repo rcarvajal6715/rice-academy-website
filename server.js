@@ -145,7 +145,7 @@ app.get('/api/financials', async (req, res) => {
       'coach_kids_group_rate', 'coach_adult_group_rate', 'coach_private_hourly_pay',
       'coach_clinic_camp_fee', 'director_salary', 'admin_expenses'
     ];
-    const settingsQuery = `SELECT key, value FROM settings WHERE key = ANY($1::text[])`;
+    const settingsQuery = `SELECT key, value_numeric AS value FROM settings WHERE key = ANY($1::text[])`;
     const settingsResult = await pool.query(settingsQuery, [settingsKeys]);
     
     const settings = {};
@@ -159,61 +159,56 @@ app.get('/api/financials', async (req, res) => {
 
     const getSetting = (key) => settings[key] || 0;
 
-    const programMappings = {
-        kids_group: ['Kids Group Program', 'Kids Camp - Day Pass', 'Kids Camp - Week Pass'], 
-        adult_group: ['Adult Group Program', 'Adult Clinic'], 
-        private_lesson: ['Tennis Private'],
-        clinic_camp: ['Summer Camp - Day Pass', 'Summer Camp - Week Pass', 'Kids Camp - Day Pass', 'Kids Camp - Week Pass', 'Special Clinic']
-    };
+    // Determine the period string for enrollments_summary query
+    let calculatedPeriodQuery;
+    if (period) { // period is from req.query.period
+        calculatedPeriodQuery = period;
+    } else {
+        const nowForPeriod = new Date();
+        calculatedPeriodQuery = `${nowForPeriod.getFullYear()}-${String(nowForPeriod.getMonth() + 1).padStart(2, '0')}`;
+    }
 
-    const kidsEnrollmentQuery = `
-      SELECT COUNT(DISTINCT student) FROM bookings 
-      WHERE program = ANY($1::text[]) AND date >= $2 AND date <= $3;
+    // Fetch enrollment and hours data from enrollments_summary table
+    const summaryQuery = `
+      SELECT
+        num_kids_enrolled,
+        num_adults_enrolled,
+        total_private_hours,
+        num_clinic_participants
+      FROM enrollments_summary
+      WHERE period = $1
     `;
-    const adultEnrollmentQuery = `
-      SELECT COUNT(DISTINCT student) FROM bookings 
-      WHERE program = ANY($1::text[]) AND date >= $2 AND date <= $3;
-    `;
-    const privateHoursQuery = `
-      SELECT COALESCE(SUM(duration_hours), 0) AS total_hours 
-      FROM bookings 
-      WHERE program = ANY($1::text[]) AND date >= $2 AND date <= $3;
-    `; 
-    const clinicParticipantsQuery = `
-      SELECT COUNT(DISTINCT student) FROM bookings 
-      WHERE program = ANY($1::text[]) AND date >= $2 AND date <= $3;
-    `;
+    const summaryResult = await pool.query(summaryQuery, [calculatedPeriodQuery]);
+    const summary = summaryResult.rows[0] || {};
 
-    const [
-      kidsEnrollmentResult,
-      adultEnrollmentResult,
-      privateHoursResult,
-      clinicParticipantsResult
-    ] = await Promise.all([
-      pool.query(kidsEnrollmentQuery, [programMappings.kids_group, sqlStartDate, sqlEndDate]),
-      pool.query(adultEnrollmentQuery, [programMappings.adult_group, sqlStartDate, sqlEndDate]),
-      pool.query(privateHoursQuery, [programMappings.private_lesson, sqlStartDate, sqlEndDate]),
-      pool.query(clinicParticipantsQuery, [programMappings.clinic_camp, sqlStartDate, sqlEndDate])
-    ]);
+    const num_kids_enrolled = parseInt(summary.num_kids_enrolled) || 0;
+    const num_adults_enrolled = parseInt(summary.num_adults_enrolled) || 0;
+    const total_private_hours = parseFloat(summary.total_private_hours) || 0;
+    const num_clinic_participants = parseInt(summary.num_clinic_participants) || 0;
 
     const financialData = {
-      period: period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
+      period: calculatedPeriodQuery, // Use the YYYY-MM period string used for the summary query
       startDate: sqlStartDate,
       endDate: sqlEndDate,
+
       kids_group_fee: getSetting('kids_group_fee'),
       adult_group_fee: getSetting('adult_group_fee'),
       private_lesson_rate: getSetting('private_lesson_rate'),
       clinic_camp_fee: getSetting('clinic_camp_fee'),
+
       coach_kids_group_rate: getSetting('coach_kids_group_rate'),
       coach_adult_group_rate: getSetting('coach_adult_group_rate'),
       coach_private_hourly_pay: getSetting('coach_private_hourly_pay'),
       coach_clinic_camp_fee: getSetting('coach_clinic_camp_fee'),
+
       director_salary: getSetting('director_salary'),
       admin_expenses: getSetting('admin_expenses'),
-      num_kids_enrolled: parseInt(kidsEnrollmentResult.rows[0]?.count) || 0,
-      num_adults_enrolled: parseInt(adultEnrollmentResult.rows[0]?.count) || 0,
-      total_private_hours: parseFloat(privateHoursResult.rows[0]?.total_hours) || 0,
-      num_clinic_participants: parseInt(clinicParticipantsResult.rows[0]?.count) || 0,
+
+      // Use the new variables from enrollments_summary
+      num_kids_enrolled: num_kids_enrolled,
+      num_adults_enrolled: num_adults_enrolled,
+      total_private_hours: total_private_hours,
+      num_clinic_participants: num_clinic_participants
     };
 
     res.json(financialData);

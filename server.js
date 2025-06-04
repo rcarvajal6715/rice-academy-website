@@ -247,124 +247,203 @@ app.use(express.static(__dirname, { extensions: ['html'] }));
 
 // ---- Admin Financials Route ----
 app.get('/api/financials', async (req, res) => {
-  // Authentication
-  if (!req.session || !req.session.user || !req.session.user.isAdmin) { // Updated session check
+  // 1) Session check
+  if (!req.session || !req.session.user || !req.session.user.isAdmin) {
     return res.status(401).json({ message: 'Unauthorized: Admin access required.' });
   }
 
   try {
+    // 2) Determine period → startDate/endDate (YYYY-MM or default to current month)
     const period = req.query.period;
     let startDate, endDate;
-
     if (period) {
-      // Validate period format YYYY-MM
       if (!/^\d{4}-\d{2}$/.test(period)) {
         return res.status(400).json({ message: 'Invalid period format. Use YYYY-MM.' });
       }
       const [year, month] = period.split('-').map(Number);
-      // Validate month is between 1 and 12
       if (month < 1 || month > 12) {
         return res.status(400).json({ message: 'Invalid month in period.' });
       }
       startDate = new Date(year, month - 1, 1);
-      endDate = new Date(year, month, 0); 
-      if (startDate.getFullYear() !== year || startDate.getMonth() !== month -1) {
-        return res.status(400).json({ message: 'Invalid year or month in period.'});
+      endDate   = new Date(year, month, 0);
+      if (startDate.getFullYear() !== year || startDate.getMonth() !== month - 1) {
+        return res.status(400).json({ message: 'Invalid year or month in period.' });
       }
     } else {
       const now = new Date();
       startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      endDate   = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     }
-
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-        return res.status(400).json({ message: 'Invalid date calculated from period.' });
+      return res.status(400).json({ message: 'Invalid date calculated from period.' });
     }
-    
-    const sqlStartDate = startDate.toISOString().split('T')[0];
-    const sqlEndDate = endDate.toISOString().split('T')[0];
+    const sqlStartDate = startDate.toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const sqlEndDate   = endDate.toISOString().slice(0, 10);
 
+    // 3) Fetch fee/rate/overhead values from settings.value_numeric
     const settingsKeys = [
       'kids_group_fee', 'adult_group_fee', 'private_lesson_rate', 'clinic_camp_fee',
       'coach_kids_group_rate', 'coach_adult_group_rate', 'coach_private_hourly_pay',
       'coach_clinic_camp_fee', 'director_salary', 'admin_expenses'
     ];
-    const settingsQuery = `SELECT key, value_numeric AS value FROM settings WHERE key = ANY($1::text[])`;
+    const settingsQuery = `
+      SELECT key, value_numeric AS value
+      FROM settings
+      WHERE key = ANY($1::text[])
+    `;
     const settingsResult = await pool.query(settingsQuery, [settingsKeys]);
-    
     const settings = {};
     settingsResult.rows.forEach(row => {
-      settings[row.key] = parseFloat(row.value); 
-      if (isNaN(settings[row.key])) {
-        console.warn(`Financials: Setting ${row.key} has invalid numeric value ${row.value}. Defaulting to 0.`);
-        settings[row.key] = 0; 
+      const num = parseFloat(row.value);
+      settings[row.key] = isNaN(num) ? 0 : num;
+      if (isNaN(num)) {
+        console.warn(`Financials: Setting "${row.key}" has invalid numeric value "${row.value}". Defaulting to 0.`);
       }
     });
+    const getSetting = key => (settings[key] || 0);
 
-    const getSetting = (key) => settings[key] || 0;
-
-    // Determine the period string for enrollments_summary query
-    let calculatedPeriodQuery;
-    if (period) { // period is from req.query.period
-        calculatedPeriodQuery = period;
-    } else {
-        const nowForPeriod = new Date();
-        calculatedPeriodQuery = `${nowForPeriod.getFullYear()}-${String(nowForPeriod.getMonth() + 1).padStart(2, '0')}`;
-    }
-    const summaryQueryPeriodParam = calculatedPeriodQuery + '-01';
-
-    // Fetch enrollment and hours data from enrollments_summary table
+    // 4) Fetch enrollment totals from enrollments_summary (kids/adults/clinic)
+    const summaryPeriod = period ? (period + '-01') : (
+      (() => {
+        const y = startDate.getFullYear();
+        const m = String(startDate.getMonth() + 1).padStart(2, '0');
+        return `${y}-${m}-01`;
+      })()
+    );
     const summaryQuery = `
-      SELECT
-        num_kids_enrolled,
-        num_adults_enrolled,
-        total_private_hours,
-        num_clinic_participants
+      SELECT num_kids_enrolled, num_adults_enrolled, total_private_hours, num_clinic_participants
       FROM enrollments_summary
       WHERE period = $1
     `;
-    const summaryResult = await pool.query(summaryQuery, [summaryQueryPeriodParam]);
-    const summary = summaryResult.rows[0] || {};
+    const summaryResult = await pool.query(summaryQuery, [summaryPeriod]);
+    const summaryRow = summaryResult.rows[0] || {};
+    const num_kids_enrolled       = parseInt(summaryRow.num_kids_enrolled)       || 0;
+    const num_adults_enrolled     = parseInt(summaryRow.num_adults_enrolled)     || 0;
+    const total_private_hours     = parseFloat(summaryRow.total_private_hours)   || 0;
+    const num_clinic_participants = parseInt(summaryRow.num_clinic_participants) || 0;
 
-    const num_kids_enrolled = parseInt(summary.num_kids_enrolled) || 0;
-    const num_adults_enrolled = parseInt(summary.num_adults_enrolled) || 0;
-    const total_private_hours = parseFloat(summary.total_private_hours) || 0;
-    const num_clinic_participants = parseInt(summary.num_clinic_participants) || 0;
+    // 5) Fetch all private-lesson bookings for this period
+    const privateRows = (
+      await pool.query(
+        `
+        SELECT coach, lesson_cost, referral_source
+        FROM bookings
+        WHERE program = 'Tennis Private'
+          AND date >= $1 AND date <= $2
+        `,
+        [sqlStartDate, sqlEndDate]
+      )
+    ).rows;
 
+    // 6) Fetch payout rates from coach_rates.rate_numeric
+    const coachRateKeys = [
+      'ricardo_private_own',
+      'jacob_private_referral',
+      'paula_private_referral',
+      'zach_private_referral_flat',
+      'jacob_private_own',
+      'paula_private_own',
+      'zach_private_own_pct'
+    ];
+    const coachRatesResult = await pool.query(
+      `SELECT key, rate_numeric AS value FROM coach_rates WHERE key = ANY($1::text[])`,
+      [coachRateKeys]
+    );
+    const rates = {};
+    coachRatesResult.rows.forEach(r => {
+      rates[r.key] = parseFloat(r.value);
+    });
+    rates['ricardo_private_own']    ||= 1.00;
+    rates['jacob_private_referral'] ||= 20.00;
+    rates['paula_private_referral'] ||= 20.00;
+    rates['zach_private_referral_flat'] ||= 20.00;
+    rates['jacob_private_own']      ||= 10.00;
+    rates['paula_private_own']      ||= 10.00;
+    rates['zach_private_own_pct']   ||= 0.10;
+
+    // 7) Allocate each private booking’s payout
+    let totalPrivateRevenue     = 0;
+    let totalCoachPayroll       = 0;
+    let totalAcademyCommission  = 0;
+
+    for (const booking of privateRows) {
+      const coachName  = booking.coach;            // "Ricardo", "Jacob", "Paula", or "Zach"
+      const lessonCost = parseFloat(booking.lesson_cost) || 0;
+      const referredBy = booking.referral_source;   // "Ricardo" or the coach’s own name
+
+      totalPrivateRevenue += lessonCost;
+
+      let coachKeeps   = 0;
+      let academyKeeps = 0;
+
+      if (coachName === 'Ricardo') {
+        // Ricardo keeps 100%
+        coachKeeps  = lessonCost * rates['ricardo_private_own'];
+        academyKeeps = 0;
+      }
+      else if (referredBy === 'Ricardo') {
+        // Ricardo referred that coach
+        const key = `${coachName.toLowerCase()}_private_referral`;
+        const flat = rates[key];
+        academyKeeps = flat;
+        coachKeeps   = lessonCost - flat;
+      }
+      else if (referredBy === coachName) {
+        // Coach booked their own student
+        if (coachName === 'Zach') {
+          const pct = rates['zach_private_own_pct'];
+          academyKeeps = lessonCost * pct;
+          coachKeeps   = lessonCost - academyKeeps;
+        } else {
+          const key       = `${coachName.toLowerCase()}_private_own`;
+          const flatAmount = rates[key];
+          academyKeeps = flatAmount;
+          coachKeeps   = lessonCost - flatAmount;
+        }
+      }
+      else {
+        // Fallback: coach keeps entire fee
+        coachKeeps  = lessonCost;
+        academyKeeps = 0;
+      }
+
+      totalCoachPayroll     += coachKeeps;
+      totalAcademyCommission += academyKeeps;
+    }
+
+    // 8) Build and send the JSON response
     const financialData = {
-      period: calculatedPeriodQuery, // Use the YYYY-MM period string used for the summary query
+      period: period || `${startDate.getFullYear()}-${String(startDate.getMonth()+1).padStart(2,'0')}`,
       startDate: sqlStartDate,
-      endDate: sqlEndDate,
+      endDate:   sqlEndDate,
 
-      kids_group_fee: getSetting('kids_group_fee'),
-      adult_group_fee: getSetting('adult_group_fee'),
-      private_lesson_rate: getSetting('private_lesson_rate'),
-      clinic_camp_fee: getSetting('clinic_camp_fee'),
+      // Group & Camp metrics (unchanged):
+      kids_group_fee:         getSetting('kids_group_fee'),
+      adult_group_fee:        getSetting('adult_group_fee'),
+      clinic_camp_fee:        getSetting('clinic_camp_fee'),
+      num_kids_enrolled:      num_kids_enrolled,
+      num_adults_enrolled:    num_adults_enrolled,
+      num_clinic_participants: num_clinic_participants,
 
-      coach_kids_group_rate: getSetting('coach_kids_group_rate'),
-      coach_adult_group_rate: getSetting('coach_adult_group_rate'),
-      coach_private_hourly_pay: getSetting('coach_private_hourly_pay'),
-      coach_clinic_camp_fee: getSetting('coach_clinic_camp_fee'),
+      // Private-Lesson metrics (new):
+      private_lesson_revenue:    totalPrivateRevenue,
+      total_private_coach_pay:   totalCoachPayroll,
+      total_academy_commission:  totalAcademyCommission,
 
+      // Overhead:
       director_salary: getSetting('director_salary'),
-      admin_expenses: getSetting('admin_expenses'),
-
-      // Use the new variables from enrollments_summary
-      num_kids_enrolled: num_kids_enrolled,
-      num_adults_enrolled: num_adults_enrolled,
-      total_private_hours: total_private_hours,
-      num_clinic_participants: num_clinic_participants
+      admin_expenses:  getSetting('admin_expenses')
     };
 
-    res.json(financialData);
-
-  } catch (error) {
+    return res.json(financialData);
+  }
+  catch (error) {
     console.error('Error fetching financial data:', error);
-    if (error.code && error.table) { 
-        console.error(`Database error: ${error.message}. Table: ${error.table}, Code: ${error.code}`);
-        return res.status(500).json({ message: `Database error while fetching financial data: ${error.message}` });
+    if (error.code && error.table) {
+      console.error(`Database error: ${error.message}. Table: ${error.table}, Code: ${error.code}`);
+      return res.status(500).json({ message: `Database error while fetching financial data: ${error.message}` });
     }
-    res.status(500).json({ message: 'Error fetching financial data.' });
+    return res.status(500).json({ message: 'Error fetching financial data.' });
   }
 });
 

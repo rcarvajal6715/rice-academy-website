@@ -933,10 +933,10 @@ function getCalendarEvents() {
                       const existingGreeting = document.querySelector('.welcome-greeting');
                       if (existingGreeting) existingGreeting.remove();
 
-                      // Insert greeting after the <nav class="main-navigation"> element
+                      // Insert greeting before the <nav class="main-navigation"> element
                       const mainNavigationElement = document.querySelector('nav.main-navigation');
                       if (mainNavigationElement && mainNavigationElement.parentNode) {
-                           mainNavigationElement.parentNode.insertBefore(greeting, mainNavigationElement.nextSibling);
+                           mainNavigationElement.parentNode.insertBefore(greeting, mainNavigationElement);
                       } else { 
                            // Fallback if main-navigation is not found (should not happen with new structure)
                            const headerElement = document.querySelector('header');

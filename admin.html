@@ -317,21 +317,33 @@ ul.nav-links-mobile li a {
     <h2>Scheduled Lessons Overview</h2>
     <div id="private-lessons-section" style="margin-bottom: 30px;">
         <h3>Private Lessons</h3>
+        <div style="text-align: right; margin-bottom: 5px;">
+            <button class="bulk-update-costs-btn" data-table-id="private-lessons-table-container" disabled>Update All Changed Prices</button>
+        </div>
         <div id="private-lessons-table-container">Loading private lessons...</div>
     </div>
 
     <div id="camp-lessons-section" style="margin-bottom: 30px;">
         <h3>Camps & Passes</h3>
+        <div style="text-align: right; margin-bottom: 5px;">
+            <button class="bulk-update-costs-btn" data-table-id="camp-lessons-table-container" disabled>Update All Changed Prices</button>
+        </div>
         <div id="camp-lessons-table-container">Loading camp & pass lessons...</div>
     </div>
 
     <div id="clinic-lessons-section" style="margin-bottom: 30px;">
         <h3>Clinics & Other Group Lessons</h3>
+        <div style="text-align: right; margin-bottom: 5px;">
+            <button class="bulk-update-costs-btn" data-table-id="clinic-lessons-table-container" disabled>Update All Changed Prices</button>
+        </div>
         <div id="clinic-lessons-table-container">Loading clinic lessons...</div>
     </div>
 
     <div id="other-bookings-section" style="margin-bottom: 30px;">
         <h3>Other Bookings</h3>
+        <div style="text-align: right; margin-bottom: 5px;">
+            <button class="bulk-update-costs-btn" data-table-id="other-bookings-table-container" disabled>Update All Changed Prices</button>
+        </div>
         <div id="other-bookings-table-container">Loading other bookings...</div>
     </div>
     <div style="text-align: center; margin-top: 40px; margin-bottom: 20px;"> <!-- Wrapper for centering -->
@@ -399,6 +411,56 @@ ul.nav-links-mobile li a {
   }
 
   // Helper function to render a table for a specific set of lessons
+  function checkTableInputChanges(tableContainerId) {
+    const container = document.getElementById(tableContainerId);
+    if (!container) {
+        console.error(`checkTableInputChanges: Container not found for ID: ${tableContainerId}`);
+        return;
+    }
+
+    const bulkButton = document.querySelector(`.bulk-update-costs-btn[data-table-id="${tableContainerId}"]`);
+    if (!bulkButton) {
+        console.error(`checkTableInputChanges: Bulk update button not found for table ID: ${tableContainerId}`);
+        return;
+    }
+
+    const inputs = container.querySelectorAll('.lesson-cost-input');
+    let hasChanges = false;
+
+    for (const inputField of inputs) {
+        const originalCostStr = inputField.getAttribute('data-original-cost');
+        const originalCost = parseFloat(originalCostStr); // NaN if empty or invalid
+
+        const currentValue = inputField.value.trim();
+        
+        if (currentValue === '' && (originalCostStr === '' || isNaN(originalCost))) {
+            // Both original and current are effectively "empty" or "not set"
+            continue;
+        }
+        if (currentValue === '' && (originalCostStr !== '' && !isNaN(originalCost)) ) {
+            // Original had a value, now it's cleared
+            hasChanges = true;
+            break;
+        }
+
+        const currentCost = parseFloat(currentValue);
+
+        if (isNaN(currentCost) && currentValue !== '') { // Invalid non-empty input
+            continue; // Or potentially set hasChanges = true if you want to flag this
+        }
+        
+        if (currentValue !== '' && isNaN(originalCost) && !isNaN(currentCost)) { // New valid price for previously empty
+             hasChanges = true;
+             break;
+        }
+        if (!isNaN(originalCost) && !isNaN(currentCost) && currentCost !== originalCost) { // Different numeric values
+             hasChanges = true;
+             break;
+        }
+    }
+    bulkButton.disabled = !hasChanges;
+}
+
   function renderLessonsTable(lessonsArray, containerId, placeholderMessage) {
     console.log('ADMIN.HTML: renderLessonsTable START for container:', containerId, 'with lessons:', lessonsArray.length);
     const coachColors = {
@@ -458,10 +520,9 @@ ul.nav-links-mobile li a {
           <td style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td>
-          <td style="padding:8px; border:1px solid #ddd;">$<input type="number" class="lesson-cost-input" data-booking-id="${les.id}" value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" placeholder="N/A" style="width: 70px;"></td>
+          <td style="padding:8px; border:1px solid #ddd;">$<input type="number" class="lesson-cost-input" data-booking-id="${les.id}" value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" data-original-cost="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" placeholder="N/A" style="width: 70px;"></td>
           <td style="padding:8px; border:1px solid #ddd;">
             <button onclick="deleteAdminLesson(${les.id})">Delete</button>
-            <button class="update-cost-btn" data-booking-id="${les.id}" style="margin-left: 5px;">Update Cost</button>
           </td>
       `;
       if (containerId === 'camp-lessons-table-container') {
@@ -486,32 +547,22 @@ ul.nav-links-mobile li a {
         }
 
         if (isPassType) {
-            // Ensure les.used_lessons and les.total_lessons are available from the backend
-            // For now, we assume they are, or default to 0 if not.
-            const usedLessons = les.used_lessons || 0;
-            // totalPassDays is already calculated above based on program name, 
-            // but ideally les.total_lessons from DB should be the source of truth for totalPassDays.
-            // We use totalPassDays as calculated for UI loop, and les.total_lessons for logic if different.
-            // For this change, let's ensure totalPassDays is consistently from les.total_lessons if available
-            totalPassDays = les.total_lessons || totalPassDays; // Prioritize DB total_lessons
-
             if (totalPassDays > 1) { // Week pass
                 html += '<td>';
-                html += `<div>Days: <span class="days-used" data-booking-id="${les.id}">${usedLessons}</span> / <span class="total-days">${totalPassDays}</span> used</div>`;
+                html += `<div>Days: <span class="days-used" data-booking-id="${les.id}">0</span> / <span class="total-days">${totalPassDays}</span> used</div>`;
                 html += `<div class="attendance-markers" style="margin-top: 5px; display: flex; flex-wrap: wrap;">`;
                 for (let i = 0; i < totalPassDays; i++) {
                     html += `<label style="display: inline-block; margin-right: 8px; font-size: 0.9em;">
-                               <input type="checkbox" class="attendance-checkbox" data-booking-id="${les.id}" data-day-index="${i}" data-total-lessons="${totalPassDays}" ${i < usedLessons ? 'checked' : ''}> D${i + 1}
+                               <input type="checkbox" class="attendance-checkbox" data-booking-id="${les.id}" data-day-index="${i}"> D${i + 1}
                              </label>`;
                 }
                 html += `</div></td>`;
-            } else { // Day pass (totalPassDays === 1 or could be 0 if data is odd)
+            } else { // Day pass (totalPassDays === 1)
                 html += '<td>';
-                 // For single day passes, also use used_lessons to determine status/checked state
-                html += `<div>Status: <span class="attendance-status" data-booking-id="${les.id}">${usedLessons >= 1 ? 'Attended' : 'Not Attended'}</span></div>`;
+                html += `<div>Status: <span class="attendance-status" data-booking-id="${les.id}">Not Attended</span></div>`;
                 html += `<div class="attendance-markers" style="margin-top: 5px;">
                            <label style="display: inline-block; font-size: 0.9em;">
-                             <input type="checkbox" class="attendance-checkbox" data-booking-id="${les.id}" data-day-index="0" data-total-lessons="${totalPassDays}" ${usedLessons >= 1 ? 'checked' : ''}> Mark Attended
+                             <input type="checkbox" class="attendance-checkbox" data-booking-id="${les.id}" data-day-index="0"> Mark Attended
                            </label>
                          </div></td>`;
             }
@@ -526,14 +577,16 @@ ul.nav-links-mobile li a {
     container.innerHTML = html;
     console.log('ADMIN.HTML: Rendering actual table into:', containerId, 'HTML length:', html.length > 0 ? html.length : 'EMPTY!');
 
-    // Attach listeners for Update Cost buttons
-    const updateCostButtons = container.querySelectorAll('.update-cost-btn');
-    updateCostButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const bookingId = button.getAttribute('data-booking-id');
-            handleUpdateCost(bookingId);
+    // Event listeners for .update-cost-btn are removed as the buttons themselves are removed.
+
+    const costInputsInTable = container.querySelectorAll('.lesson-cost-input');
+    costInputsInTable.forEach(input => {
+        input.addEventListener('input', function() {
+            checkTableInputChanges(containerId);
         });
     });
+    // Initial check for button state when table loads
+    checkTableInputChanges(containerId);
 
     if (containerId === 'camp-lessons-table-container') {
         const checkboxes = document.querySelectorAll(`#${containerId} .attendance-checkbox`);
@@ -541,8 +594,7 @@ ul.nav-links-mobile li a {
             checkbox.addEventListener('change', (event) => {
                 const bookingId = event.target.getAttribute('data-booking-id');
                 const dayIndex = parseInt(event.target.getAttribute('data-day-index'));
-                const totalLessons = parseInt(event.target.getAttribute('data-total-lessons')); // Get total lessons
-                handleAttendanceChange(bookingId, dayIndex, event.target.checked, totalLessons); // Pass totalLessons
+                handleAttendanceChange(bookingId, dayIndex, event.target.checked);
             });
         });
     }
@@ -643,101 +695,127 @@ ul.nav-links-mobile li a {
   // Removed handleUpdatePayment(bookingId) function (if any was left)
   // Removed markAsPaid(bookingId) function (if any was left)
 
-  async function handleUpdateCost(bookingId) {
-    const costInput = document.querySelector(`.lesson-cost-input[data-booking-id="${bookingId}"]`);
-    if (!costInput) {
-        console.error('Cost input field not found for booking ID:', bookingId);
-        alert('An error occurred. Cost input field not found.');
+  // Old handleUpdateCost function is removed.
+
+  async function handleBulkUpdatePrices(tableContainerId) {
+    const container = document.getElementById(tableContainerId);
+    if (!container) {
+        console.error('Table container not found for ID:', tableContainerId);
         return;
     }
 
-    const costValue = costInput.value.trim();
-    if (costValue === '') {
-        alert('Please enter a lesson cost to update.');
-        return;
-    }
+    const inputFields = container.querySelectorAll('.lesson-cost-input');
+    const pendingUpdates = [];
+    const results = { successes: [], failures: [] };
 
-    const newCost = parseFloat(costValue);
-    if (isNaN(newCost)) {
-        alert('Invalid Lesson Cost. Please enter a valid number.');
-        return;
-    }
+    inputFields.forEach(inputField => {
+        const bookingId = inputField.getAttribute('data-booking-id');
+        const originalCostStr = inputField.getAttribute('data-original-cost');
+        const originalCost = parseFloat(originalCostStr); // Will be NaN if originalCostStr is empty or not a number
+        
+        const currentValue = inputField.value.trim();
 
-    const payload = { lesson_cost_from_req: newCost };
-
-    try {
-        const res = await fetch(`/api/admin/booking-payment/${bookingId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
-            body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) {
-            let errorMsg = `Error ${res.status}`;
-            try {
-                const errorData = await res.json();
-                errorMsg = errorData.message || errorMsg;
-            } catch (e) { /* Ignore if response is not JSON, use status text or default */ }
-            throw new Error(errorMsg);
+        if (currentValue === '') { // If input is empty, treat as no change or invalid, skip.
+            return; 
         }
-        alert('Lesson cost updated successfully!');
-        loadAllLessons(); // Refresh the table
-    } catch (err) {
-        console.error('Failed to update lesson cost:', err);
-        alert(`Failed to update lesson cost: ${err.message}`);
+
+        const currentCost = parseFloat(currentValue);
+
+        if (isNaN(currentCost)) {
+            results.failures.push(`Booking ID ${bookingId}: Invalid cost format ('${currentValue}').`);
+            return;
+        }
+
+        // Change detection logic:
+        // 1. If originalCost was not a number (e.g., empty field initially) AND currentCost is a number, it's an update.
+        // 2. If originalCost was a number AND currentCost is different, it's an update.
+        let isChanged = false;
+        if (isNaN(originalCost) && !isNaN(currentCost)) {
+             isChanged = true;
+        } else if (!isNaN(originalCost) && currentCost !== originalCost) {
+             isChanged = true;
+        }
+
+
+        if (isChanged) {
+            pendingUpdates.push({ bookingId, newCost: currentCost });
+        }
+    });
+
+    if (pendingUpdates.length === 0) {
+        alert("No changes detected to update.");
+        return;
     }
-  }
 
-  window.addEventListener('DOMContentLoaded', loadAllLessons);
-
-async function handleAttendanceChange(bookingId, dayIndex, isChecked, totalLessons) { // Added totalLessons
-    console.log(`Attendance change: Booking ID ${bookingId}, Day Index ${dayIndex}, Checked: ${isChecked}, Total Lessons: ${totalLessons}`);
-
-    if (isChecked) {
-        // API Call to mark attendance
+    for (const update of pendingUpdates) {
         try {
-            const response = await fetch(`/api/admin/attendance/${bookingId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ lessons_to_add: 1 }),
-                credentials: 'include'
+            const res = await fetch(`/api/admin/booking-payment/${update.bookingId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
+                body: JSON.stringify({ lesson_cost_from_req: update.newCost })
             });
 
-            if (response.ok) {
-                alert('Attendance marked successfully.');
-                loadAllLessons(); // Refresh the table
+            if (res.ok) {
+                results.successes.push(`Booking ID ${update.bookingId}: Cost updated to ${update.newCost}.`);
             } else {
-                const errorData = await response.json();
-                alert(`Failed to mark attendance: ${errorData.message || response.statusText}`);
-                // Optionally, revert checkbox state if backend update failed
-                const checkbox = document.querySelector(`.attendance-checkbox[data-booking-id="${bookingId}"][data-day-index="${dayIndex}"]`);
-                if(checkbox) checkbox.checked = false;
+                let errorMsg = `Booking ID ${update.bookingId}: Update failed (status ${res.status}).`;
+                try {
+                    const errorData = await res.json();
+                    errorMsg += ` ${errorData.message || ''}`;
+                } catch (e) { /* ignore if response not json */ }
+                results.failures.push(errorMsg);
             }
-        } catch (error) {
-            console.error('Error marking attendance:', error);
-            alert('An error occurred while marking attendance.');
-            const checkbox = document.querySelector(`.attendance-checkbox[data-booking-id="${bookingId}"][data-day-index="${dayIndex}"]`);
-            if(checkbox) checkbox.checked = false;
+        } catch (err) {
+            results.failures.push(`Booking ID ${update.bookingId}: Network error or failed to send request - ${err.message}`);
         }
-    } else {
-        // Logic for unchecking (decrementing) - Not supported by backend yet
-        console.log('Decrementing used lessons is not yet supported by the backend.');
-        // Per instruction, just log:
-        console.log("Decrementing used lessons via UI is allowed, but backend will not be updated for now.");
-        // If you wanted to prevent unchecking because backend doesn't support it:
-        // const checkbox = document.querySelector(`.attendance-checkbox[data-booking-id="${bookingId}"][data-day-index="${dayIndex}"]`);
-        // if(checkbox) {
-        //     alert('Decrementing used lessons is not currently supported. The checkbox state will be reverted.');
-        //     checkbox.checked = true; // Revert the uncheck
-        // }
+    }
+
+    let summaryMessage = "Update Summary:\n";
+    summaryMessage += `${results.successes.length} prices updated successfully.\n`;
+    if (results.failures.length > 0) {
+        summaryMessage += `${results.failures.length} updates failed:\n`;
+        results.failures.forEach(failure => {
+            summaryMessage += `- ${failure}\n`;
+        });
+    }
+    alert(summaryMessage);
+
+    loadAllLessons(); // Refresh the data
+  }
+
+function handleAttendanceChange(bookingId, dayIndex, isChecked) {
+    console.log(`Attendance change: Booking ID ${bookingId}, Day Index ${dayIndex}, Checked: ${isChecked}`);
+    // Mock UI update:
+    const daysUsedSpan = document.querySelector(`.days-used[data-booking-id="${bookingId}"]`);
+    const statusSpan = document.querySelector(`.attendance-status[data-booking-id="${bookingId}"]`);
+
+    if (daysUsedSpan) { // For multi-day passes
+        let currentDaysUsed = 0;
+        document.querySelectorAll(`.attendance-checkbox[data-booking-id="${bookingId}"]`).forEach(cb => {
+            if (cb.checked) currentDaysUsed++;
+        });
+        daysUsedSpan.textContent = currentDaysUsed;
+    } else if (statusSpan) { // For single-day passes
+        statusSpan.textContent = isChecked ? 'Attended' : 'Not Attended';
     }
 }
 </script>
   <script>
   // This entire block to be added as a new script, or integrated if a single DOMContentLoaded is preferred.
   document.addEventListener('DOMContentLoaded', () => {
+      // Attach listeners for bulk update buttons
+      const bulkUpdateButtons = document.querySelectorAll('.bulk-update-costs-btn');
+      bulkUpdateButtons.forEach(button => {
+          button.addEventListener('click', function() {
+              const tableId = this.getAttribute('data-table-id');
+              if (tableId) {
+                  handleBulkUpdatePrices(tableId);
+              } else {
+                  console.error('Bulk update button clicked without a data-table-id attribute.');
+              }
+          });
+      });
+
       // --- Mobile Menu Toggle Script --- 
       const menuToggle = document.querySelector('.mobile-menu-toggle');
       const mobileMenuClose = document.querySelector('.mobile-menu-close');
@@ -856,6 +934,7 @@ async function handleAttendanceChange(bookingId, dayIndex, isChecked, totalLesso
       }
 
       checkSession(); 
+      loadAllLessons(); // Initial load of lesson data
   });
   </script>
 </body>

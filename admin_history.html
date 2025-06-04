@@ -269,6 +269,9 @@ ul.nav-links-mobile li a {
       <button class="category-filter-button" data-category="Camps">Camps & Passes</button>
       <button class="category-filter-button" data-category="Clinics">Clinics & Other</button>
     </div>
+    <div style="text-align: right; margin-bottom: 5px;">
+        <button class="bulk-update-costs-btn" data-table-id="past-lessons-table-container" disabled>Update All Changed Prices</button>
+    </div>
     <div id="past-lessons-table-container" style="margin-top: 20px;">
         <!-- The single table of past lessons will be rendered here by JavaScript -->
     </div>
@@ -285,6 +288,56 @@ ul.nav-links-mobile li a {
   <script>
   let allFetchedPastLessons = []; 
   let activeCategoryFilter = 'All'; 
+
+  function checkTableInputChanges(tableContainerId) {
+    const container = document.getElementById(tableContainerId);
+    if (!container) {
+        console.error(`checkTableInputChanges: Container not found for ID: ${tableContainerId}`);
+        return;
+    }
+
+    const bulkButton = document.querySelector(`.bulk-update-costs-btn[data-table-id="${tableContainerId}"]`);
+    if (!bulkButton) {
+        console.error(`checkTableInputChanges: Bulk update button not found for table ID: ${tableContainerId}`);
+        return;
+    }
+
+    const inputs = container.querySelectorAll('.lesson-cost-input');
+    let hasChanges = false;
+
+    for (const inputField of inputs) {
+        const originalCostStr = inputField.getAttribute('data-original-cost');
+        const originalCost = parseFloat(originalCostStr); // NaN if empty or invalid
+
+        const currentValue = inputField.value.trim();
+        
+        if (currentValue === '' && (originalCostStr === '' || isNaN(originalCost))) {
+            // Both original and current are effectively "empty" or "not set"
+            continue;
+        }
+        if (currentValue === '' && (originalCostStr !== '' && !isNaN(originalCost)) ) {
+            // Original had a value, now it's cleared
+            hasChanges = true;
+            break;
+        }
+
+        const currentCost = parseFloat(currentValue);
+
+        if (isNaN(currentCost) && currentValue !== '') { // Invalid non-empty input
+            continue; 
+        }
+        
+        if (currentValue !== '' && isNaN(originalCost) && !isNaN(currentCost)) { // New valid price for previously empty
+             hasChanges = true;
+             break;
+        }
+        if (!isNaN(originalCost) && !isNaN(currentCost) && currentCost !== originalCost) { // Different numeric values
+             hasChanges = true;
+             break;
+        }
+    }
+    bulkButton.disabled = !hasChanges;
+}
 
   function formatTime_12hr(timeStr) {
     if (!timeStr || !timeStr.includes(':')) { return timeStr; }
@@ -348,10 +401,9 @@ ul.nav-links-mobile li a {
           <td style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td>
-          <td style="padding:8px; border:1px solid #ddd;">$<input type="number" class="lesson-cost-input" data-booking-id="${les.id}" value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" placeholder="N/A" style="width: 70px;"></td>
+          <td style="padding:8px; border:1px solid #ddd;">$<input type="number" class="lesson-cost-input" data-booking-id="${les.id}" value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" data-original-cost="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" placeholder="N/A" style="width: 70px;"></td>
           <td style="padding:8px; border:1px solid #ddd;">
             <button onclick="deleteAdminLesson(${les.id})">Delete</button>
-            <button class="update-cost-btn" data-booking-id="${les.id}" style="margin-left: 5px;">Update Cost</button>
           </td>
         </tr>
       `;
@@ -360,14 +412,15 @@ ul.nav-links-mobile li a {
     container.innerHTML = html;
     console.log('HISTORY.HTML: Rendering actual table into:', containerId, 'HTML length:', html.length > 0 ? html.length : 'EMPTY!');
     
-    // Attach listeners for Update Cost buttons
-    const updateCostButtons = container.querySelectorAll('.update-cost-btn');
-    updateCostButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const bookingId = button.getAttribute('data-booking-id');
-            handleUpdateCost(bookingId);
+    // Event listeners for .update-cost-btn are removed as the buttons themselves are removed.
+    const costInputsInTable = container.querySelectorAll('.lesson-cost-input');
+    costInputsInTable.forEach(input => {
+        input.addEventListener('input', function() {
+            checkTableInputChanges(containerId); // containerId is from renderPastLessonsTable's args
         });
     });
+    // Initial check for button state when table loads
+    checkTableInputChanges(containerId);
   }
 
   async function loadPastLessons() {
@@ -431,49 +484,103 @@ ul.nav-links-mobile li a {
   // Removed handleUpdatePayment(bookingId) function (if any was left)
   // Removed markAsPaid(bookingId) function (if any was left)
 
-  async function handleUpdateCost(bookingId) {
-    const costInput = document.querySelector(`.lesson-cost-input[data-booking-id="${bookingId}"]`);
-    if (!costInput) {
-        console.error('Cost input field not found for booking ID:', bookingId);
-        alert('An error occurred. Cost input field not found.');
+  // async function handleUpdateCost(bookingId) { ... } // This function is now removed.
+
+  async function handleBulkUpdatePrices(tableContainerId) {
+    const container = document.getElementById(tableContainerId);
+    if (!container) {
+        console.error('Table container not found for ID:', tableContainerId);
         return;
     }
 
-    const costValue = costInput.value.trim();
-    if (costValue === '') {
-        alert('Please enter a lesson cost to update.');
-        return;
-    }
+    const inputFields = container.querySelectorAll('.lesson-cost-input');
+    const pendingUpdates = [];
+    const results = { successes: [], failures: [] };
 
-    const newCost = parseFloat(costValue);
-    if (isNaN(newCost)) {
-        alert('Invalid Lesson Cost. Please enter a valid number.');
-        return;
-    }
+    inputFields.forEach(inputField => {
+        const bookingId = inputField.getAttribute('data-booking-id');
+        const originalCostStr = inputField.getAttribute('data-original-cost');
+        const originalCost = parseFloat(originalCostStr); // Will be NaN if originalCostStr is empty
+        
+        const currentValue = inputField.value.trim();
 
-    const payload = { lesson_cost_from_req: newCost };
-
-    try {
-        const res = await fetch(`/api/admin/booking-payment/${bookingId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-            body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) {
-            let errorMsg = `Error ${res.status}`;
-            try {
-                const errorData = await res.json();
-                errorMsg = errorData.message || errorMsg;
-            } catch (e) { /* Ignore if response is not JSON, use status text or default */ }
-            throw new Error(errorMsg);
+        if (currentValue === '') { // If input is empty, skip (treat as no change or invalid for bulk update).
+            return; 
         }
-        alert('Lesson cost updated successfully!');
-        loadPastLessons(); // Refresh the table
-    } catch (err) {
-        console.error('Failed to update lesson cost:', err);
-        alert(`Failed to update lesson cost: ${err.message}`);
+
+        const currentCost = parseFloat(currentValue);
+
+        if (isNaN(currentCost)) {
+            results.failures.push(`Booking ID ${bookingId}: Invalid cost format ('${currentValue}').`);
+            return;
+        }
+        
+        let isChanged = false;
+        if (isNaN(originalCost) && !isNaN(currentCost)) { // Original was empty/NaN, new is valid number
+             isChanged = true;
+        } else if (!isNaN(originalCost) && currentCost !== originalCost) { // Original was a number, new is different number
+             isChanged = true;
+        }
+        // Note: This logic doesn't explicitly count clearing a field (original number, current empty) as a "pendingUpdate"
+        // because the initial check `if (currentValue === '')` skips it. If clearing should be an update to zero or null,
+        // this logic would need adjustment, or the backend needs to interpret empty cost as such.
+        // For now, only valid new numbers or changes between valid numbers are processed for bulk update.
+
+        if (isChanged) {
+            pendingUpdates.push({ bookingId, newCost: currentCost });
+        }
+    });
+
+    if (pendingUpdates.length === 0 && results.failures.length === 0) {
+        alert("No valid changes detected to update.");
+        return;
     }
+     if (pendingUpdates.length === 0 && results.failures.length > 0) {
+        let summaryMessage = "Update Summary:\n";
+        summaryMessage += `0 prices to update successfully.\n`;
+        summaryMessage += `${results.failures.length} items had issues:\n`;
+        results.failures.forEach(failure => {
+            summaryMessage += `- ${failure}\n`;
+        });
+        alert(summaryMessage);
+        return;
+    }
+
+
+    for (const update of pendingUpdates) {
+        try {
+            const res = await fetch(`/api/admin/booking-payment/${update.bookingId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
+                body: JSON.stringify({ lesson_cost_from_req: update.newCost })
+            });
+
+            if (res.ok) {
+                results.successes.push(`Booking ID ${update.bookingId}: Cost updated to ${update.newCost}.`);
+            } else {
+                let errorMsg = `Booking ID ${update.bookingId}: Update failed (status ${res.status}).`;
+                try {
+                    const errorData = await res.json();
+                    errorMsg += ` ${errorData.message || ''}`;
+                } catch (e) { /* ignore if response not json */ }
+                results.failures.push(errorMsg);
+            }
+        } catch (err) {
+            results.failures.push(`Booking ID ${update.bookingId}: Network error - ${err.message}`);
+        }
+    }
+
+    let summaryMessage = "Update Summary:\n";
+    summaryMessage += `${results.successes.length} prices updated successfully.\n`;
+    if (results.failures.length > 0) {
+        summaryMessage += `${results.failures.length} updates failed or had issues:\n`;
+        results.failures.forEach(failure => {
+            summaryMessage += `- ${failure}\n`;
+        });
+    }
+    alert(summaryMessage);
+
+    loadPastLessons(); // Crucially, call loadPastLessons to refresh data for the history page
   }
 
   function filterAndRenderHistory(searchTerm) {
@@ -525,6 +632,19 @@ ul.nav-links-mobile li a {
 
   window.addEventListener('DOMContentLoaded', () => {
     loadPastLessons(); 
+    
+    const bulkUpdateButton = document.querySelector('.bulk-update-costs-btn[data-table-id="past-lessons-table-container"]');
+    if (bulkUpdateButton) {
+        bulkUpdateButton.addEventListener('click', function() {
+            const tableId = this.getAttribute('data-table-id');
+            if (tableId) { // Should always be past-lessons-table-container here
+                 handleBulkUpdatePrices(tableId);
+            } else {
+                console.error('Bulk update button on history page clicked without a data-table-id attribute.');
+            }
+        });
+    }
+
     const searchInput = document.getElementById('historySearchInput');
     if (searchInput) {
         searchInput.addEventListener('input', () => {

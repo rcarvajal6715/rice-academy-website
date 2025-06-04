@@ -239,6 +239,10 @@ ul.nav-links-mobile li a {
 
   <main>
     <h2>Welcome!</h2>
+    <div class="info-box" id="remaining-lessons-container">
+      <h2>Your Lesson Packages</h2>
+      <p>Loading remaining lessons...</p>
+    </div>
     <div class="info-box">
       <p><strong>Latest Updates:</strong> View your child’s recent lesson summaries, attendance, and coach feedback here.</p>
     </div>
@@ -259,6 +263,66 @@ ul.nav-links-mobile li a {
   <script>
   document.addEventListener('DOMContentLoaded', () => {
       // --- Mobile Menu Toggle Script --- 
+      let remainingLessonsIntervalId = null; // Variable to store interval ID for lesson polling
+
+      async function fetchAndDisplayRemainingLessons() {
+        const container = document.getElementById('remaining-lessons-container');
+        if (!container) {
+            console.error('Remaining lessons container not found.');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/parent/remaining-lessons', { credentials: 'include' });
+            if (!response.ok) {
+                let errorMsg = 'Failed to load remaining lessons.';
+                try {
+                    const errorData = await response.json();
+                    errorMsg = errorData.message || response.statusText || errorMsg;
+                } catch(e) { /* Ignore if response not JSON */ }
+                container.innerHTML = `<h2>Your Lesson Packages</h2><p style="color: red;">${errorMsg}</p>`;
+                return;
+            }
+
+            const packages = await response.json();
+            // Clear previous content except the title
+            container.innerHTML = '<h2>Your Lesson Packages</h2>'; 
+
+            if (packages.length === 0) {
+                container.innerHTML += '<p>You have no active lesson packages.</p>';
+            } else {
+                packages.forEach(pkg => {
+                    const packageDiv = document.createElement('div');
+                    packageDiv.style.marginBottom = '15px'; // Add some space between packages
+                    packageDiv.style.paddingBottom = '10px'; // Padding for the hr
+                    packageDiv.style.borderBottom = '1px solid #eee'; // Visual separator
+
+                    // Ensure values are displayed safely, defaulting if null/undefined
+                    const studentName = pkg.student_name || 'N/A';
+                    const packageName = pkg.package_name || 'N/A';
+                    const totalLessons = pkg.total_lessons !== null && pkg.total_lessons !== undefined ? pkg.total_lessons : '-';
+                    const usedLessons = pkg.used_lessons !== null && pkg.used_lessons !== undefined ? pkg.used_lessons : '-';
+                    const remainingLessons = pkg.remaining_lessons !== null && pkg.remaining_lessons !== undefined ? pkg.remaining_lessons : '-';
+
+                    packageDiv.innerHTML = `
+                        <p><strong>Student:</strong> ${studentName}</p>
+                        <p><strong>Package:</strong> ${packageName}</p>
+                        <p><strong>Status:</strong> ${remainingLessons} out of ${totalLessons} lessons remaining (${usedLessons} used).</p>
+                    `;
+                    // Only add <hr> if it's not the last item, or handle styling differently
+                    // For simplicity here, each gets a bottom border via CSS on packageDiv or an <hr>
+                    // container.appendChild(packageDiv); // Appending before adding hr for clarity
+                    // if (packages.indexOf(pkg) < packages.length -1) { // Don't add hr after the last item
+                    //    packageDiv.innerHTML += '<hr>'; // Adding hr inside packageDiv for simpler structure
+                    // }
+                    container.appendChild(packageDiv);
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching remaining lessons:', error);
+            container.innerHTML = `<h2>Your Lesson Packages</h2><p style="color: red;">Could not load remaining lessons due to a network or server error.</p>`;
+        }
+      }
       const menuToggle = document.querySelector('.mobile-menu-toggle');
       const mobileMenuClose = document.querySelector('.mobile-menu-close');
       const mainNav = document.querySelector('nav.main-navigation');
@@ -346,12 +410,27 @@ ul.nav-links-mobile li a {
                            document.body.insertBefore(greeting, document.body.firstChild);
                       }
                   }
+                  // Initial call to fetch lessons
+                  fetchAndDisplayRemainingLessons();
+
+                  // Clear any existing interval before setting a new one
+                  if (remainingLessonsIntervalId) {
+                      clearInterval(remainingLessonsIntervalId);
+                  }
+                  // Start polling
+                  remainingLessonsIntervalId = setInterval(fetchAndDisplayRemainingLessons, 20000); // 20 seconds
               } else {
                   // Not logged in or not the correct role for this portal
+                  if (remainingLessonsIntervalId) { // Clear interval if redirecting
+                      clearInterval(remainingLessonsIntervalId);
+                  }
                   window.location.href = 'login.html'; // Redirect if not properly authenticated for a portal
               }
           } catch (err) {
               console.error('Session check failed, redirecting to login:', err);
+              if (remainingLessonsIntervalId) { // Clear interval on error too
+                  clearInterval(remainingLessonsIntervalId);
+              }
               window.location.href = 'login.html'; // Redirect on error
               // Fallback for auth buttons if redirect somehow fails
               const authContainerDesktop = document.getElementById('authContainerDesktop');
@@ -363,6 +442,9 @@ ul.nav-links-mobile li a {
       }
 
       function logout() {
+          if (remainingLessonsIntervalId) { // Clear interval on logout
+              clearInterval(remainingLessonsIntervalId);
+          }
           fetch('/api/logout', { method: 'POST', credentials: 'include' })
               .then(() => {
                   const existingGreeting = document.querySelector('.welcome-greeting');

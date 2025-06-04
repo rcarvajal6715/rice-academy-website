@@ -486,22 +486,32 @@ ul.nav-links-mobile li a {
         }
 
         if (isPassType) {
+            // Ensure les.used_lessons and les.total_lessons are available from the backend
+            // For now, we assume they are, or default to 0 if not.
+            const usedLessons = les.used_lessons || 0;
+            // totalPassDays is already calculated above based on program name, 
+            // but ideally les.total_lessons from DB should be the source of truth for totalPassDays.
+            // We use totalPassDays as calculated for UI loop, and les.total_lessons for logic if different.
+            // For this change, let's ensure totalPassDays is consistently from les.total_lessons if available
+            totalPassDays = les.total_lessons || totalPassDays; // Prioritize DB total_lessons
+
             if (totalPassDays > 1) { // Week pass
                 html += '<td>';
-                html += `<div>Days: <span class="days-used" data-booking-id="${les.id}">0</span> / <span class="total-days">${totalPassDays}</span> used</div>`;
+                html += `<div>Days: <span class="days-used" data-booking-id="${les.id}">${usedLessons}</span> / <span class="total-days">${totalPassDays}</span> used</div>`;
                 html += `<div class="attendance-markers" style="margin-top: 5px; display: flex; flex-wrap: wrap;">`;
                 for (let i = 0; i < totalPassDays; i++) {
                     html += `<label style="display: inline-block; margin-right: 8px; font-size: 0.9em;">
-                               <input type="checkbox" class="attendance-checkbox" data-booking-id="${les.id}" data-day-index="${i}"> D${i + 1}
+                               <input type="checkbox" class="attendance-checkbox" data-booking-id="${les.id}" data-day-index="${i}" data-total-lessons="${totalPassDays}" ${i < usedLessons ? 'checked' : ''}> D${i + 1}
                              </label>`;
                 }
                 html += `</div></td>`;
-            } else { // Day pass (totalPassDays === 1)
+            } else { // Day pass (totalPassDays === 1 or could be 0 if data is odd)
                 html += '<td>';
-                html += `<div>Status: <span class="attendance-status" data-booking-id="${les.id}">Not Attended</span></div>`;
+                 // For single day passes, also use used_lessons to determine status/checked state
+                html += `<div>Status: <span class="attendance-status" data-booking-id="${les.id}">${usedLessons >= 1 ? 'Attended' : 'Not Attended'}</span></div>`;
                 html += `<div class="attendance-markers" style="margin-top: 5px;">
                            <label style="display: inline-block; font-size: 0.9em;">
-                             <input type="checkbox" class="attendance-checkbox" data-booking-id="${les.id}" data-day-index="0"> Mark Attended
+                             <input type="checkbox" class="attendance-checkbox" data-booking-id="${les.id}" data-day-index="0" data-total-lessons="${totalPassDays}" ${usedLessons >= 1 ? 'checked' : ''}> Mark Attended
                            </label>
                          </div></td>`;
             }
@@ -531,7 +541,8 @@ ul.nav-links-mobile li a {
             checkbox.addEventListener('change', (event) => {
                 const bookingId = event.target.getAttribute('data-booking-id');
                 const dayIndex = parseInt(event.target.getAttribute('data-day-index'));
-                handleAttendanceChange(bookingId, dayIndex, event.target.checked);
+                const totalLessons = parseInt(event.target.getAttribute('data-total-lessons')); // Get total lessons
+                handleAttendanceChange(bookingId, dayIndex, event.target.checked, totalLessons); // Pass totalLessons
             });
         });
     }
@@ -679,20 +690,48 @@ ul.nav-links-mobile li a {
 
   window.addEventListener('DOMContentLoaded', loadAllLessons);
 
-function handleAttendanceChange(bookingId, dayIndex, isChecked) {
-    console.log(`Attendance change: Booking ID ${bookingId}, Day Index ${dayIndex}, Checked: ${isChecked}`);
-    // Mock UI update:
-    const daysUsedSpan = document.querySelector(`.days-used[data-booking-id="${bookingId}"]`);
-    const statusSpan = document.querySelector(`.attendance-status[data-booking-id="${bookingId}"]`);
+async function handleAttendanceChange(bookingId, dayIndex, isChecked, totalLessons) { // Added totalLessons
+    console.log(`Attendance change: Booking ID ${bookingId}, Day Index ${dayIndex}, Checked: ${isChecked}, Total Lessons: ${totalLessons}`);
 
-    if (daysUsedSpan) { // For multi-day passes
-        let currentDaysUsed = 0;
-        document.querySelectorAll(`.attendance-checkbox[data-booking-id="${bookingId}"]`).forEach(cb => {
-            if (cb.checked) currentDaysUsed++;
-        });
-        daysUsedSpan.textContent = currentDaysUsed;
-    } else if (statusSpan) { // For single-day passes
-        statusSpan.textContent = isChecked ? 'Attended' : 'Not Attended';
+    if (isChecked) {
+        // API Call to mark attendance
+        try {
+            const response = await fetch(`/api/admin/attendance/${bookingId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ lessons_to_add: 1 }),
+                credentials: 'include'
+            });
+
+            if (response.ok) {
+                alert('Attendance marked successfully.');
+                loadAllLessons(); // Refresh the table
+            } else {
+                const errorData = await response.json();
+                alert(`Failed to mark attendance: ${errorData.message || response.statusText}`);
+                // Optionally, revert checkbox state if backend update failed
+                const checkbox = document.querySelector(`.attendance-checkbox[data-booking-id="${bookingId}"][data-day-index="${dayIndex}"]`);
+                if(checkbox) checkbox.checked = false;
+            }
+        } catch (error) {
+            console.error('Error marking attendance:', error);
+            alert('An error occurred while marking attendance.');
+            const checkbox = document.querySelector(`.attendance-checkbox[data-booking-id="${bookingId}"][data-day-index="${dayIndex}"]`);
+            if(checkbox) checkbox.checked = false;
+        }
+    } else {
+        // Logic for unchecking (decrementing) - Not supported by backend yet
+        console.log('Decrementing used lessons is not yet supported by the backend.');
+        // Per instruction, just log:
+        console.log("Decrementing used lessons via UI is allowed, but backend will not be updated for now.");
+        // If you wanted to prevent unchecking because backend doesn't support it:
+        // const checkbox = document.querySelector(`.attendance-checkbox[data-booking-id="${bookingId}"][data-day-index="${dayIndex}"]`);
+        // if(checkbox) {
+        //     alert('Decrementing used lessons is not currently supported. The checkbox state will be reverted.');
+        //     checkbox.checked = true; // Revert the uncheck
+        // }
     }
 }
 </script>

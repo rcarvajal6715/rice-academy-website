@@ -350,6 +350,48 @@ app.get('/api/check-session', (req, res) => {
   res.status(401).json({ loggedIn: false });
 });
 
+// ---- Parent Portal Routes ----
+app.get('/api/parent/remaining-lessons', async (req, res) => {
+  if (!req.session.user || !req.session.user.id || !req.session.user.email) {
+    return res.status(401).json({ message: 'Unauthorized: Please log in.' });
+  }
+
+  // This endpoint is for parents, not admins or coaches
+  if (req.session.user.isAdmin || req.session.coachId) {
+    return res.status(403).json({ message: 'Forbidden: This endpoint is for parent users only.', packages: [] });
+  }
+
+  const userEmail = req.session.user.email;
+
+  try {
+    const query = `
+      SELECT
+        student AS student_name,
+        program AS package_name,
+        total_lessons,
+        used_lessons
+      FROM bookings
+      WHERE
+        email = $1 AND
+        total_lessons IS NOT NULL AND
+        total_lessons > 0
+      ORDER BY student_name, program;
+    `;
+    const { rows } = await pool.query(query, [userEmail]);
+
+    const packages = rows.map(pkg => ({
+      ...pkg,
+      remaining_lessons: (pkg.total_lessons || 0) - (pkg.used_lessons || 0)
+    }));
+
+    res.status(200).json(packages);
+
+  } catch (err) {
+    console.error('Error fetching remaining lessons for parent:', err);
+    res.status(500).json({ message: 'Failed to fetch remaining lessons due to a server error.' });
+  }
+});
+
 // ---- Admin Lesson Management Routes ----
 app.post('/api/admin/lessons', async (req, res) => {
   // Add admin check
@@ -376,7 +418,7 @@ app.get('/api/admin/lessons', async (req, res) => {
   }
   try {
     const { rows } = await pool.query(`
-      SELECT id, program, coach, date, time, student, paid, email, phone, lesson_cost
+      SELECT id, program, coach, date, time, student, paid, email, phone, lesson_cost, total_lessons, used_lessons
       FROM bookings
       ORDER BY date DESC, time DESC
     `);
@@ -397,6 +439,55 @@ app.delete('/api/admin/lessons/:id', async (req, res) => {
   } catch (err) {
     console.error('Error deleting booking by admin:', err);
     res.status(500).send('Error deleting booking');
+  }
+});
+
+// ---- Admin Mark Attendance Route ----
+app.post('/api/admin/attendance/:bookingId', async (req, res) => {
+  if (!req.session.user?.isAdmin) {
+    return res.status(403).json({ message: 'Forbidden: User is not an administrator.' });
+  }
+
+  const { bookingId } = req.params;
+  let lessons_to_add = req.body.lessons_to_add === undefined ? 1 : parseInt(req.body.lessons_to_add);
+
+  if (isNaN(lessons_to_add) || lessons_to_add <= 0) {
+    return res.status(400).json({ message: 'Invalid value for lessons_to_add. Must be a positive integer.' });
+  }
+
+  try {
+    // Fetch the booking
+    const bookingResult = await pool.query('SELECT * FROM bookings WHERE id = $1', [bookingId]);
+    if (bookingResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Booking not found.' });
+    }
+    const booking = bookingResult.rows[0];
+
+    // Check if it's a package booking
+    if (booking.total_lessons === null || booking.total_lessons === undefined) {
+      return res.status(400).json({ message: 'This booking is not a lesson package.' });
+    }
+
+    // Calculate new used_lessons
+    const current_used_lessons = booking.used_lessons || 0; // Default to 0 if null
+    const new_used_lessons = current_used_lessons + lessons_to_add;
+
+    // Check if new_used_lessons exceeds total_lessons
+    if (new_used_lessons > booking.total_lessons) {
+      return res.status(400).json({ message: 'Cannot mark attendance; exceeds total lessons in the package.' });
+    }
+
+    // Update the booking
+    const updateResult = await pool.query(
+      'UPDATE bookings SET used_lessons = $1 WHERE id = $2 RETURNING *',
+      [new_used_lessons, bookingId]
+    );
+
+    res.status(200).json({ message: 'Attendance marked successfully.', booking: updateResult.rows[0] });
+
+  } catch (err) {
+    console.error('Error marking attendance:', err);
+    res.status(500).json({ message: 'Failed to mark attendance due to a server error.' });
   }
 });
 

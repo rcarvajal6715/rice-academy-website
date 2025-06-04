@@ -31,6 +31,147 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+// ---- Admin Financials Route ----
+app.get('/api/financials', async (req, res) => {
+  // Authentication
+  if (!req.session.user || !req.session.user.isAdmin) {
+    return res.status(401).json({ message: 'Unauthorized: Admin access required.' });
+  }
+
+  try {
+    const period = req.query.period;
+    let startDate, endDate;
+
+    if (period) {
+      // Validate period format YYYY-MM
+      if (!/^\d{4}-\d{2}$/.test(period)) {
+        return res.status(400).json({ message: 'Invalid period format. Use YYYY-MM.' });
+      }
+      const [year, month] = period.split('-').map(Number);
+      // Validate month is between 1 and 12
+      if (month < 1 || month > 12) {
+        return res.status(400).json({ message: 'Invalid month in period.' });
+      }
+      startDate = new Date(year, month - 1, 1);
+      endDate = new Date(year, month, 0); // Day 0 of next month is last day of current month
+      // Check for invalid date (e.g., month 13, which Date constructor might handle unexpectedly)
+      if (startDate.getFullYear() !== year || startDate.getMonth() !== month -1) {
+        return res.status(400).json({ message: 'Invalid year or month in period.'});
+      }
+    } else {
+      const now = new Date();
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    }
+
+    // Ensure dates are valid
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        return res.status(400).json({ message: 'Invalid date calculated from period.' });
+    }
+    
+    // Format dates for SQL (YYYY-MM-DD)
+    const sqlStartDate = startDate.toISOString().split('T')[0];
+    const sqlEndDate = endDate.toISOString().split('T')[0];
+
+    // Fetch settings from the database
+    const settingsKeys = [
+      'kids_group_fee', 'adult_group_fee', 'private_lesson_rate', 'clinic_camp_fee',
+      'coach_kids_group_rate', 'coach_adult_group_rate', 'coach_private_hourly_pay',
+      'coach_clinic_camp_fee', 'director_salary', 'admin_expenses'
+    ];
+    const settingsQuery = `SELECT key, value FROM settings WHERE key = ANY($1::text[])`;
+    const settingsResult = await pool.query(settingsQuery, [settingsKeys]);
+    
+    const settings = {};
+    settingsResult.rows.forEach(row => {
+      settings[row.key] = parseFloat(row.value); // Assuming value is stored as text/numeric and needs parsing
+      if (isNaN(settings[row.key])) {
+        console.warn(`Financials: Setting ${row.key} has invalid numeric value ${row.value}. Defaulting to 0.`);
+        settings[row.key] = 0; // Default to 0 if parsing fails
+      }
+    });
+
+    // Helper function to get setting value or default to 0
+    const getSetting = (key) => settings[key] || 0;
+
+    // Database Queries for Enrollment/Hours Data
+    // Mapping program names to types for queries. This might need adjustment based on actual DB values.
+    // For now, assuming 'program' column contains these exact strings or similar.
+    // These are placeholders and might need to be more flexible (e.g., using LIKE or an array of program names)
+    const programMappings = {
+        kids_group: ['Kids Group Program', 'Kids Camp - Day Pass', 'Kids Camp - Week Pass'], // Example names
+        adult_group: ['Adult Group Program', 'Adult Clinic'], // Example names
+        private_lesson: ['Tennis Private'],
+        clinic_camp: ['Summer Camp - Day Pass', 'Summer Camp - Week Pass', 'Kids Camp - Day Pass', 'Kids Camp - Week Pass', 'Special Clinic'] // Example names
+    };
+
+    const kidsEnrollmentQuery = `
+      SELECT COUNT(DISTINCT student) FROM bookings 
+      WHERE program = ANY($1::text[]) AND date >= $2 AND date <= $3;
+    `;
+    const adultEnrollmentQuery = `
+      SELECT COUNT(DISTINCT student) FROM bookings 
+      WHERE program = ANY($1::text[]) AND date >= $2 AND date <= $3;
+    `;
+    const privateHoursQuery = `
+      SELECT COALESCE(SUM(duration_hours), 0) AS total_hours 
+      FROM bookings 
+      WHERE program = ANY($1::text[]) AND date >= $2 AND date <= $3;
+    `; // Assuming 'duration_hours' column exists as per subtask specification.
+    const clinicParticipantsQuery = `
+      SELECT COUNT(DISTINCT student) FROM bookings 
+      WHERE program = ANY($1::text[]) AND date >= $2 AND date <= $3;
+    `;
+
+    const [
+      kidsEnrollmentResult,
+      adultEnrollmentResult,
+      privateHoursResult,
+      clinicParticipantsResult
+    ] = await Promise.all([
+      pool.query(kidsEnrollmentQuery, [programMappings.kids_group, sqlStartDate, sqlEndDate]),
+      pool.query(adultEnrollmentQuery, [programMappings.adult_group, sqlStartDate, sqlEndDate]),
+      pool.query(privateHoursQuery, [programMappings.private_lesson, sqlStartDate, sqlEndDate]),
+      pool.query(clinicParticipantsQuery, [programMappings.clinic_camp, sqlStartDate, sqlEndDate])
+    ]);
+
+    const financialData = {
+      period: period || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
+      startDate: sqlStartDate,
+      endDate: sqlEndDate,
+      
+      kids_group_fee: getSetting('kids_group_fee'),
+      adult_group_fee: getSetting('adult_group_fee'),
+      private_lesson_rate: getSetting('private_lesson_rate'),
+      clinic_camp_fee: getSetting('clinic_camp_fee'),
+      
+      coach_kids_group_rate: getSetting('coach_kids_group_rate'),
+      coach_adult_group_rate: getSetting('coach_adult_group_rate'),
+      coach_private_hourly_pay: getSetting('coach_private_hourly_pay'),
+      coach_clinic_camp_fee: getSetting('coach_clinic_camp_fee'),
+      
+      director_salary: getSetting('director_salary'),
+      admin_expenses: getSetting('admin_expenses'),
+      
+      num_kids_enrolled: parseInt(kidsEnrollmentResult.rows[0]?.count) || 0,
+      num_adults_enrolled: parseInt(adultEnrollmentResult.rows[0]?.count) || 0,
+      total_private_hours: parseFloat(privateHoursResult.rows[0]?.total_hours) || 0,
+      num_clinic_participants: parseInt(clinicParticipantsResult.rows[0]?.count) || 0,
+    };
+
+    res.json(financialData);
+
+  } catch (error) {
+    console.error('Error fetching financial data:', error);
+    // Check if the error is from pg (e.g., relation "settings" does not exist)
+    if (error.code && error.table) { // Basic check for pg error properties
+        console.error(`Database error: ${error.message}. Table: ${error.table}, Code: ${error.code}`);
+        return res.status(500).json({ message: `Database error while fetching financial data: ${error.message}` });
+    }
+    res.status(500).json({ message: 'Error fetching financial data.' });
+  }
+});
+
 // PostgreSQL Pool Initialization
 const pool = new Pool({
   host:     process.env.DB_HOST,

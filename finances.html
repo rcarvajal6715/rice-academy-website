@@ -299,9 +299,31 @@ legend {
 </nav>
 
 <section>
+  <div id="error-banner" style="display: none; background-color: #dc3545; color: white; text-align: center; padding: 10px; margin-bottom: 15px; border-radius: 5px;"></div>
+  <div id="loading-message" style="display: none; text-align: center; padding: 20px; font-size: 1.2em; color: #0c3c78;">Loading financial data...</div>
+  
   <h2>Financial Overview</h2>
 
   <form id="financials-form" class="full-width">
+    <div class="input-group full-width">
+        <fieldset>
+            <legend>Select Data Period</legend>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <div style="flex: 1;">
+                    <label for="select_year">Year:</label>
+                    <input type="number" id="select_year" placeholder="YYYY" min="2000" max="2100">
+                </div>
+                <div style="flex: 1;">
+                    <label for="select_month">Month:</label>
+                    <input type="number" id="select_month" placeholder="MM" min="1" max="12">
+                </div>
+                <div style="align-self: flex-end; flex-basis: 200px;">
+                    <button type="button" id="load_period_data_button" style="margin-top: 0;">Load Data for Selected Period</button>
+                </div>
+            </div>
+        </fieldset>
+    </div>
+
     <div class="input-group full-width">
       <fieldset>
         <legend>Lesson Price Inputs</legend>
@@ -551,5 +573,207 @@ legend {
       checkSession(); 
   });
   </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const financialsForm = document.getElementById('financials-form');
+    const loadingMessage = document.getElementById('loading-message');
+    const errorBanner = document.getElementById('error-banner');
+    
+    // Period selection elements
+    const selectYear = document.getElementById('select_year');
+    const selectMonth = document.getElementById('select_month');
+    const loadPeriodDataButton = document.getElementById('load_period_data_button');
+
+    // Adjusted formInputs to exclude the load period button from general disabling if needed,
+    // but for simplicity, it will also be disabled during loading.
+    const formInputs = financialsForm ? financialsForm.querySelectorAll('input[type="number"], select, button') : [];
+
+
+    function setLoadingState(isLoading) {
+        if (loadingMessage) {
+            loadingMessage.style.display = isLoading ? 'block' : 'none';
+        }
+        formInputs.forEach(input => {
+            input.disabled = isLoading;
+        });
+    }
+
+    function displayError(message) {
+        if (errorBanner) {
+            errorBanner.textContent = message;
+            errorBanner.style.display = 'block';
+        }
+    }
+
+    const inputFieldIds = [
+        'kids_group_fee', 'adult_group_fee', 'private_lesson_rate', 'clinic_camp_fee',
+        'num_kids_enrolled', 'num_adults_enrolled', 'total_private_hours', 'num_clinic_participants',
+        'coach_kids_group_rate', 'coach_adult_group_rate', 'coach_private_hourly_pay', 'coach_clinic_camp_fee',
+        'director_salary', 'admin_expenses'
+    ];
+
+    function getFormValues() {
+        const values = {};
+        inputFieldIds.forEach(id => {
+            const element = document.getElementById(id);
+            const value = parseFloat(element ? element.value : 0);
+            values[id.replace(/_([a-z])/g, (g) => g[1].toUpperCase())] = isNaN(value) ? 0 : value; // Convert to camelCase keys
+        });
+        return values;
+    }
+
+    function updateFinancialDashboard() {
+        const values = getFormValues();
+
+        // Calculations
+        const kidsGroupRevenue = values.kidsGroupFee * values.numKidsEnrolled;
+        const adultGroupRevenue = values.adultGroupFee * values.numAdultsEnrolled;
+        const privateLessonRevenue = values.privateLessonRate * values.totalPrivateHours;
+        const clinicCampRevenue = values.clinicCampFee * values.numClinicParticipants;
+        const totalRevenue = kidsGroupRevenue + adultGroupRevenue + privateLessonRevenue + clinicCampRevenue;
+
+        const kidsGroupCoachPay = values.coachKidsGroupRate * values.numKidsEnrolled;
+        const adultGroupCoachPay = values.coachAdultGroupRate * values.numAdultsEnrolled;
+        const privateLessonCoachPay = values.coachPrivateHourlyPay * values.totalPrivateHours;
+        const clinicCampCoachPay = values.coachClinicCampFee * values.numClinicParticipants;
+        const totalCoachPayroll = kidsGroupCoachPay + adultGroupCoachPay + privateLessonCoachPay + clinicCampCoachPay;
+
+        const grossProfit = totalRevenue - totalCoachPayroll;
+        const totalOverhead = values.directorSalary + values.adminExpenses;
+        const netProfit = grossProfit - totalOverhead;
+        const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+        // Helper to update text content and format
+        const updateElement = (id, value, isCurrency = true, isPercentage = false) => {
+            const element = document.getElementById(id);
+            if (element) {
+                let text = isNaN(value) ? '0' : value.toFixed(2);
+                if (isCurrency) text = '$' + text;
+                if (isPercentage) text += '%';
+                element.textContent = text;
+            }
+        };
+
+        // Update Financial Summary Spans
+        updateElement('display_kids_group_revenue', kidsGroupRevenue);
+        updateElement('display_adult_group_revenue', adultGroupRevenue);
+        updateElement('display_private_lesson_revenue', privateLessonRevenue);
+        updateElement('display_clinic_camp_revenue', clinicCampRevenue);
+        updateElement('display_total_revenue', totalRevenue);
+        updateElement('display_kids_group_coach_pay', kidsGroupCoachPay);
+        updateElement('display_adult_group_coach_pay', adultGroupCoachPay);
+        updateElement('display_private_lesson_coach_pay', privateLessonCoachPay);
+        updateElement('display_clinic_camp_coach_pay', clinicCampCoachPay);
+        updateElement('display_total_coach_payroll', totalCoachPayroll);
+        updateElement('display_gross_profit', grossProfit);
+        updateElement('display_total_overhead', totalOverhead); // This is a span
+        updateElement('display_net_profit', netProfit);
+        updateElement('display_profit_margin', profitMargin, false, true);
+
+        // Update Dashboard Spans
+        updateElement('dash_kids_revenue', kidsGroupRevenue);
+        updateElement('dash_kids_coach_pay', kidsGroupCoachPay);
+        updateElement('dash_adult_revenue', adultGroupRevenue);
+        updateElement('dash_adult_coach_pay', adultGroupCoachPay);
+        updateElement('dash_private_revenue', privateLessonRevenue);
+        updateElement('dash_private_coach_pay', privateLessonCoachPay);
+        updateElement('dash_camp_revenue', clinicCampRevenue);
+        updateElement('dash_camp_coach_pay', clinicCampCoachPay);
+        updateElement('dash_total_revenue', totalRevenue);
+        updateElement('dash_total_payroll', totalCoachPayroll);
+        updateElement('dash_gross_profit', grossProfit);
+        updateElement('dash_fixed_overhead', totalOverhead);
+        updateElement('dash_net_profit', netProfit);
+        updateElement('dash_profit_margin', profitMargin, false, true);
+    }
+
+    async function fetchFinancialData(selectedPeriod = null) {
+        setLoadingState(true);
+        if (errorBanner) errorBanner.style.display = 'none'; 
+
+        let apiUrl = '/api/financials';
+        if (selectedPeriod) {
+            apiUrl += '?period=' + selectedPeriod;
+        }
+
+        try {
+            const response = await fetch(apiUrl, { credentials: 'include' });
+
+            if (response.status === 401) {
+                window.location.href = 'login.html';
+                return; 
+            }
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => null);
+                displayError(errorData?.message || `Error ${response.status}: Failed to load financial data.`);
+                if (loadingMessage) loadingMessage.style.display = 'none'; 
+                return; 
+            }
+
+            const data = await response.json();
+
+            inputFieldIds.forEach(id => {
+                const element = document.getElementById(id);
+                if (element && data[id] !== undefined) {
+                    element.value = data[id];
+                } else if (element) {
+                    element.value = ''; 
+                }
+            });
+            
+            updateFinancialDashboard(); // Initial calculation after populating form
+            formInputs.forEach(input => { input.disabled = false; }); // SUCCESS: Re-enable inputs
+
+        } catch (error) {
+            console.error('Network or other error fetching financials:', error);
+            displayError('Network error or problem fetching data. Please try again.');
+        } finally {
+            if (loadingMessage && loadingMessage.style.display === 'block') {
+                loadingMessage.style.display = 'none';
+            }
+        }
+    }
+
+    if (financialsForm) { 
+        // Pre-fill year and month with current date
+        const now = new Date();
+        if (selectYear) selectYear.value = now.getFullYear();
+        if (selectMonth) selectMonth.value = now.getMonth() + 1; // JS months are 0-indexed
+
+        fetchFinancialData(); // Initial load for current month (default)
+
+        // Add event listeners for live recalculation on data inputs
+        inputFieldIds.forEach(id => {
+            const inputElement = document.getElementById(id);
+            if (inputElement) {
+                inputElement.addEventListener('input', updateFinancialDashboard);
+            }
+        });
+
+        // Event listener for the "Load Data" button
+        if (loadPeriodDataButton) {
+            loadPeriodDataButton.addEventListener('click', () => {
+                const year = parseInt(selectYear.value);
+                const month = parseInt(selectMonth.value);
+
+                if (isNaN(year) || year < 2000 || year > 2100) {
+                    displayError('Please enter a valid year (2000-2100).');
+                    return;
+                }
+                if (isNaN(month) || month < 1 || month > 12) {
+                    displayError('Please enter a valid month (1-12).');
+                    return;
+                }
+
+                const monthStr = String(month).padStart(2, '0');
+                const period = year + '-' + monthStr;
+                fetchFinancialData(period);
+            });
+        }
+    }
+});
+</script>
 </body>
 </html>

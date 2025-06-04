@@ -3,7 +3,7 @@ const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
-const Stripe = require('stripe');
+const StripeNode = require('stripe'); // Renamed to avoid conflict with stripe instance
 const cors = require('cors');
 const PDFKit = require('pdfkit');
 const nodemailer = require('nodemailer');
@@ -12,168 +12,6 @@ const pgSession = require('connect-pg-simple')(session);
 
 const app = express();
 app.set('trust proxy', 1); // Early middleware
-
-// Stripe Initialization
-console.log(
-  '🔑 Stripe key:',
-  process.env.STRIPE_SECRET_KEY
-    ? process.env.STRIPE_SECRET_KEY.slice(0,8) + '…'
-    : '⚠️ MISSING'
-);
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
-
-// Nodemailer Transporter
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD
-  }
-});
-
-// ---- Admin Update Enrollments Summary Route ----
-app.post('/api/admin/update-enrollments-summary', async (req, res) => {
-  if (!req.session || !req.session.user || !req.session.user.isAdmin) {
-    return res.status(401).json({ message: 'Unauthorized: Admin access required.' });
-  }
-
-  try {
-    const { period: requestedPeriod } = req.body; // e.g., "YYYY-MM"
-    let targetPeriodForDb = null; // e.g., "YYYY-MM-01"
-    let periodFilterSql = "";
-    const queryParams = [];
-
-    if (requestedPeriod) {
-      if (!/^\d{4}-\d{2}$/.test(requestedPeriod)) {
-        return res.status(400).json({ message: 'Invalid period format. Use YYYY-MM.' });
-      }
-      // Validate month is between 1 and 12
-      const [year, month] = requestedPeriod.split('-').map(Number);
-      if (month < 1 || month > 12) {
-          return res.status(400).json({ message: 'Invalid month in period.' });
-      }
-      // Ensure year is reasonable, e.g. not before a certain year or too far in future
-      if (year < 2000 || year > 2100) { 
-          return res.status(400).json({ message: 'Invalid year in period.' });
-      }
-
-      targetPeriodForDb = `${requestedPeriod}-01`;
-      periodFilterSql = `AND TO_CHAR(date, 'YYYY-MM') = $1`;
-      queryParams.push(requestedPeriod);
-    }
-
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-
-      // 1. Aggregate Bookings Data
-      // Added LIKE ANY (ARRAY[...]) for cleaner multiple LIKE conditions
-      const aggregationQuery = `
-        SELECT
-            TO_CHAR(date, 'YYYY-MM') AS period_month,
-            SUM(CASE
-                WHEN LOWER(program) LIKE ANY (ARRAY['%kids camp%', '%summer camp%', '%junior%', '%summer camp / group lessons%']) THEN 1
-                ELSE 0
-            END) AS num_kids_enrolled,
-            SUM(CASE
-                WHEN LOWER(program) LIKE '%adult clinic%' THEN 1
-                ELSE 0
-            END) AS num_adults_enrolled,
-            SUM(CASE
-                WHEN LOWER(program) LIKE ANY (ARRAY['%private%', '%private lesson%', '%tennis private%']) THEN 1
-                ELSE 0
-            END) AS total_private_hours, -- Count of private lessons
-            SUM(CASE
-                WHEN LOWER(program) LIKE ANY (ARRAY['%camp%', '%clinic%', '%high performance%']) THEN 1
-                ELSE 0
-            END) AS num_clinic_participants
-        FROM
-            bookings
-        WHERE
-            date IS NOT NULL
-            ${periodFilterSql} -- This will be empty or "AND TO_CHAR(date, 'YYYY-MM') = $1"
-        GROUP BY
-            TO_CHAR(date, 'YYYY-MM')
-        ORDER BY
-            period_month;
-      `;
-      const aggregationResult = await client.query(aggregationQuery, queryParams);
-      const aggregatedData = aggregationResult.rows;
-
-      if (aggregatedData.length === 0) {
-        await client.query('COMMIT');
-        let message = 'No booking data found to process.';
-        if (requestedPeriod) {
-          message += ` For period ${requestedPeriod}.`;
-        }
-        message += ' Enrollments summary remains unchanged.';
-        return res.status(200).json({ message });
-      }
-
-      // 2. Prepare and Update enrollments_summary Table
-      if (targetPeriodForDb) {
-        // If a specific period is requested, delete only that period's summary.
-        await client.query('DELETE FROM enrollments_summary WHERE period = $1', [targetPeriodForDb]);
-      } else {
-        // If no specific period, it's a full refresh, so delete all.
-        await client.query('DELETE FROM enrollments_summary');
-      }
-
-      let updatedPeriodsCount = 0;
-      for (const row of aggregatedData) {
-        const summaryPeriod = `${row.period_month}-01`; // Format as YYYY-MM-01
-        const {
-          num_kids_enrolled,
-          num_adults_enrolled,
-          total_private_hours,
-          num_clinic_participants
-        } = row;
-
-        const insertQuery = `
-          INSERT INTO enrollments_summary (
-            period,
-            num_kids_enrolled,
-            num_adults_enrolled,
-            total_private_hours,
-            num_clinic_participants
-          ) VALUES ($1, $2, $3, $4, $5)
-          ON CONFLICT (period) DO UPDATE SET
-            num_kids_enrolled = EXCLUDED.num_kids_enrolled,
-            num_adults_enrolled = EXCLUDED.num_adults_enrolled,
-            total_private_hours = EXCLUDED.total_private_hours,
-            num_clinic_participants = EXCLUDED.num_clinic_participants;
-        `;
-        await client.query(insertQuery, [
-          summaryPeriod,
-          parseInt(num_kids_enrolled) || 0,
-          parseInt(num_adults_enrolled) || 0,
-          parseFloat(total_private_hours) || 0,
-          parseInt(num_clinic_participants) || 0
-        ]);
-        updatedPeriodsCount++;
-      }
-
-      await client.query('COMMIT');
-      let successMessage = 'Enrollments summary updated successfully';
-      if (requestedPeriod) {
-        successMessage += ` for period ${requestedPeriod}.`;
-      } else {
-        successMessage += ` for ${updatedPeriodsCount} periods.`;
-      }
-      res.status(200).json({ message: successMessage });
-
-    } catch (dbError) {
-      await client.query('ROLLBACK');
-      console.error('Database error during enrollments summary update:', dbError);
-      res.status(500).json({ message: 'Database error during summary update.' });
-    } finally {
-      client.release();
-    }
-  } catch (error) {
-    console.error('Error in /api/admin/update-enrollments-summary endpoint:', error);
-    res.status(500).json({ message: 'Failed to update enrollments summary due to a server error.' });
-  }
-});
 
 // PostgreSQL Pool Initialization
 const pool = new Pool({
@@ -242,13 +80,170 @@ app.use((req, res, next) => {
 // Static file serving (typically after other middleware, before specific routes)
 app.use(express.static(__dirname, { extensions: ['html'] }));
 
+// Stripe Initialization
+console.log(
+  '🔑 Stripe key:',
+  process.env.STRIPE_SECRET_KEY
+    ? process.env.STRIPE_SECRET_KEY.slice(0,8) + '…'
+    : '⚠️ MISSING'
+);
+const stripe = StripeNode(process.env.STRIPE_SECRET_KEY); // Use StripeNode here
+
+// Nodemailer Transporter
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD
+  }
+});
 
 // ─── Route Handlers ───────────────────────────────────────────────────
+
+// ---- Admin Update Enrollments Summary Route ----
+app.post('/api/admin/update-enrollments-summary', async (req, res) => {
+  if (!req.session?.user?.isAdmin) {
+    return res.status(401).json({ message: 'Unauthorized: Admin access required.' });
+  }
+
+  try {
+    const { period: requestedPeriod } = req.body; // e.g., "YYYY-MM"
+    let targetPeriodForDb = null; // e.g., "YYYY-MM-01"
+    let periodFilterSql = "";
+    const queryParams = [];
+
+    if (requestedPeriod) {
+      if (!/^\d{4}-\d{2}$/.test(requestedPeriod)) {
+        return res.status(400).json({ message: 'Invalid period format. Use YYYY-MM.' });
+      }
+      // Validate month is between 1 and 12
+      const [year, month] = requestedPeriod.split('-').map(Number);
+      if (month < 1 || month > 12) {
+          return res.status(400).json({ message: 'Invalid month in period.' });
+      }
+      // Ensure year is reasonable, e.g. not before a certain year or too far in future
+      if (year < 2000 || year > 2100) { 
+          return res.status(400).json({ message: 'Invalid year in period.' });
+      }
+
+      targetPeriodForDb = `${requestedPeriod}-01`;
+      periodFilterSql = `AND TO_CHAR(date, 'YYYY-MM') = $1`;
+      queryParams.push(requestedPeriod);
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // 1. Aggregate Bookings Data
+      const aggregationQuery = `
+        SELECT
+            TO_CHAR(date, 'YYYY-MM') AS period_month,
+            SUM(CASE
+                WHEN LOWER(program) LIKE ANY (ARRAY['%kids camp%', '%summer camp%', '%junior%', '%summer camp / group lessons%']) THEN 1
+                ELSE 0
+            END) AS num_kids_enrolled,
+            SUM(CASE
+                WHEN LOWER(program) LIKE '%adult clinic%' THEN 1
+                ELSE 0
+            END) AS num_adults_enrolled,
+            SUM(CASE
+                WHEN LOWER(program) LIKE ANY (ARRAY['%private%', '%private lesson%', '%tennis private%']) THEN 1
+                ELSE 0
+            END) AS total_private_hours, -- Count of private lessons
+            SUM(CASE
+                WHEN LOWER(program) LIKE ANY (ARRAY['%camp%', '%clinic%', '%high performance%']) THEN 1
+                ELSE 0
+            END) AS num_clinic_participants
+        FROM
+            bookings
+        WHERE
+            date IS NOT NULL
+            ${periodFilterSql}
+        GROUP BY
+            TO_CHAR(date, 'YYYY-MM')
+        ORDER BY
+            period_month;
+      `;
+      const aggregationResult = await client.query(aggregationQuery, queryParams);
+      const aggregatedData = aggregationResult.rows;
+
+      if (aggregatedData.length === 0) {
+        await client.query('COMMIT');
+        let message = 'No booking data found to process.';
+        if (requestedPeriod) {
+          message += ` For period ${requestedPeriod}.`;
+        }
+        message += ' Enrollments summary remains unchanged.';
+        return res.status(200).json({ message });
+      }
+
+      if (targetPeriodForDb) {
+        await client.query('DELETE FROM enrollments_summary WHERE period = $1', [targetPeriodForDb]);
+      } else {
+        await client.query('DELETE FROM enrollments_summary');
+      }
+
+      let updatedPeriodsCount = 0;
+      for (const row of aggregatedData) {
+        const summaryPeriod = `${row.period_month}-01`;
+        const {
+          num_kids_enrolled,
+          num_adults_enrolled,
+          total_private_hours,
+          num_clinic_participants
+        } = row;
+
+        const insertQuery = `
+          INSERT INTO enrollments_summary (
+            period,
+            num_kids_enrolled,
+            num_adults_enrolled,
+            total_private_hours,
+            num_clinic_participants
+          ) VALUES ($1, $2, $3, $4, $5)
+          ON CONFLICT (period) DO UPDATE SET
+            num_kids_enrolled = EXCLUDED.num_kids_enrolled,
+            num_adults_enrolled = EXCLUDED.num_adults_enrolled,
+            total_private_hours = EXCLUDED.total_private_hours,
+            num_clinic_participants = EXCLUDED.num_clinic_participants;
+        `;
+        await client.query(insertQuery, [
+          summaryPeriod,
+          parseInt(num_kids_enrolled) || 0,
+          parseInt(num_adults_enrolled) || 0,
+          parseFloat(total_private_hours) || 0,
+          parseInt(num_clinic_participants) || 0
+        ]);
+        updatedPeriodsCount++;
+      }
+
+      await client.query('COMMIT');
+      let successMessage = 'Enrollments summary updated successfully';
+      if (requestedPeriod) {
+        successMessage += ` for period ${requestedPeriod}.`;
+      } else {
+        successMessage += ` for ${updatedPeriodsCount} periods.`;
+      }
+      res.status(200).json({ message: successMessage });
+
+    } catch (dbError) {
+      await client.query('ROLLBACK');
+      console.error('Database error during enrollments summary update:', dbError);
+      res.status(500).json({ message: 'Database error during summary update.' });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Error in /api/admin/update-enrollments-summary endpoint:', error);
+    res.status(500).json({ message: 'Failed to update enrollments summary due to a server error.' });
+  }
+});
 
 // ---- Admin Financials Route ----
 app.get('/api/financials', async (req, res) => {
   // 1) Session check
-  if (!req.session || !req.session.user || !req.session.user.isAdmin) {
+  if (!req.session?.user?.isAdmin) {
     return res.status(401).json({ message: 'Unauthorized: Admin access required.' });
   }
 
@@ -377,19 +372,16 @@ app.get('/api/financials', async (req, res) => {
       let academyKeeps = 0;
 
       if (coachName === 'Ricardo') {
-        // Ricardo keeps 100%
         coachKeeps  = lessonCost * rates['ricardo_private_own'];
         academyKeeps = 0;
       }
       else if (referredBy === 'Ricardo') {
-        // Ricardo referred that coach
         const key = `${coachName.toLowerCase()}_private_referral`;
         const flat = rates[key];
         academyKeeps = flat;
         coachKeeps   = lessonCost - flat;
       }
       else if (referredBy === coachName) {
-        // Coach booked their own student
         if (coachName === 'Zach') {
           const pct = rates['zach_private_own_pct'];
           academyKeeps = lessonCost * pct;
@@ -402,7 +394,6 @@ app.get('/api/financials', async (req, res) => {
         }
       }
       else {
-        // Fallback: coach keeps entire fee
         coachKeeps  = lessonCost;
         academyKeeps = 0;
       }
@@ -416,21 +407,15 @@ app.get('/api/financials', async (req, res) => {
       period: period || `${startDate.getFullYear()}-${String(startDate.getMonth()+1).padStart(2,'0')}`,
       startDate: sqlStartDate,
       endDate:   sqlEndDate,
-
-      // Group & Camp metrics (unchanged):
       kids_group_fee:         getSetting('kids_group_fee'),
       adult_group_fee:        getSetting('adult_group_fee'),
       clinic_camp_fee:        getSetting('clinic_camp_fee'),
       num_kids_enrolled:      num_kids_enrolled,
       num_adults_enrolled:    num_adults_enrolled,
       num_clinic_participants: num_clinic_participants,
-
-      // Private-Lesson metrics (new):
       private_lesson_revenue:    totalPrivateRevenue,
       total_private_coach_pay:   totalCoachPayroll,
       total_academy_commission:  totalAcademyCommission,
-
-      // Overhead:
       director_salary: getSetting('director_salary'),
       admin_expenses:  getSetting('admin_expenses')
     };
@@ -511,13 +496,11 @@ app.delete('/api/instructor-offdays/:id', async (req, res) => {
 // ---- Admin Booking Payment Update Route ----
 app.put('/api/admin/booking-payment/:id', async (req, res) => {
   console.log('ADMIN_HISTORY_DEBUG: PUT /api/admin/booking-payment/:id route hit. Booking ID:', req.params.id, 'Request body:', req.body);
-  if (!req.session || !req.session.user) {
-    console.error('ADMIN_HISTORY_DEBUG: Session or user undefined. Session:', req.session);
-    return res.status(401).json({ message: 'Unauthorized: Session or user data is missing. Please log in again.' });
-  }
-  if (!req.session.user.isAdmin) {
-    console.warn('ADMIN_HISTORY_DEBUG: User is not admin. User:', req.session.user);
-    return res.status(403).json({ message: 'Forbidden: User is not an administrator.' });
+  if (!req.session?.user?.isAdmin) {
+    // Consolidated check: if session, user, or isAdmin is missing/false, this will be true.
+    // Log appropriate message based on what might be missing if needed, or keep generic.
+    console.warn('ADMIN_HISTORY_DEBUG: Admin access check failed. User:', req.session?.user);
+    return res.status(401).json({ message: 'Unauthorized: Admin access required.' });
   }
   if (!req.body || req.body.lesson_cost_from_req === undefined) {
     console.error('ADMIN_HISTORY_DEBUG: Missing lesson_cost_from_req in request body. Body:', req.body);
@@ -580,7 +563,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
   if (event.type === 'checkout.session.completed') {
     const sess = event.data.object;
     await pool.query('UPDATE bookings SET paid = 1 WHERE session_id = $1', [sess.id]);
-    await sendInvoiceEmail(sess.customer_email, sess);
+    await sendInvoiceEmail(sess.customer_email, sess); // Ensure sendInvoiceEmail is defined
   }
   res.sendStatus(200);
 });
@@ -722,7 +705,7 @@ app.get('/api/parent/remaining-lessons', async (req, res) => {
 
 // ---- Admin Lesson Management Routes ----
 app.post('/api/admin/lessons', async (req, res) => {
-  if (!req.session.user?.isAdmin) {
+  if (!req.session?.user?.isAdmin) {
     return res.status(403).json({ message: 'Forbidden' });
   }
   const { program, coachName, date, time, student } = req.body;
@@ -740,7 +723,7 @@ app.post('/api/admin/lessons', async (req, res) => {
 });
 
 app.get('/api/admin/lessons', async (req, res) => {
-  if (!req.session.user?.isAdmin) {
+  if (!req.session?.user?.isAdmin) {
     return res.status(403).json({ message: 'Forbidden' });
   }
   try {
@@ -757,7 +740,7 @@ app.get('/api/admin/lessons', async (req, res) => {
 });
 
 app.delete('/api/admin/lessons/:id', async (req, res) => {
-  if (!req.session.user?.isAdmin) {
+  if (!req.session?.user?.isAdmin) {
     return res.status(403).json({ message: 'Forbidden' });
   }
   try {
@@ -771,7 +754,7 @@ app.delete('/api/admin/lessons/:id', async (req, res) => {
 
 // ---- Admin Mark Attendance Route ----
 app.post('/api/admin/attendance/:bookingId', async (req, res) => {
-  if (!req.session.user?.isAdmin) {
+  if (!req.session?.user?.isAdmin) {
     return res.status(403).json({ message: 'Forbidden: User is not an administrator.' });
   }
   const { bookingId } = req.params;

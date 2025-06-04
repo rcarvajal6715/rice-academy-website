@@ -425,13 +425,13 @@ app.post('/api/coach/lessons', async (req, res) => {
   if (!req.session.coachId || !req.session.coachName) {
     return res.status(401).send('Unauthorized: Coach not logged in.');
   }
-  const { program, date, time, student } = req.body;
+  const { program, date, time, student, lesson_cost } = req.body; // Added lesson_cost
   try {
     await pool.query(
       `INSERT INTO bookings
-         (email, program, coach, date, time, student, paid, session_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      ['', program, req.session.coachName, date, time, student || '', false, null]
+         (email, program, coach, date, time, student, paid, session_id, lesson_cost)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, // Added lesson_cost column
+      ['', program, req.session.coachName, date, time, student || '', false, null, lesson_cost === undefined ? null : lesson_cost] // Added lesson_cost value
     );
     res.sendStatus(200);
   } catch (err) {

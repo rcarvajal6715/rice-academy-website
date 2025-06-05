@@ -1272,6 +1272,16 @@ app.put('/api/admin/history/:id', async (req, res) => {
         return res.status(400).json({ message: 'Invalid date value.'});
     }
     processedValue = value; // Use the validated string
+  } else if (field === 'time') {
+    if (value === null || String(value).trim() === '' || String(value).toLowerCase() === 'null') {
+        processedValue = null;
+    } else if (!/^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/.test(String(value).trim())) {
+        // Log the invalid time value for easier debugging
+        console.error(`Invalid time format received for booking ID ${bookingId}, field '${field}': '${value}'`);
+        return res.status(400).json({ message: 'Invalid time format. Please use HH:MM or HH:MM:SS.' });
+    } else {
+        processedValue = String(value).trim(); // Use the validated and trimmed string
+    }
   }
 
 

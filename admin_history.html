@@ -305,8 +305,8 @@ ul.nav-links-mobile li a {
 
   // Helper to format time (assuming it's still needed)
   function formatTime_12hr(timeStr) {
-    if (!timeStr || !timeStr.includes(':')) { return timeStr; }
-    const parts = timeStr.split(':');
+    if (!timeStr || String(timeStr).toLowerCase() === 'null' || !String(timeStr).includes(':')) { return ''; }
+    const parts = String(timeStr).split(':'); // Ensure timeStr is treated as a string
     let hours = parseInt(parts[0], 10);
     const minutes = parseInt(parts[1], 10);
     const ampm = hours >= 12 ? 'PM' : 'AM';
@@ -366,10 +366,9 @@ ul.nav-links-mobile li a {
     bulkButton.disabled = !hasChanges;
 }
 
-  function formatTime_12hr(timeStr) {
-    if (!timeStr || !timeStr.includes(':')) { return timeStr; }
-    const parts = timeStr.split(':');
-    let hours = parseInt(parts[0], 10);
+  // Duplicate formatTime_12hr removed, the one above is modified.
+
+  function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
     const minutes = parseInt(parts[1], 10);
     const ampm = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12;
@@ -416,7 +415,11 @@ ul.nav-links-mobile li a {
 
     lessonsArray.forEach(les => {
       const dateStr = new Date(les.date).toLocaleDateString();
-      const formattedTime = formatTime_12hr(les.time);
+      
+      const originalTimeValue = les.time;
+      const displayTime = (originalTimeValue && String(originalTimeValue).toLowerCase() !== 'null') ? formatTime_12hr(originalTimeValue) : '';
+      const dataOriginalTime = (originalTimeValue && String(originalTimeValue).toLowerCase() !== 'null') ? originalTimeValue : '';
+
       let rowStyle = '';
       // The specific styling for unpaid rows might be redundant now.
       // if (!les.paid) { rowStyle = 'background-color: #ffebee;'; }
@@ -431,7 +434,7 @@ ul.nav-links-mobile li a {
           <td class="history-cell" data-id="${les.id}" data-field="program" data-original-value="${les.program || ''}" style="padding:8px; border:1px solid #ddd;">${les.program}</td>
           <td class="history-cell" data-id="${les.id}" data-field="coach" data-original-value="${les.coach || ''}" style="padding:8px; border:1px solid #ddd;">${les.coach}</td>
           <td class="history-cell" data-id="${les.id}" data-field="date" data-original-value="${originalDate}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
-          <td class="history-cell" data-id="${les.id}" data-field="time" data-original-value="${les.time || ''}" style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
+          <td class="history-cell" data-id="${les.id}" data-field="time" data-original-value="${dataOriginalTime}" style="padding:8px; border:1px solid #ddd;">${displayTime}</td>
           <td class="history-cell" data-id="${les.id}" data-field="student" data-original-value="${les.student || ''}" style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td> <!-- Email not typically editable here -->
           <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td> <!-- Phone not typically editable here -->
@@ -842,16 +845,21 @@ ul.nav-links-mobile li a {
     }
     
     // Keep existing bulk cost update button logic if it's still relevant
+    // Ensure bulkCostUpdateButton is declared before use and consistently named.
     const bulkCostUpdateButton = document.querySelector('.bulk-update-costs-btn[data-table-id="past-lessons-table-container"]');
+    
     if (bulkCostUpdateButton) {
-        bulkUpdateButton.addEventListener('click', function() {
-            const tableId = this.getAttribute('data-table-id');
-            if (tableId) { // Should always be past-lessons-table-container here
+        bulkCostUpdateButton.addEventListener('click', function() {
+            const tableId = this.getAttribute('data-table-id'); // 'past-lessons-table-container'
+            if (tableId) { 
                  handleBulkUpdatePrices(tableId);
             } else {
-                console.error('Bulk update button on history page clicked without a data-table-id attribute.');
+                // This case should ideally not be reached if the button is correctly identified.
+                console.error('Bulk update button on history page clicked without a data-table-id attribute or button not found.');
             }
         });
+    } else {
+        console.warn("Bulk cost update button for 'past-lessons-table-container' not found on DOMContentLoaded. Ensure HTML is correct.");
     }
 
     const searchInput = document.getElementById('historySearchInput');

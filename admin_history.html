@@ -406,6 +406,8 @@ ul.nav-links-mobile li a {
             <th style="padding:8px; border:1px solid #ddd;">Lesson Cost</th>
             <th style="padding:8px; border:1px solid #ddd;">Referral Source</th>
             <th style="padding:8px; border:1px solid #ddd;">Paid</th>
+            <th style="padding:8px; border:1px solid #ddd;">Referral Source</th>
+            <th style="padding:8px; border:1px solid #ddd;">Paid</th>
             <th style="padding:8px; border:1px solid #ddd;">Actions</th>
           </tr>
         </thead>
@@ -686,10 +688,48 @@ ul.nav-links-mobile li a {
             if (saveHistoryBtn) saveHistoryBtn.disabled = !editing;
 
             const cells = document.querySelectorAll('.history-cell');
-            cells.forEach(cell => {
-                cell.contentEditable = editing;
-                if (!editing) {
-                    cell.blur(); // Remove focus if editing is disabled
+            cells.forEach(td => {
+                if (td.dataset.field === 'referral_source') {
+                    td.contentEditable = false; // Main TD is not editable, select is
+                    if (editing) {
+                        const originalValue = td.dataset.originalValue;
+                        td.innerHTML = ''; // Clear current text content
+                        const selectEl = document.createElement('select');
+                        selectEl.className = 'history-referral-select'; // For styling or specific targeting if needed
+                        
+                        const options = [
+                            { value: '', text: 'None' },
+                            { value: 'Ricardo', text: 'Referred by Ricardo' },
+                            { value: 'Jacob', text: "Jacob's Own" },
+                            { value: 'Paula', text: "Paula's Own" },
+                            { value: 'Zach', text: "Zach's Own" },
+                            { value: 'RicardoOwn', text: "Ricardo's Own" }
+                        ];
+
+                        options.forEach(opt => {
+                            const optionEl = document.createElement('option');
+                            optionEl.value = opt.value;
+                            optionEl.textContent = opt.text;
+                            if (opt.value === originalValue) {
+                                optionEl.selected = true;
+                            }
+                            selectEl.appendChild(optionEl);
+                        });
+                        td.appendChild(selectEl);
+                    } else { // Disabling editing
+                        const selectEl = td.querySelector('select.history-referral-select');
+                        if (selectEl) {
+                            const selectedText = selectEl.options[selectEl.selectedIndex]?.text || selectEl.value;
+                            td.innerHTML = ''; // Clear the select
+                            td.textContent = selectedText;
+                            // td.dataset.originalValue = selectEl.value; // Update originalValue if change is "committed" to cell display
+                        }
+                    }
+                } else { // For other editable cells
+                    td.contentEditable = editing;
+                    if (!editing) {
+                        td.blur(); 
+                    }
                 }
             });
         });

@@ -1172,6 +1172,22 @@ app.put('/api/admin/history/:id', async (req, res) => {
   if (!allowedFields.includes(field)) {
     return res.status(400).json({ message: `Field '${field}' is not allowed for update.` });
   }
+
+  if (field === 'referral_source') {
+    const allowedReferralSources = [
+        '', // For "None" or empty selection
+        'Ricardo',
+        'Jacob',
+        'Paula',
+        'Zach',
+        'RicardoOwn'
+    ];
+    // Ensure 'value' is a string before checking inclusion, as it might be null from the client if "None" is selected.
+    // The client-side logic already maps "None" to "" for the value.
+    if (!allowedReferralSources.includes(String(value))) { 
+        return res.status(400).json({ message: `Invalid value for referral_source. Received: '${value}'. Allowed values are: None (empty string), Ricardo, Jacob, Paula, Zach, RicardoOwn.` });
+    }
+  }
   
   let processedValue = value;
   if (field === 'lesson_cost') {

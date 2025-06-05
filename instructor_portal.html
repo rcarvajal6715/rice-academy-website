@@ -629,6 +629,18 @@ function populateTimeDropdowns() {
         student: document.getElementById('coach-student').value || '',
         lesson_cost: priceValue ? parseFloat(priceValue) : null
       };
+
+      if (coachProg.value === 'Private Lesson') {
+        if (loggedInCoachName) {
+          payload.referral_source = loggedInCoachName;
+        } else {
+          console.error('Error: Coach name not available for referral source.');
+          // Optionally, alert the user or prevent submission if coach name is critical
+          // alert('Could not automatically set referral source. Please try logging out and in again.');
+          // return; 
+        }
+      }
+
       const res = await fetch('/api/coach/lessons', {
         method: 'POST',
         credentials: 'include',
@@ -849,6 +861,8 @@ function getCalendarEvents() {
   <!-- SCRIPT FOR MOBILE MENU TOGGLE, CHECK SESSION, LOGOUT - REMAINS UNTOUCHED -->
   <script>
   // This entire block to be added as a new script, or integrated if a single DOMContentLoaded is preferred.
+  let loggedInCoachName = ''; // Store coach's name globally
+
   document.addEventListener('DOMContentLoaded', () => {
       // --- Mobile Menu Toggle Script --- 
       const menuToggle = document.querySelector('.mobile-menu-toggle');
@@ -913,6 +927,7 @@ function getCalendarEvents() {
               
               // For instructor_portal, ensure user is logged in AND is a coach
               if (displayLoggedIn && data.isCoach === true) { // Check for isCoach
+                  loggedInCoachName = data.firstName || ''; // Store coach's name
                   const portalButtonText = data.firstName ? data.firstName + "'s Portal" : 'Coach Portal';
                   
                   const loggedInHTMLDesktop = '<button onclick="logout()">Logout</button>';

@@ -324,6 +324,18 @@ ul.nav-links-mobile li a {
         <input type="text" id="student-name" placeholder="Enter student name for private lesson" />
       </div>
 
+      <!-- Referral Source (for Private Lessons) -->
+      <div id="referral-source-container" class="full-width" style="display: none;">
+        <label for="referral_source">Referral Source</label>
+        <select id="referral_source" name="referral_source">
+          <option value="" disabled selected>Choose a referral source</option>
+          <option value="Ricardo">Ricardo</option>
+          <option value="Jacob">Jacob</option>
+          <option value="Paula">Paula</option>
+          <option value="Zach">Zach</option>
+        </select>
+      </div>
+
       <!-- Coach -->
       <div>
         <label for="coach">Coach</label>
@@ -386,22 +398,43 @@ ul.nav-links-mobile li a {
   </footer>
 
   <script>
-    // Toggle student field
+    // Toggle student field and referral source field
     const programEl = document.getElementById('program');
     const studentDiv = document.getElementById('student-name-container');
+    const referralSourceDiv = document.getElementById('referral-source-container');
+    const referralSourceSelect = document.getElementById('referral_source');
+
     programEl.addEventListener('change', () => {
-      studentDiv.style.display = programEl.value === 'Private Lessons' ? 'block' : 'none';
+      const isPrivateLesson = programEl.value === 'Private Lessons';
+      studentDiv.style.display = isPrivateLesson ? 'block' : 'none';
+      referralSourceDiv.style.display = isPrivateLesson ? 'block' : 'none';
+      if (isPrivateLesson) {
+        referralSourceSelect.required = true;
+      } else {
+        referralSourceSelect.required = false;
+        referralSourceSelect.value = ''; // Reset value if not private lesson
+      }
     });
 
     // Submit new lesson
     document.getElementById('lesson-form').addEventListener('submit', async e => {
       e.preventDefault();
+
+      const isPrivateLesson = programEl.value === 'Private Lessons';
+      const referralSourceValue = referralSourceSelect.value;
+
+      if (isPrivateLesson && !referralSourceValue) {
+        alert('Please select a referral source for private lessons.');
+        return;
+      }
+
       const payload = {
         program: programEl.value,
         coachName: document.getElementById('coach').value,
         date: document.getElementById('date').value,
         time: document.getElementById('time').value,
-        student: document.getElementById('student-name').value || ''
+        student: document.getElementById('student-name').value || '',
+        referral_source: isPrivateLesson ? referralSourceValue : '' 
       };
       const res = await fetch('/api/admin/lessons', {
         method: 'POST',
@@ -412,11 +445,24 @@ ul.nav-links-mobile li a {
       if (res.ok) {
         alert('Lesson saved');
         loadAllLessons();
-        e.target.reset();
+        e.target.reset(); // This will trigger the reset event
+        // Hide containers and reset referral source explicitly after successful submission and reset
         studentDiv.style.display = 'none';
+        referralSourceDiv.style.display = 'none';
+        referralSourceSelect.required = false;
+        referralSourceSelect.value = ''; 
       } else {
         alert('Save failed: ' + await res.text());
       }
+    });
+
+    // Handle form reset event
+    document.getElementById('lesson-form').addEventListener('reset', () => {
+        studentDiv.style.display = 'none';
+        referralSourceDiv.style.display = 'none';
+        referralSourceSelect.required = false;
+        referralSourceSelect.value = ''; 
+        // programEl.value = ''; // Optionally reset program dropdown too, if desired
     });
   </script>
 

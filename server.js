@@ -242,11 +242,11 @@ app.post('/api/admin/update-enrollments-summary', async (req, res) => {
 
 // ---- Admin Financials Route ----
 app.get('/api/financials', async (req, res) => {
-  // 1) Session check - TEMPORARILY BYPASSED FOR TESTING
-  // if (!req.session?.user?.isAdmin) {
-  //   return res.status(401).json({ message: 'Unauthorized: Admin access required.' });
-  // }
-  // console.log('WARN: /api/financials auth bypassed for testing.'); // This line was already present and correct.
+  // 1) Session check
+  if (!req.session?.user?.isAdmin) {
+    return res.status(401).json({ message: 'Unauthorized: Admin access required.' });
+  }
+  // console.log('WARN: /api/financials auth bypassed for testing.'); // Auth enabled
 
   try {
     // 2) Determine period → startDate/endDate (YYYY-MM or default to current month)
@@ -322,7 +322,7 @@ app.get('/api/financials', async (req, res) => {
     const privateRows = (
       await pool.query(
         `
-        SELECT coach, lesson_cost, referral_source
+        SELECT coach, lesson_cost, payout_type, referral_source -- Added payout_type, kept referral_source for now
         FROM bookings
         WHERE (program = 'Private Lesson' OR program = 'Tennis Private')
           AND date >= $1 AND date <= $2
@@ -331,27 +331,27 @@ app.get('/api/financials', async (req, res) => {
       )
     ).rows;
 
-    // 6) Fetch payout rates from coach_rates.rate_numeric
-    const coachRateKeys = [
-      'ricardo_private_own', 'jacob_private_referral', 'paula_private_referral', 
-      'zach_private_referral_flat', 'jacob_private_own', 'paula_private_own', 
-      'zach_private_own_pct'
-    ];
-    const coachRatesResult = await pool.query(
-      `SELECT key, rate_numeric AS value FROM coach_rates WHERE key = ANY($1::text[])`,
-      [coachRateKeys]
-    );
-    const rates = {};
-    coachRatesResult.rows.forEach(r => { rates[r.key] = parseFloat(r.value); });
+    // 6) Fetch payout rates from coach_rates.rate_numeric - This section can be removed or commented if not used by other program types
+    // const coachRateKeys = [
+    //   'ricardo_private_own', 'jacob_private_referral', 'paula_private_referral', 
+    //   'zach_private_referral_flat', 'jacob_private_own', 'paula_private_own', 
+    //   'zach_private_own_pct'
+    // ];
+    // const coachRatesResult = await pool.query(
+    //   `SELECT key, rate_numeric AS value FROM coach_rates WHERE key = ANY($1::text[])`,
+    //   [coachRateKeys]
+    // );
+    // const rates = {};
+    // coachRatesResult.rows.forEach(r => { rates[r.key] = parseFloat(r.value); });
 
     // Provide defaults if any rate is missing
-    rates['ricardo_private_own']    = rates['ricardo_private_own']    ?? 1.00;
-    rates['jacob_private_referral'] = rates['jacob_private_referral'] ?? 20.00;
-    rates['paula_private_referral'] = rates['paula_private_referral'] ?? 20.00;
-    rates['zach_private_referral_flat'] = rates['zach_private_referral_flat'] ?? 20.00;
-    rates['jacob_private_own']      = rates['jacob_private_own']      ?? 10.00;
-    rates['paula_private_own']      = rates['paula_private_own']      ?? 10.00;
-    rates['zach_private_own_pct']   = rates['zach_private_own_pct']   ?? 0.10;
+    // rates['ricardo_private_own']    = rates['ricardo_private_own']    ?? 1.00;
+    // rates['jacob_private_referral'] = rates['jacob_private_referral'] ?? 20.00;
+    // rates['paula_private_referral'] = rates['paula_private_referral'] ?? 20.00;
+    // rates['zach_private_referral_flat'] = rates['zach_private_referral_flat'] ?? 20.00;
+    // rates['jacob_private_own']      = rates['jacob_private_own']      ?? 10.00;
+    // rates['paula_private_own']      = rates['paula_private_own']      ?? 10.00;
+    // rates['zach_private_own_pct']   = rates['zach_private_own_pct']   ?? 0.10;
 
     // 7) Allocate each private booking’s payout
     let totalPrivateRevenue     = 0;
@@ -359,49 +359,55 @@ app.get('/api/financials', async (req, res) => {
     let totalAcademyCommission  = 0;
 
     for (const booking of privateRows) {
-      const coachFullName = booking.coach; 
       const lessonCost = parseFloat(booking.lesson_cost) || 0;
-      const source = booking.referral_source ? booking.referral_source.trim() : null; // This is the simple name like "Jacob" or "Ricardo"
-
-      totalPrivateRevenue += lessonCost;
-      let coachGets   = 0;
+      let coachGets = 0;
       let academyGets = 0;
-      
-      let simpleCoachName = ''; // e.g. "Jacob" from "Jacob Capone"
-      if (coachFullName) {
-          simpleCoachName = coachFullName.split(' ')[0];
+      const payoutType = booking.payout_type; // Assumes payout_type column exists and is populated
+      const coachFullName = booking.coach; 
+
+      totalPrivateRevenue += lessonCost; 
+
+      switch (payoutType) {
+        case 'coach_private':
+          academyGets = 10;
+          coachGets   = lessonCost - 10;
+          break;
+        case 'zach_private':
+          { // Scope simpleCoachName
+            let simpleCoachName = '';
+            if (coachFullName) {
+                simpleCoachName = coachFullName.split(' ')[0];
+            }
+            if (simpleCoachName.toLowerCase() === 'zach') {
+              academyGets = lessonCost * 0.10;
+              coachGets   = lessonCost * 0.90; // Or lessonCost - academyGets
+            } else {
+              // Fallback if coach is not Zach but type is zach_private
+              console.warn(`WARN: payout_type 'zach_private' assigned to non-Zach coach: ${coachFullName}. Defaulting to coach gets full cost.`);
+              coachGets = lessonCost;
+              academyGets = 0;
+            }
+          }
+          break;
+        case 'ricardo_referral':
+          academyGets = 20;
+          coachGets   = lessonCost - 20;
+          break;
+        default:
+          // Fallback for null, empty, or unrecognized payout_type
+          // This includes cases where payout_type might be an old referral_source value if migration wasn't perfect
+          // or if new lessons don't have a payout_type set yet.
+          // The issue suggests "coach gets 100%, academy 0%" for fallback.
+          // Consider logging this case.
+          console.warn(`WARN: Unhandled or missing payout_type: '${payoutType}' for booking by coach ${coachFullName}. Defaulting to coach gets full lesson cost.`);
+          coachGets   = lessonCost;
+          academyGets = 0;
+          break;
       }
 
-      if (simpleCoachName === 'Ricardo') { // Ricardo's own lessons
-        coachGets  = lessonCost * rates['ricardo_private_own'];
-        academyGets = lessonCost - coachGets;
-      } else if (source === 'Ricardo') { // Referred by Ricardo
-        let actualKey;
-        if (simpleCoachName.toLowerCase() === 'zach') { // Zach has a flat referral rate from Ricardo
-          actualKey = 'zach_private_referral_flat';
-        } else { // Jacob and Paula have rates like 'jacob_private_referral'
-          actualKey = `${simpleCoachName.toLowerCase()}_private_referral`;
-        }
-        const flatAmt = rates[actualKey] !== undefined ? rates[actualKey] : 0; // Default to 0 if key somehow missing
-        academyGets = flatAmt;
-        coachGets   = lessonCost - flatAmt;
-      } else if (source && source.toLowerCase() === simpleCoachName.toLowerCase()) { // Coach's own student (self-referred)
-        if (simpleCoachName.toLowerCase() === 'zach') {
-          academyGets = lessonCost * (rates['zach_private_own_pct'] || 0); // Default to 0% if rate missing
-          coachGets   = lessonCost - academyGets;
-        } else { // Jacob or Paula own student
-          const flatKeyOwn = `${simpleCoachName.toLowerCase()}_private_own`;
-          const flatAmtOwn = rates[flatKeyOwn] || 0; // Default to 0 if rate missing
-          academyGets = flatAmtOwn;
-          coachGets   = lessonCost - flatAmtOwn;
-        }
-      } else { // Fallback (e.g. referral_source is null, empty, or an admin manually entered something else like a student name)
-        // This case means the academy keeps nothing by default, coach gets full amount.
-        // This might need review based on business rules for unclassified referrals.
-        console.warn(`WARN: Unhandled referral case for Financials. Coach: ${coachFullName}, Referral Source: ${source}, Booking ID: ${booking.id}. Defaulting to coach gets full lesson cost.`);
-        coachGets  = lessonCost; 
-        academyGets = 0;
-      }
+      // Ensure values are not negative (e.g. if lessonCost is less than the fixed commission)
+      if (coachGets < 0) coachGets = 0;
+      if (academyGets < 0) academyGets = 0; // Though current logic makes this unlikely for academyGets
 
       totalCoachPayroll     += coachGets;
       totalAcademyCommission += academyGets;
@@ -553,23 +559,34 @@ app.put('/api/admin/booking-payment/:id', async (req, res) => {
 
 // New Route: PUT /api/admin/update-booking/:id
 app.put('/api/admin/update-booking/:id', async (req, res) => {
-  // TEMPORARILY BYPASSED FOR TESTING
-  // if (!req.session?.user?.isAdmin) {
-  //   return res.status(401).json({ message: 'Unauthorized: Admin access required.' });
-  // }
-  console.log(`WARN: /api/admin/update-booking/${req.params.id} auth bypassed for testing.`);
+  if (!req.session?.user?.isAdmin) {
+    return res.status(401).json({ message: 'Unauthorized: Admin access required.' });
+  }
+  // console.log(`WARN: /api/admin/update-booking/${req.params.id} auth bypassed for testing.`); // Auth enabled
   
   const bookingId = req.params.id;
   // Destructure all potential fields that can be updated by admin table interactions
-  const { referral_source: newReferralSource, lesson_cost: newLessonCost, paid: newPaidStatus } = req.body;
+  const { payout_type: newPayoutType, lesson_cost: newLessonCost, paid: newPaidStatus, referral_source: newReferralSource } = req.body;
 
   // Basic check: At least one field must be provided for update
-  if (newReferralSource === undefined && newLessonCost === undefined && newPaidStatus === undefined) {
-    return res.status(400).json({ message: 'Bad request: No valid fields provided for update (referral_source, lesson_cost, paid).' });
+  if (newPayoutType === undefined && newLessonCost === undefined && newPaidStatus === undefined && newReferralSource === undefined) {
+    return res.status(400).json({ message: 'Bad request: Must provide payout_type, lesson_cost, paid, or referral_source.' });
   }
 
   const updateFields = {};
   const values = [];
+
+  if (newPayoutType !== undefined) {
+    const allowedPayoutTypes = ['coach_private', 'zach_private', 'ricardo_referral'];
+    if (newPayoutType === null || newPayoutType === '' || allowedPayoutTypes.includes(newPayoutType)) {
+      // Allow null or empty string to clear payout_type, or one of the allowed values.
+      // Store empty string as NULL in the database for consistency.
+      updateFields.payout_type = (newPayoutType === '' || newPayoutType === null) ? null : newPayoutType;
+      values.push(updateFields.payout_type);
+    } else {
+      return res.status(400).json({ message: 'Invalid payout_type value. Must be one of ' + allowedPayoutTypes.join(', ') + ' or null/empty.' });
+    }
+  }
   
   if (newReferralSource !== undefined) {
     // Allow null or empty string to clear referral, or a non-empty string to set it.
@@ -606,7 +623,7 @@ app.put('/api/admin/update-booking/:id', async (req, res) => {
   values.push(bookingId); // Add bookingId as the last parameter for WHERE clause
 
   try {
-    const sqlQuery = `UPDATE bookings SET ${setClauses} WHERE id = $${values.length} RETURNING id, coach, referral_source, lesson_cost, paid, student, program, date, time`;
+    const sqlQuery = `UPDATE bookings SET ${setClauses} WHERE id = $${values.length} RETURNING id, coach, referral_source, payout_type, lesson_cost, paid, student, program, date, time`;
     console.log('Executing SQL for update-booking:', sqlQuery, 'with values:', values);
     const result = await pool.query(sqlQuery, values);
 

@@ -380,10 +380,6 @@ legend {
           <input type="number" id="coach_adult_group_rate" placeholder="$ per adult" min="0" step="0.01">
         </div>
         <div>
-          <label for="coach_private_hourly_pay">Private Lesson Coach Hourly Pay <span title="hourly wage for each private-lesson hour taught.">(?)</span></label>
-          <input type="number" id="coach_private_hourly_pay" placeholder="$ per hour" min="0" step="0.01">
-        </div>
-        <div>
           <label for="coach_clinic_camp_fee">Clinic/Camp Coach Fee <span title="flat or per-participant fee paid to coaches running clinics.">(?)</span></label>
           <input type="number" id="coach_clinic_camp_fee" placeholder="$ per participant/camp" min="0" step="0.01">
         </div>
@@ -609,7 +605,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputFieldIds = [
         'kids_group_fee', 'adult_group_fee', 'private_lesson_rate', 'clinic_camp_fee',
         'num_kids_enrolled', 'num_adults_enrolled', 'total_private_hours', 'num_clinic_participants',
-        'coach_kids_group_rate', 'coach_adult_group_rate', 'coach_private_hourly_pay', 'coach_clinic_camp_fee',
+        'coach_kids_group_rate', 'coach_adult_group_rate', /* 'coach_private_hourly_pay' removed */ 'coach_clinic_camp_fee',
         'director_salary', 'admin_expenses'
     ];
 
@@ -623,28 +619,37 @@ document.addEventListener('DOMContentLoaded', () => {
         return values;
     }
 
-    function updateFinancialDashboard() {
-        const values = getFormValues();
+    function updateFinancialDashboard(apiData = null) { // Added apiData parameter
+        const values = getFormValues(); // Still get other form values
 
-        // Calculations
+        // Calculations for other items (Kids, Adult, Clinic/Camp) remain the same
         const kidsGroupRevenue = values.kidsGroupFee * values.numKidsEnrolled;
         const adultGroupRevenue = values.adultGroupFee * values.numAdultsEnrolled;
-        const privateLessonRevenue = values.privateLessonRate * values.totalPrivateHours;
+        // const privateLessonRevenue = values.privateLessonRate * values.totalPrivateHours; // OLD
         const clinicCampRevenue = values.clinicCampFee * values.numClinicParticipants;
+        
+        // Use direct values from API for private lessons if available
+        const privateLessonRevenue = apiData?.private_lesson_revenue ?? (values.privateLessonRate * values.totalPrivateHours);
+        
         const totalRevenue = kidsGroupRevenue + adultGroupRevenue + privateLessonRevenue + clinicCampRevenue;
 
         const kidsGroupCoachPay = values.coachKidsGroupRate * values.numKidsEnrolled;
         const adultGroupCoachPay = values.coachAdultGroupRate * values.numAdultsEnrolled;
-        const privateLessonCoachPay = values.coachPrivateHourlyPay * values.totalPrivateHours;
+        // const privateLessonCoachPay = values.coachPrivateHourlyPay * values.totalPrivateHours; // OLD - coach_private_hourly_pay is removed
         const clinicCampCoachPay = values.coachClinicCampFee * values.numClinicParticipants;
+
+        // Use direct values from API for private lesson coach pay if available
+        const privateLessonCoachPay = apiData?.total_private_coach_pay ?? 0; // Default to 0 if not in apiData and input removed
+
         const totalCoachPayroll = kidsGroupCoachPay + adultGroupCoachPay + privateLessonCoachPay + clinicCampCoachPay;
 
+        // Rest of the calculations (grossProfit, totalOverhead, netProfit, profitMargin) remain the same
         const grossProfit = totalRevenue - totalCoachPayroll;
         const totalOverhead = values.directorSalary + values.adminExpenses;
         const netProfit = grossProfit - totalOverhead;
         const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 
-        // Helper to update text content and format
+            // Helper to update text content and format (remains the same)
         const updateElement = (id, value, isCurrency = true, isPercentage = false) => {
             const element = document.getElementById(id);
             if (element) {
@@ -655,29 +660,30 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        // Update Financial Summary Spans
+            // Update Financial Summary Spans (private lesson ones will use the new variables)
         updateElement('display_kids_group_revenue', kidsGroupRevenue);
         updateElement('display_adult_group_revenue', adultGroupRevenue);
-        updateElement('display_private_lesson_revenue', privateLessonRevenue);
+            updateElement('display_private_lesson_revenue', privateLessonRevenue); // Will use API data if provided
         updateElement('display_clinic_camp_revenue', clinicCampRevenue);
         updateElement('display_total_revenue', totalRevenue);
         updateElement('display_kids_group_coach_pay', kidsGroupCoachPay);
         updateElement('display_adult_group_coach_pay', adultGroupCoachPay);
-        updateElement('display_private_lesson_coach_pay', privateLessonCoachPay);
+            updateElement('display_private_lesson_coach_pay', privateLessonCoachPay); // Will use API data if provided
         updateElement('display_clinic_camp_coach_pay', clinicCampCoachPay);
         updateElement('display_total_coach_payroll', totalCoachPayroll);
         updateElement('display_gross_profit', grossProfit);
-        updateElement('display_total_overhead', totalOverhead); // This is a span
+            updateElement('display_total_overhead', totalOverhead);
         updateElement('display_net_profit', netProfit);
         updateElement('display_profit_margin', profitMargin, false, true);
 
-        // Update Dashboard Spans
+            // Update Dashboard Spans (private lesson ones will use the new variables)
         updateElement('dash_kids_revenue', kidsGroupRevenue);
         updateElement('dash_kids_coach_pay', kidsGroupCoachPay);
+            // ... (similar updates for dash_adult, dash_camp)
         updateElement('dash_adult_revenue', adultGroupRevenue);
         updateElement('dash_adult_coach_pay', adultGroupCoachPay);
-        updateElement('dash_private_revenue', privateLessonRevenue);
-        updateElement('dash_private_coach_pay', privateLessonCoachPay);
+            updateElement('dash_private_revenue', privateLessonRevenue); // Will use API data if provided
+            updateElement('dash_private_coach_pay', privateLessonCoachPay); // Will use API data if provided
         updateElement('dash_camp_revenue', clinicCampRevenue);
         updateElement('dash_camp_coach_pay', clinicCampCoachPay);
         updateElement('dash_total_revenue', totalRevenue);
@@ -755,11 +761,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (element && data[id] !== undefined) {
                     element.value = data[id];
                 } else if (element) {
-                    element.value = '';
+                    // Don't clear inputs if data for them isn't in API response,
+                    // might be manually set or from a different source.
+                    // element.value = ''; 
                 }
             });
             
-            updateFinancialDashboard(); // Calculate and display after populating form
+            // Directly update private lesson financial summary from API data
+            if (data.private_lesson_revenue !== undefined) {
+                updateElement('display_private_lesson_revenue', data.private_lesson_revenue);
+                updateElement('dash_private_revenue', data.private_lesson_revenue);
+            }
+            if (data.total_private_coach_pay !== undefined) {
+                updateElement('display_private_lesson_coach_pay', data.total_private_coach_pay);
+                updateElement('dash_private_coach_pay', data.total_private_coach_pay);
+            }
+            
+            // The call to updateFinancialDashboard() will still run,
+            // but we need to ensure it doesn't overwrite these values
+            // or that it uses these pre-filled values correctly.
+            updateFinancialDashboard(data); // Pass fetched data to updateFinancialDashboard
             // formInputs are re-enabled in finally block by setLoadingState(false)
 
         } catch (error) {

@@ -324,18 +324,6 @@ ul.nav-links-mobile li a {
         <input type="text" id="student-name" placeholder="Enter student name for private lesson" />
       </div>
 
-      <!-- Referral Source (for Private Lessons) -->
-      <div id="referral-source-container" class="full-width" style="display: none;">
-        <label for="referral_source">Referral Source</label>
-        <select id="referral_source" name="referral_source">
-          <option value="" disabled selected>Choose a referral source</option>
-          <option value="Ricardo">Ricardo</option>
-          <option value="Jacob">Jacob</option>
-          <option value="Paula">Paula</option>
-          <option value="Zach">Zach</option>
-        </select>
-      </div>
-
       <!-- Coach -->
       <div>
         <label for="coach">Coach</label>
@@ -368,6 +356,7 @@ ul.nav-links-mobile li a {
     <div style="text-align: right; margin-bottom: 15px;"> <!-- Changed to text-align: right -->
         <button id="universal-update-btn" class="universal-update-prices-btn" disabled>Update All Changed Prices</button>
     </div>
+    <button id="enable-editing-btn" style="margin-bottom:10px;">Enable Editing</button>
     <div id="private-lessons-section" style="margin-bottom: 30px;">
         <h3>Private Lessons</h3>
         <div id="private-lessons-table-container">Loading private lessons...</div>
@@ -398,35 +387,35 @@ ul.nav-links-mobile li a {
   </footer>
 
   <script>
-    // Toggle student field and referral source field
+    // Toggle student field
     const programEl = document.getElementById('program');
     const studentDiv = document.getElementById('student-name-container');
-    const referralSourceDiv = document.getElementById('referral-source-container');
-    const referralSourceSelect = document.getElementById('referral_source');
+    // const referralSourceDiv = document.getElementById('referral-source-container'); // Removed
+    // const referralSourceSelect = document.getElementById('referral_source'); // Removed
 
     programEl.addEventListener('change', () => {
       const isPrivateLesson = programEl.value === 'Private Lessons';
       studentDiv.style.display = isPrivateLesson ? 'block' : 'none';
-      referralSourceDiv.style.display = isPrivateLesson ? 'block' : 'none';
-      if (isPrivateLesson) {
-        referralSourceSelect.required = true;
-      } else {
-        referralSourceSelect.required = false;
-        referralSourceSelect.value = ''; // Reset value if not private lesson
-      }
+      // referralSourceDiv.style.display = isPrivateLesson ? 'block' : 'none'; // Removed
+      // if (isPrivateLesson) { // Removed
+        // referralSourceSelect.required = true; // Removed
+      // } else { // Removed
+        // referralSourceSelect.required = false; // Removed
+        // referralSourceSelect.value = ''; // Reset value if not private lesson // Removed
+      // } // Removed
     });
 
     // Submit new lesson
     document.getElementById('lesson-form').addEventListener('submit', async e => {
       e.preventDefault();
 
-      const isPrivateLesson = programEl.value === 'Private Lessons';
-      const referralSourceValue = referralSourceSelect.value;
+      // const isPrivateLesson = programEl.value === 'Private Lessons'; // Keep if student name depends on it, otherwise remove if not used
+      // const referralSourceValue = referralSourceSelect.value; // Removed
 
-      if (isPrivateLesson && !referralSourceValue) {
-        alert('Please select a referral source for private lessons.');
-        return;
-      }
+      // if (isPrivateLesson && !referralSourceValue) { // Removed
+      //   alert('Please select a referral source for private lessons.'); // Removed
+      //   return; // Removed
+      // } // Removed
 
       const payload = {
         program: programEl.value,
@@ -434,7 +423,7 @@ ul.nav-links-mobile li a {
         date: document.getElementById('date').value,
         time: document.getElementById('time').value,
         student: document.getElementById('student-name').value || '',
-        referral_source: isPrivateLesson ? referralSourceValue : '' 
+        // referral_source: isPrivateLesson ? referralSourceValue : ''  // Removed
       };
       const res = await fetch('/api/admin/lessons', {
         method: 'POST',
@@ -448,9 +437,9 @@ ul.nav-links-mobile li a {
         e.target.reset(); // This will trigger the reset event
         // Hide containers and reset referral source explicitly after successful submission and reset
         studentDiv.style.display = 'none';
-        referralSourceDiv.style.display = 'none';
-        referralSourceSelect.required = false;
-        referralSourceSelect.value = ''; 
+        // referralSourceDiv.style.display = 'none'; // Removed
+        // referralSourceSelect.required = false; // Removed
+        // referralSourceSelect.value = '';  // Removed
       } else {
         alert('Save failed: ' + await res.text());
       }
@@ -459,9 +448,9 @@ ul.nav-links-mobile li a {
     // Handle form reset event
     document.getElementById('lesson-form').addEventListener('reset', () => {
         studentDiv.style.display = 'none';
-        referralSourceDiv.style.display = 'none';
-        referralSourceSelect.required = false;
-        referralSourceSelect.value = ''; 
+        // referralSourceDiv.style.display = 'none'; // Removed
+        // referralSourceSelect.required = false; // Removed
+        // referralSourceSelect.value = '';  // Removed
         // programEl.value = ''; // Optionally reset program dropdown too, if desired
     });
   </script>
@@ -577,6 +566,7 @@ ul.nav-links-mobile li a {
             <th style="padding:8px; border:1px solid #ddd;">Email</th>
             <th style="padding:8px; border:1px solid #ddd;">Phone</th>
             <th style="padding:8px; border:1px solid #ddd;">Lesson Cost</th>
+            ${containerId === 'private-lessons-table-container' ? '<th style="padding:8px; border:1px solid #ddd;">Payout Type</th>' : ''}
             <th style="padding:8px; border:1px solid #ddd;">Actions</th>
             ${containerId === 'camp-lessons-table-container' ? '<th style="padding:8px; border:1px solid #ddd;">Attendance / Pass Status</th>' : ''}
           </tr>
@@ -602,7 +592,22 @@ ul.nav-links-mobile li a {
           <td style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td>
-          <td style="padding:8px; border:1px solid #ddd;">$<input type="number" class="lesson-cost-input" data-booking-id="${les.id}" value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" data-original-cost="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" placeholder="N/A" style="width: 70px;"></td>
+          <td style="padding:8px; border:1px solid #ddd;">$<input type="number" class="lesson-cost-input" data-booking-id="${les.id}" value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" data-original-cost="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" placeholder="N/A" style="width: 70px;" disabled></td>`;
+          
+      if (containerId === 'private-lessons-table-container') {
+        html += `
+          <td style="padding:8px; border:1px solid #ddd;">
+            <select class="payout-type-select" data-booking-id="${les.id}" style="min-width:140px;" disabled>
+              <option value="coach_private" ${les.payout_type === 'coach_private' ? 'selected' : ''}>Coach’s Private (–$10)</option>
+              <option value="zach_private" ${les.payout_type === 'zach_private' ? 'selected' : ''}>Zach Private (–10%)</option>
+              <option value="ricardo_referral" ${les.payout_type === 'ricardo_referral' ? 'selected' : ''}>Referred by Ricardo (\$20)</option>
+              ${!['coach_private', 'zach_private', 'ricardo_referral'].includes(les.payout_type) ? `<option value="" selected disabled>Select Payout</option>` : ''}
+            </select>
+          </td>
+        `;
+      }
+          
+      html += `
           <td style="padding:8px; border:1px solid #ddd;">
             <button onclick="deleteAdminLesson(${les.id})">Delete</button>
           </td>
@@ -680,8 +685,53 @@ ul.nav-links-mobile li a {
             });
         });
     }
+
+    // Event listener for new payout type dropdowns
+    const payoutSelects = container.querySelectorAll('.payout-type-select');
+    payoutSelects.forEach(selectEl => {
+      // Store original value if needed for revert logic
+      selectEl.setAttribute('data-original-payout_type', selectEl.value);
+      selectEl.addEventListener('change', handlePayoutTypeChange);
+    });
   }
 
+  async function handlePayoutTypeChange(event) {
+    const selectEl = event.target;
+    const bookingId = selectEl.dataset.bookingId;
+    const selectedValue = selectEl.value; // 'coach_private' | 'zach_private' | 'ricardo_referral'
+
+    // Prevent update if the "Select Payout" (empty value) option is chosen
+    if (!selectedValue) {
+      alert("Please select a valid payout type.");
+      // Optionally revert to original value if you fetch and store it
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/update-booking/${bookingId}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payout_type: selectedValue })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ message: 'Unknown error updating payout type.' }));
+        alert(`Unable to update payout type: ${errData.message}`);
+        // Optionally revert the dropdown back to its previous value if you fetch and store it
+        // For now, we might need to reload lessons or handle UI state carefully
+      } else {
+        // Visual feedback: briefly highlight background
+        selectEl.style.backgroundColor = '#e0ffe0'; // Light green
+        setTimeout(() => { selectEl.style.backgroundColor = ''; }, 800);
+        // Update the original_payout_type data attribute if needed for future comparisons
+        selectEl.setAttribute('data-original-payout_type', selectedValue);
+      }
+    } catch (networkError) {
+      console.error('Network error updating payout_type:', networkError);
+      alert('Network error—could not update payout type.');
+    }
+  }
   // Load & render the admin lessons table
   async function loadAllLessons() {
     const res = await fetch('/api/admin/lessons', { credentials: 'include' });
@@ -1022,8 +1072,21 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
               });
       }
 
-      checkSession(); 
+      checkSession();
       loadAllLessons(); // Initial load of lesson data
+
+      const enableEditingBtn = document.getElementById('enable-editing-btn');
+      if (enableEditingBtn) {
+        enableEditingBtn.addEventListener('click', () => {
+          document.querySelectorAll('.payout-type-select, .lesson-cost-input').forEach(el => {
+            el.disabled = false; // enable editing
+          });
+          enableEditingBtn.disabled = true; // single‐use
+          enableEditingBtn.textContent = 'Editing Enabled'; // Optional: change button text
+        });
+      } else {
+        console.warn('Enable Editing button not found on initial load.');
+      }
   });
   </script>
 </body>

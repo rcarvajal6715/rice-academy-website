@@ -353,76 +353,126 @@ app.get('/api/financials', async (req, res) => {
     // rates['paula_private_own']      = rates['paula_private_own']      ?? 10.00;
     // rates['zach_private_own_pct']   = rates['zach_private_own_pct']   ?? 0.10;
 
-    // 7) Allocate each private booking’s payout
-    let totalPrivateRevenue     = 0;
-    let totalCoachPayroll       = 0; 
-    let totalAcademyCommission  = 0;
+    // 7) Implement new Commission Calculation Logic for Private Lessons
+    let totalPrivateRevenue = 0;
+    let totalCoachPayrollForPrivates = 0;
+    let totalAcademyCommissionForPrivates = 0;
 
     for (const booking of privateRows) {
       const lessonCost = parseFloat(booking.lesson_cost);
-      if (isNaN(lessonCost)) {
-        console.warn(`Invalid lesson_cost found for booking ID (if available): ${booking.id || 'N/A'}. Skipping payout calculation for this booking.`);
-        continue; // Skip this booking if lesson_cost is not a valid number
+      if (isNaN(lessonCost) || lessonCost < 0) { // Also check for negative, though UI might prevent
+        console.warn(`Invalid or missing lesson_cost for booking ID ${booking.id || 'N/A'}: ${booking.lesson_cost}. Skipping this booking for commission.`);
+        continue;
       }
       totalPrivateRevenue += lessonCost;
 
       const coachFullName = booking.coach || '';
-      const simpleCoach = coachFullName.split(' ')[0]; // Gets the first name
-      const ref = (booking.referral_source || '').trim();
+      const simpleCoachName = coachFullName.split(' ')[0];
+      const referral = booking.referral_source ? booking.referral_source.trim() : ''; // Ensure referral is a string
 
-      let coachGets = 0;
-      let academyGets = 0;
+      let coachGetsThisLesson = 0;
+      let academyGetsThisLesson = 0;
 
-      if (simpleCoach === 'Ricardo') {
-        // Case 1: Coach is Ricardo
-        academyGets = lessonCost;
-        coachGets = 0;
-      } else if (ref === 'Ricardo') {
-        // Case 2: Referred by Ricardo (and coach is not Ricardo)
-        academyGets = 20;
-        coachGets = Math.max(0, lessonCost - 20);
-      } else if (ref === 'Jacob' && simpleCoach === 'Jacob') {
-        // Case 3: Jacob's own student (referred by Jacob, coached by Jacob)
-        academyGets = 10;
-        coachGets = Math.max(0, lessonCost - 10);
-      } else if ((simpleCoach === 'Paula' || simpleCoach === 'Zach') && ref === simpleCoach) {
-        // Case 4: Paula's own (referred by Paula, coached by Paula) OR Zach's own (referred by Zach, coached by Zach)
-        academyGets = lessonCost * 0.10;
-        coachGets = lessonCost - academyGets;
+      // Rule 1: Ricardo teaches
+      if (simpleCoachName === 'Ricardo') {
+        academyGetsThisLesson = lessonCost;
+        coachGetsThisLesson = 0;
       } else {
-        // Fallback case: Default behavior if none of the above conditions are met
-        // This includes RicardoOwn if simpleCoach is Ricardo (handled by case 1)
-        // and other non-specified referral sources or coach combinations.
-        // As per original logic for default/unhandled: coach gets full amount.
-        console.warn(`WARN: Payout fallback case for booking by ${coachFullName}, referral: '${ref}', lesson cost: ${lessonCost}. Coach gets full lesson cost.`);
-        coachGets = lessonCost;
-        academyGets = 0;
+        // Other coach teaches
+        // Rule 4: Ricardo refers (and coach is not Ricardo)
+        if (referral === 'Ricardo') {
+          academyGetsThisLesson = 20;
+          coachGetsThisLesson = Math.max(0, lessonCost - 20);
+        }
+        // Rule 2: Jacob's own
+        else if (simpleCoachName === 'Jacob' && (referral === 'Jacob' || referral === 'JacobOwn' || referral === null || referral === '')) {
+          academyGetsThisLesson = 10;
+          coachGetsThisLesson = Math.max(0, lessonCost - 10);
+        }
+        // Rule 3: Paula's/Zach's own
+        else if (
+          (simpleCoachName === 'Paula' && (referral === 'Paula' || referral === 'PaulaOwn' || referral === null || referral === '')) ||
+          (simpleCoachName === 'Zach' && (referral === 'Zach' || referral === 'ZachOwn' || referral === null || referral === ''))
+        ) {
+          academyGetsThisLesson = lessonCost * 0.10;
+          coachGetsThisLesson = lessonCost - academyGetsThisLesson;
+        }
+        // Fallback/Default for other coaches, non-Ricardo referral, not explicitly their "own"
+        else {
+          // This also covers if referral is 'RicardoOwn' but Ricardo is not the coach (which shouldn't happen based on admin UI)
+          // or if referral is any other non-empty string not matching above.
+          // Per prompt: "coachGetsThisLesson = booking.lesson_cost, academyGetsThisLesson = 0"
+          // This implies the coach gets the full amount if no other rule applies.
+          coachGetsThisLesson = lessonCost;
+          academyGetsThisLesson = 0;
+          console.warn(`WARN: Payout fallback case for booking ID ${booking.id} by ${coachFullName}, referral: '${referral}', lesson cost: ${lessonCost}. Coach gets full lesson cost.`);
+        }
       }
       
-      // Ensure no negative payouts, though Math.max should handle some cases.
-      coachGets = Math.max(0, coachGets);
-      academyGets = Math.max(0, academyGets);
-
-      totalCoachPayroll     += coachGets;
-      totalAcademyCommission += academyGets;
+      totalCoachPayrollForPrivates += coachGetsThisLesson;
+      totalAcademyCommissionForPrivates += academyGetsThisLesson;
     }
+
+    // Calculate revenue and coach pay for other lesson types
+    const kidsGroupRevenue = getSetting('kids_group_fee') * num_kids_enrolled;
+    const adultGroupRevenue = getSetting('adult_group_fee') * num_adults_enrolled;
+    const clinicCampRevenue = getSetting('clinic_camp_fee') * num_clinic_participants;
+
+    const kidsGroupCoachPay = getSetting('coach_kids_group_rate') * num_kids_enrolled;
+    const adultGroupCoachPay = getSetting('coach_adult_group_rate') * num_adults_enrolled;
+    const clinicCampCoachPay = getSetting('coach_clinic_camp_fee') * num_clinic_participants; // Assuming this is total for all participants
+
+    // Overall totals
+    const overallTotalRevenue = kidsGroupRevenue + adultGroupRevenue + clinicCampRevenue + totalPrivateRevenue;
+    const overallTotalCoachPayroll = kidsGroupCoachPay + adultGroupCoachPay + clinicCampCoachPay + totalCoachPayrollForPrivates;
+    
+    const grossProfit = overallTotalRevenue - overallTotalCoachPayroll;
+    const totalOverhead = getSetting('director_salary') + getSetting('admin_expenses');
+    const netProfit = grossProfit - totalOverhead;
+    const profitMargin = overallTotalRevenue > 0 ? (netProfit / overallTotalRevenue) * 100 : 0;
 
     // 8) Build and send the JSON response
     const financialData = {
       period: period || `${startDate.getFullYear()}-${String(startDate.getMonth()+1).padStart(2,'0')}`,
       startDate: sqlStartDate,
       endDate:   sqlEndDate,
+      
+      // Input settings values returned for transparency / display on form
       kids_group_fee:         getSetting('kids_group_fee'),
       adult_group_fee:        getSetting('adult_group_fee'),
+      private_lesson_rate:    getSetting('private_lesson_rate'), // This is a setting, not derived revenue per hour here
       clinic_camp_fee:        getSetting('clinic_camp_fee'),
+      coach_kids_group_rate:  getSetting('coach_kids_group_rate'),
+      coach_adult_group_rate: getSetting('coach_adult_group_rate'),
+      coach_clinic_camp_fee: getSetting('coach_clinic_camp_fee'),
+      director_salary:        getSetting('director_salary'),
+      admin_expenses:         getSetting('admin_expenses'),
+
+      // Enrollment data from summary
       num_kids_enrolled:      num_kids_enrolled,
       num_adults_enrolled:    num_adults_enrolled,
+      total_private_hours:    total_private_hours, // This is count of private lessons from summary, not used in new revenue calc
       num_clinic_participants: num_clinic_participants,
-      private_lesson_revenue:    totalPrivateRevenue,
-      total_private_coach_pay:   totalCoachPayroll,
-      total_academy_commission:  totalAcademyCommission,
-      director_salary: getSetting('director_salary'),
-      admin_expenses:  getSetting('admin_expenses')
+
+      // Calculated financial metrics
+      kids_group_revenue:     kidsGroupRevenue,
+      adult_group_revenue:    adultGroupRevenue,
+      clinic_camp_revenue:    clinicCampRevenue,
+      private_lesson_revenue: totalPrivateRevenue, // Newly calculated
+      totalRevenue:           overallTotalRevenue, // Aggregated
+
+      kids_group_coach_pay:   kidsGroupCoachPay,
+      adult_group_coach_pay:  adultGroupCoachPay,
+      clinic_camp_coach_pay:  clinicCampCoachPay,
+      total_private_coach_pay: totalCoachPayrollForPrivates, // Newly calculated
+      totalCoachPayroll:      overallTotalCoachPayroll, // Aggregated
+      
+      total_academy_commission_from_privates: totalAcademyCommissionForPrivates, // Newly calculated specific commission
+
+      grossProfit:            grossProfit,
+      totalOverhead:          totalOverhead, // Sum of director_salary and admin_expenses from settings
+      netProfit:              netProfit,
+      profitMargin:           profitMargin
     };
 
     return res.json(financialData);
@@ -793,15 +843,19 @@ app.post('/api/admin/lessons', async (req, res) => {
   if (!req.session?.user?.isAdmin) {
     return res.status(403).json({ message: 'Forbidden' });
   }
-  let { program, coachName, date, time, student } = req.body; // Use let for program
+  // Add referral_source to destructuring
+  let { program, coachName, date, time, student, referral_source } = req.body; 
   if (program === 'Tennis Private') {
-    program = 'Private Lesson';
+    program = 'Private Lesson'; // Normalize program name
   }
-  console.log('🎾 Adding lesson via admin for coach:', coachName);
+  console.log('🎾 Adding lesson via admin for coach:', coachName, 'Referral:', referral_source);
   try {
+    // Add referral_source to the INSERT query and parameters
+    // Ensure referral_source is null if empty string, otherwise use its value.
+    const referralSourceForDb = referral_source && referral_source.trim() !== '' ? referral_source.trim() : null;
     await pool.query(
-      'INSERT INTO bookings (email, program, coach, date, time, student, paid, session_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-      ['', program, coachName, date, time, student, false, null]
+      'INSERT INTO bookings (email, program, coach, date, time, student, paid, session_id, referral_source) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+      ['', program, coachName, date, time, student, false, null, referralSourceForDb]
     );
     res.status(200).send('Lesson added successfully');
   } catch (err) {
@@ -815,8 +869,9 @@ app.get('/api/admin/lessons', async (req, res) => {
     return res.status(403).json({ message: 'Forbidden' });
   }
   try {
+    // Ensure referral_source is included in the SELECT query if it's not already
     const { rows } = await pool.query(`
-      SELECT id, program, coach, date, time, student, paid, email, phone, lesson_cost, total_lessons, used_lessons
+      SELECT id, program, coach, date, time, student, paid, email, phone, lesson_cost, total_lessons, used_lessons, referral_source
       FROM bookings
       ORDER BY date DESC, time DESC
     `);

@@ -324,6 +324,19 @@ ul.nav-links-mobile li a {
         <input type="text" id="student-name" placeholder="Enter student name for private lesson" />
       </div>
 
+      <!-- Referral Source (for Private Lessons) -->
+      <div id="referral-source-container" class="full-width" style="display: none;">
+        <label for="referral_source">Referral Source</label>
+        <select id="referral_source" name="referral_source">
+          <option value="" selected>None</option>
+          <option value="Ricardo">Referred by Ricardo</option>
+          <option value="Jacob">Jacob's Own</option>
+          <option value="Paula">Paula's Own</option>
+          <option value="Zach">Zach's Own</option>
+          <option value="RicardoOwn">Ricardo's Own</option>
+        </select>
+      </div>
+
       <!-- Coach -->
       <div>
         <label for="coach">Coach</label>
@@ -390,40 +403,52 @@ ul.nav-links-mobile li a {
     // Toggle student field
     const programEl = document.getElementById('program');
     const studentDiv = document.getElementById('student-name-container');
-    // const referralSourceDiv = document.getElementById('referral-source-container'); // Removed
-    // const referralSourceSelect = document.getElementById('referral_source'); // Removed
+    const referralSourceDiv = document.getElementById('referral-source-container');
+    const referralSourceSelect = document.getElementById('referral_source');
 
     programEl.addEventListener('change', () => {
-      const isPrivateLesson = programEl.value === 'Private Lessons';
+      const selectedProgram = programEl.value;
+      // Valid private lesson program names that require referral source
+      const privateLessonPrograms = ['Private Lessons', 'Tennis Private'];
+      const isPrivateLesson = privateLessonPrograms.includes(selectedProgram);
+
       studentDiv.style.display = isPrivateLesson ? 'block' : 'none';
-      // referralSourceDiv.style.display = isPrivateLesson ? 'block' : 'none'; // Removed
-      // if (isPrivateLesson) { // Removed
-        // referralSourceSelect.required = true; // Removed
-      // } else { // Removed
-        // referralSourceSelect.required = false; // Removed
-        // referralSourceSelect.value = ''; // Reset value if not private lesson // Removed
-      // } // Removed
+      document.getElementById('student-name').required = isPrivateLesson;
+      
+      referralSourceDiv.style.display = isPrivateLesson ? 'block' : 'none';
+      referralSourceSelect.required = isPrivateLesson;
+
+      if (!isPrivateLesson) {
+        referralSourceSelect.value = ''; // Reset value if not a private lesson
+      }
     });
 
     // Submit new lesson
     document.getElementById('lesson-form').addEventListener('submit', async e => {
       e.preventDefault();
 
-      // const isPrivateLesson = programEl.value === 'Private Lessons'; // Keep if student name depends on it, otherwise remove if not used
-      // const referralSourceValue = referralSourceSelect.value; // Removed
+      const selectedProgram = programEl.value;
+      const privateLessonPrograms = ['Private Lessons', 'Tennis Private'];
+      const isPrivateLesson = privateLessonPrograms.includes(selectedProgram);
+      const referralSourceValue = referralSourceSelect.value;
 
-      // if (isPrivateLesson && !referralSourceValue) { // Removed
-      //   alert('Please select a referral source for private lessons.'); // Removed
-      //   return; // Removed
-      // } // Removed
+      if (isPrivateLesson && !document.getElementById('student-name').value) {
+        alert('Student name is required for private lessons.');
+        return;
+      }
+
+      if (isPrivateLesson && !referralSourceValue) {
+        alert('Please select a referral source for private lessons.');
+        return;
+      }
 
       const payload = {
-        program: programEl.value,
+        program: selectedProgram,
         coachName: document.getElementById('coach').value,
         date: document.getElementById('date').value,
         time: document.getElementById('time').value,
         student: document.getElementById('student-name').value || '',
-        // referral_source: isPrivateLesson ? referralSourceValue : ''  // Removed
+        referral_source: isPrivateLesson ? referralSourceValue : '' 
       };
       const res = await fetch('/api/admin/lessons', {
         method: 'POST',
@@ -435,11 +460,6 @@ ul.nav-links-mobile li a {
         alert('Lesson saved');
         loadAllLessons();
         e.target.reset(); // This will trigger the reset event
-        // Hide containers and reset referral source explicitly after successful submission and reset
-        studentDiv.style.display = 'none';
-        // referralSourceDiv.style.display = 'none'; // Removed
-        // referralSourceSelect.required = false; // Removed
-        // referralSourceSelect.value = '';  // Removed
       } else {
         alert('Save failed: ' + await res.text());
       }
@@ -448,10 +468,16 @@ ul.nav-links-mobile li a {
     // Handle form reset event
     document.getElementById('lesson-form').addEventListener('reset', () => {
         studentDiv.style.display = 'none';
-        // referralSourceDiv.style.display = 'none'; // Removed
-        // referralSourceSelect.required = false; // Removed
-        // referralSourceSelect.value = '';  // Removed
-        // programEl.value = ''; // Optionally reset program dropdown too, if desired
+        document.getElementById('student-name').required = false;
+        referralSourceDiv.style.display = 'none';
+        referralSourceSelect.required = false;
+        referralSourceSelect.value = '';
+        // programEl.value = ''; // Reset program dropdown to default placeholder
+        // Ensure programEl is reset to its placeholder option.
+        // The default "Choose a program" is disabled, so setting value to "" works.
+        if(programEl.options.length > 0 && programEl.options[0].value === "" && programEl.options[0].disabled){
+            programEl.value = "";
+        }
     });
   </script>
 

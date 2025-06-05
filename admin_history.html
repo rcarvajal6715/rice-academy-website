@@ -433,8 +433,8 @@ ul.nav-links-mobile li a {
           <td class="history-cell" data-id="${les.id}" data-field="date" data-original-value="${originalDate}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
           <td class="history-cell" data-id="${les.id}" data-field="time" data-original-value="${les.time || ''}" style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
           <td class="history-cell" data-id="${les.id}" data-field="student" data-original-value="${les.student || ''}" style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td> {/* Email not typically editable here */}
-          <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td> {/* Phone not typically editable here */}
+          <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td> <!-- Email not typically editable here -->
+          <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td> <!-- Phone not typically editable here -->
           <td class="history-cell" data-id="${les.id}" data-field="lesson_cost" data-original-value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}</td>
           <td class="history-cell" data-id="${les.id}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
           <td class="history-cell" data-id="${les.id}" data-field="paid" data-original-value="${String(les.paid === true || String(les.paid).toLowerCase() === 'true')}" style="padding:8px; border:1px solid #ddd;">${(les.paid === true || String(les.paid).toLowerCase() === 'true') ? 'Yes' : 'No'}</td>

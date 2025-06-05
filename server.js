@@ -1208,6 +1208,12 @@ app.delete('/api/admin/expenses/:id', async (req, res) => {
 
 // ---- Admin History Update Route ----
 app.put('/api/admin/history/:id', async (req, res) => {
+  console.log(`PUT /api/admin/history/:id - Received ID: ${req.params.id}`);
+  console.log(`PUT /api/admin/history/:id - Received body:`, req.body);
+  if(req.body){
+    console.log(`PUT /api/admin/history/:id - Field: ${req.body.field}, Value: ${req.body.value}`);
+  }
+
   if (!req.session?.user?.isAdmin) {
     return res.status(401).json({ message: 'Unauthorized: Admin only.' });
   }
@@ -1280,7 +1286,15 @@ app.put('/api/admin/history/:id', async (req, res) => {
     }
     res.status(200).json({ message: `Booking ${field} updated successfully.`, booking: result.rows[0] });
   } catch (dbError) {
-    console.error(`Error updating booking ID ${bookingId}, field ${field}:`, dbError);
+    console.error(`Error updating booking ID ${bookingId}, field ${field}:`);
+    console.error('DB Error Message:', dbError.message);
+    console.error('DB Error Code:', dbError.code);
+    console.error('DB Error Detail:', dbError.detail);
+    console.error('DB Error Table:', dbError.table);
+    console.error('DB Error Column:', dbError.column);
+    console.error('DB Error Constraint:', dbError.constraint);
+    console.error('DB Error Routine:', dbError.routine);
+    console.error('DB Error Stack:', dbError.stack);
     res.status(500).json({ message: `Database error updating booking: ${dbError.message}` });
   }
 });

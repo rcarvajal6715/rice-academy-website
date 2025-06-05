@@ -354,7 +354,7 @@ ul.nav-links-mobile li a {
     <!-- All Scheduled Lessons -->
     <h2>Scheduled Lessons Overview</h2>
     <div style="text-align: right; margin-bottom: 15px;"> <!-- Changed to text-align: right -->
-        <button id="universal-update-btn" class="universal-update-prices-btn" disabled>Update All Changed Prices</button>
+        <button id="save-all-btn" class="universal-update-prices-btn" disabled>Update All Changed Prices</button>
     </div>
     <button id="enable-editing-btn" style="margin-bottom:10px;">Enable Editing</button>
     <div id="private-lessons-section" style="margin-bottom: 30px;">
@@ -474,11 +474,11 @@ ul.nav-links-mobile li a {
     return hours + ':' + minutesStr + ' ' + ampm;
   }
 
-  // Helper function to check for input changes across all tables and update the universal button state
+  // Helper function to check for input changes across all tables and update the save button state
   function checkGlobalInputChanges() {
-    const universalUpdateButton = document.getElementById('universal-update-btn');
-    if (!universalUpdateButton) {
-        console.error('checkGlobalInputChanges: Universal update button not found.');
+    const saveBtn = document.getElementById('save-all-btn');
+    if (!saveBtn) {
+        console.error('checkGlobalInputChanges: Save button not found.');
         return;
     }
 
@@ -493,12 +493,12 @@ ul.nav-links-mobile li a {
     for (const containerId of allTableContainerIds) {
         const container = document.getElementById(containerId);
         if (!container) {
-            // console.warn(`checkGlobalInputChanges: Container not found for ID: ${containerId}`); // Optional: warn if a table is missing
-            continue; // Skip if a container is not found
+            continue; 
         }
 
-        const inputs = container.querySelectorAll('.lesson-cost-input');
-        for (const inputField of inputs) {
+        // Check cost inputs
+        const costInputs = container.querySelectorAll('.lesson-cost-input');
+        for (const inputField of costInputs) {
             const originalCostStr = inputField.getAttribute('data-original-cost');
             const originalCost = parseFloat(originalCostStr);
             const currentValue = inputField.value.trim();
@@ -521,14 +521,24 @@ ul.nav-links-mobile li a {
                 hasOverallChanges = true;
                 break;
             }
-            if (!isNaN(originalCost) && !isNaN(currentCost) && currentCost !== originalCost) { // Different numeric values
+            if (!isNaN(originalCost) && !isNaN(currentCost) && currentCost !== originalCost) { 
                 hasOverallChanges = true;
                 break;
             }
         }
-        if (hasOverallChanges) break; // If changes found in one table, no need to check others
+        if (hasOverallChanges) break;
+
+        // Check referral selects
+        const referralSelects = container.querySelectorAll('.referral-select');
+        for (const sel of referralSelects) {
+            if (sel.value !== sel.dataset.originalReferral) {
+                hasOverallChanges = true;
+                break;
+            }
+        }
+        if (hasOverallChanges) break; 
     }
-    universalUpdateButton.disabled = !hasOverallChanges;
+    saveBtn.disabled = !hasOverallChanges;
   }
 
   // Helper function to render a table for a specific set of lessons
@@ -577,6 +587,7 @@ ul.nav-links-mobile li a {
     lessonsArray.forEach(les => {
       const dateStr = new Date(les.date).toLocaleDateString();
       const formattedTime = formatTime_12hr(les.time);
+      const refVal = les.referral_source || ''; // Defined for use in referral select
       
       let rowStyle = '';
       if (containerId === 'private-lessons-table-container' && les.coach && coachColors[les.coach]) {
@@ -597,11 +608,13 @@ ul.nav-links-mobile li a {
       if (containerId === 'private-lessons-table-container') {
         html += `
           <td style="padding:8px; border:1px solid #ddd;">
-            <select class="payout-type-select" data-booking-id="${les.id}" style="min-width:140px;" disabled>
-              <option value="coach_private" ${les.payout_type === 'coach_private' ? 'selected' : ''}>Coach’s Private (–$10)</option>
-              <option value="zach_private" ${les.payout_type === 'zach_private' ? 'selected' : ''}>Zach Private (–10%)</option>
-              <option value="ricardo_referral" ${les.payout_type === 'ricardo_referral' ? 'selected' : ''}>Referred by Ricardo (\$20)</option>
-              ${!['coach_private', 'zach_private', 'ricardo_referral'].includes(les.payout_type) ? `<option value="" selected disabled>Select Payout</option>` : ''}
+            <select class="referral-select" data-booking-id="${les.id}" data-original-referral="${refVal}" style="min-width:140px;" disabled>
+              <option value="" disabled ${refVal === '' ? 'selected' : ''}>Choose...</option>
+              <option value="Ricardo" ${refVal === 'Ricardo' ? 'selected' : ''}>Referred by Ricardo ($20)</option>
+              <option value="Jacob" ${refVal === 'Jacob' ? 'selected' : ''}>Jacob’s Own ($10)</option>
+              <option value="Paula" ${refVal === 'Paula' ? 'selected' : ''}>Paula’s Own (10%)</option>
+              <option value="Zach" ${refVal === 'Zach' ? 'selected' : ''}>Zach’s Own (10%)</option>
+              <option value="RicardoOwn" ${les.coach === 'Ricardo Carvajalino' && refVal !== 'Ricardo' ? 'selected' : ''}>Ricardo’s Own (100%)</option>
             </select>
           </td>
         `;
@@ -686,52 +699,14 @@ ul.nav-links-mobile li a {
         });
     }
 
-    // Event listener for new payout type dropdowns
-    const payoutSelects = container.querySelectorAll('.payout-type-select');
-    payoutSelects.forEach(selectEl => {
-      // Store original value if needed for revert logic
-      selectEl.setAttribute('data-original-payout_type', selectEl.value);
-      selectEl.addEventListener('change', handlePayoutTypeChange);
+    // Event listener for new referral type dropdowns
+    const referralSelects = container.querySelectorAll('.referral-select');
+    referralSelects.forEach(selectEl => {
+      selectEl.addEventListener('change', checkGlobalInputChanges);
     });
   }
 
-  async function handlePayoutTypeChange(event) {
-    const selectEl = event.target;
-    const bookingId = selectEl.dataset.bookingId;
-    const selectedValue = selectEl.value; // 'coach_private' | 'zach_private' | 'ricardo_referral'
-
-    // Prevent update if the "Select Payout" (empty value) option is chosen
-    if (!selectedValue) {
-      alert("Please select a valid payout type.");
-      // Optionally revert to original value if you fetch and store it
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/admin/update-booking/${bookingId}`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payout_type: selectedValue })
-      });
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({ message: 'Unknown error updating payout type.' }));
-        alert(`Unable to update payout type: ${errData.message}`);
-        // Optionally revert the dropdown back to its previous value if you fetch and store it
-        // For now, we might need to reload lessons or handle UI state carefully
-      } else {
-        // Visual feedback: briefly highlight background
-        selectEl.style.backgroundColor = '#e0ffe0'; // Light green
-        setTimeout(() => { selectEl.style.backgroundColor = ''; }, 800);
-        // Update the original_payout_type data attribute if needed for future comparisons
-        selectEl.setAttribute('data-original-payout_type', selectedValue);
-      }
-    } catch (networkError) {
-      console.error('Network error updating payout_type:', networkError);
-      alert('Network error—could not update payout type.');
-    }
-  }
+  // handlePayoutTypeChange function is removed.
   // Load & render the admin lessons table
   async function loadAllLessons() {
     const res = await fetch('/api/admin/lessons', { credentials: 'include' });
@@ -792,6 +767,7 @@ ul.nav-links-mobile li a {
     const otherBookings = [];
 
     upcomingLessons.forEach(les => {
+        // const refVal = les.referral_source || ''; // This is now defined inside renderLessonsTable for each lesson
         const programName = les.program ? les.program.toLowerCase() : '';
         if (programName.includes('private') || programName.includes('tennis private')) {
             privateLessons.push(les);
@@ -830,7 +806,12 @@ ul.nav-links-mobile li a {
 
   // Old handleUpdateCost function is removed.
 
-  async function handleBulkUpdatePrices() {
+  async function handleSaveChanges() {
+    const enableBtn = document.getElementById('enable-editing-btn');
+    if (enableBtn) enableBtn.disabled = true;
+    const saveButton = document.getElementById('save-all-btn'); // Renamed variable for clarity
+    if (saveButton) saveButton.disabled = true;
+
     const allTableContainerIds = [
         'private-lessons-table-container',
         'camp-lessons-table-container',
@@ -838,18 +819,19 @@ ul.nav-links-mobile li a {
         'other-bookings-table-container'
     ];
     const pendingUpdates = [];
+    const referralUpdates = []; // To store referral changes
     const results = { successes: [], failures: [] };
 
     for (const containerId of allTableContainerIds) {
         const container = document.getElementById(containerId);
         if (!container) {
-            console.warn('Table container not found for ID during bulk update:', containerId); // Warn instead of error, continue
+            console.warn('Table container not found for ID during save:', containerId);
             continue;
         }
 
-        const inputFields = container.querySelectorAll('.lesson-cost-input');
-
-        inputFields.forEach(inputField => {
+        // Collect cost updates
+        const costInputFields = container.querySelectorAll('.lesson-cost-input');
+        costInputFields.forEach(inputField => {
             const bookingId = inputField.getAttribute('data-booking-id');
             const originalCostStr = inputField.getAttribute('data-original-cost');
             const originalCost = parseFloat(originalCostStr); // Will be NaN if originalCostStr is empty or not a number
@@ -881,50 +863,87 @@ ul.nav-links-mobile li a {
                 pendingUpdates.push({ bookingId, newCost: currentCost });
             }
         });
+
+        // Collect referral updates
+        const referralSelects = container.querySelectorAll('.referral-select');
+        referralSelects.forEach(sel => {
+            if (sel.value !== sel.dataset.originalReferral && sel.value) { // Ensure "Choose..." is not selected
+                referralUpdates.push({ id: sel.dataset.bookingId, newReferral: sel.value });
+            }
+        });
     }
 
-    if (pendingUpdates.length === 0) {
+    if (pendingUpdates.length === 0 && referralUpdates.length === 0) {
         alert("No changes detected to update.");
-        // Ensure button is disabled if called when no changes (e.g. programmatic call)
-        const universalUpdateButton = document.getElementById('universal-update-btn');
-        if (universalUpdateButton) universalUpdateButton.disabled = true;
+        if (saveButton) saveButton.disabled = true; // Should already be, but ensure
+        if (enableBtn) enableBtn.disabled = false; // Re-enable editing if nothing was changed
         return;
     }
 
-    for (const update of pendingUpdates) {
-        try {
-            const res = await fetch(`/api/admin/booking-payment/${update.bookingId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
-                body: JSON.stringify({ lesson_cost_from_req: update.newCost })
-            });
+    const costPromises = pendingUpdates.map(item =>
+        fetch(`/api/admin/booking-payment/${item.bookingId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
+            body: JSON.stringify({ lesson_cost_from_req: item.newCost })
+        })
+    );
 
-            if (res.ok) {
-                results.successes.push(`Booking ID ${update.bookingId}: Cost updated to ${update.newCost}.`);
+    const referralPromises = referralUpdates.map(item =>
+        fetch(`/api/admin/update-booking/${item.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
+            body: JSON.stringify({ referral_source: item.newReferral })
+        })
+    );
+
+    const allPromises = [...costPromises, ...referralPromises];
+    const allSettledResults = await Promise.allSettled(allPromises);
+
+    allSettledResults.forEach((result, index) => {
+        const isCostUpdate = index < costPromises.length;
+        const originalItem = isCostUpdate ? pendingUpdates[index] : referralUpdates[index - costPromises.length];
+        const id = isCostUpdate ? originalItem.bookingId : originalItem.id;
+        const type = isCostUpdate ? "Cost" : "Referral";
+
+        if (result.status === 'fulfilled') {
+            if (result.value.ok) {
+                results.successes.push(`Booking ID ${id}: ${type} updated successfully.`);
             } else {
-                let errorMsg = `Booking ID ${update.bookingId}: Update failed (status ${res.status}).`;
-                try {
-                    const errorData = await res.json();
-                    errorMsg += ` ${errorData.message || ''}`;
-                } catch (e) { /* ignore if response not json */ }
-                results.failures.push(errorMsg);
+                // Try to parse error from server, else use status
+                result.value.json().then(errData => {
+                    results.failures.push(`Booking ID ${id}: ${type} update failed (server: ${errData.message || 'Unknown error'}).`);
+                }).catch(() => { // Catch if .json() fails (e.g. not a JSON response)
+                    results.failures.push(`Booking ID ${id}: ${type} update failed (status ${result.value.status}, unparseable error).`);
+                });
             }
-        } catch (err) {
-            results.failures.push(`Booking ID ${update.bookingId}: Network error or failed to send request - ${err.message}`);
+        } else { // status === 'rejected'
+            results.failures.push(`Booking ID ${id}: ${type} update failed (network/request error: ${result.reason}).`);
         }
-    }
+    });
 
     let summaryMessage = "Update Summary:\n";
-    summaryMessage += `${results.successes.length} prices updated successfully.\n`;
+    if (results.successes.length > 0) {
+        summaryMessage += `${results.successes.length} updates processed successfully.\n`;
+        // results.successes.forEach(s => summaryMessage += `- ${s}\n`); // Optional: list successes
+    }
     if (results.failures.length > 0) {
         summaryMessage += `${results.failures.length} updates failed:\n`;
         results.failures.forEach(failure => {
             summaryMessage += `- ${failure}\n`;
         });
     }
+    if (results.successes.length === 0 && results.failures.length === 0 && (pendingUpdates.length > 0 || referralUpdates.length > 0)) {
+        // This case handles if all promises resolved but none were 'ok' and .json() parsing is pending
+        // However, the current logic pushes to failures if not .ok, so this might be less common
+        // For now, ensure some message is shown if updates were attempted.
+        summaryMessage = "Processing complete. Review logs if expected changes are not visible.";
+    }
+    
     alert(summaryMessage);
 
     loadAllLessons(); // Refresh the data
+    if (enableBtn) enableBtn.disabled = false; // Re-enable editing button
+    // Save button state will be updated by checkGlobalInputChanges via loadAllLessons
   }
 
 function handleAttendanceChange(bookingId, dayIndex, isChecked) {
@@ -948,10 +967,10 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
   // This entire block to be added as a new script, or integrated if a single DOMContentLoaded is preferred.
   document.addEventListener('DOMContentLoaded', () => {
       // Attach listener for the universal update button
-      const universalUpdateButton = document.getElementById('universal-update-btn');
-      if (universalUpdateButton) {
-          universalUpdateButton.addEventListener('click', function() {
-              handleBulkUpdatePrices(); // Call without arguments
+      const saveBtn = document.getElementById('save-all-btn');
+      if (saveBtn) {
+          saveBtn.addEventListener('click', function() {
+              handleSaveChanges(); // Call without arguments
           });
       }
 
@@ -1078,11 +1097,12 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
       const enableEditingBtn = document.getElementById('enable-editing-btn');
       if (enableEditingBtn) {
         enableEditingBtn.addEventListener('click', () => {
-          document.querySelectorAll('.payout-type-select, .lesson-cost-input').forEach(el => {
+          document.querySelectorAll('.referral-select, .lesson-cost-input').forEach(el => {
             el.disabled = false; // enable editing
           });
           enableEditingBtn.disabled = true; // single‐use
-          enableEditingBtn.textContent = 'Editing Enabled'; // Optional: change button text
+          enableEditingBtn.textContent = 'Editing Enabled'; 
+          checkGlobalInputChanges(); // Call after enabling to set initial state of save button
         });
       } else {
         console.warn('Enable Editing button not found on initial load.');

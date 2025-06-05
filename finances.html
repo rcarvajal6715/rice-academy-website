@@ -439,6 +439,34 @@ legend {
       <div class="dashboard-item"><span>Profit Margin (%):</span> <span class="value" id="dash_profit_margin">0.00%</span></div>
     </fieldset>
   </div>
+</form> <!-- financials-form ends here -->
+
+  <div id="financial-dashboard" style="margin-top: 20px;"></div>
+
+  <!-- New Expenses Section HTML -->
+  <fieldset style="margin-top: 20px;">
+    <legend>Expenses for Selected Period</legend>
+    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+        <input type="text" id="new_expense_description" placeholder="Expense description" style="flex-grow: 1;">
+        <input type="number" id="new_expense_amount" placeholder="Amount" style="width: 100px;">
+        <button type="button" id="add_expense_button" style="background-color:#4CAF50; color:white; width: auto; padding: 10px 15px; margin-top:0;">Add Expense</button>
+    </div>
+    <div id="expenses-table-container">
+        <table id="expenses-table" style="width:100%; border-collapse:collapse;">
+            <thead>
+                <tr>
+                    <th style="text-align:left; border-bottom: 1px solid #ddd; padding: 8px;">Description</th>
+                    <th style="text-align:right; border-bottom: 1px solid #ddd; padding: 8px;">Amount</th>
+                    <th style="text-align:center; border-bottom: 1px solid #ddd; padding: 8px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="expenseTableTbody">
+                <!-- Expense rows will be inserted here by JavaScript -->
+            </tbody>
+        </table>
+    </div>
+  </fieldset>
+  <!-- expenses-list div is effectively replaced by the fieldset above -->
 
 </section>
 
@@ -619,8 +647,151 @@ document.addEventListener('DOMContentLoaded', () => {
         return values;
     }
 
-    function updateFinancialDashboard(apiData = null) { // Added apiData parameter
-        const values = getFormValues(); // Still get other form values
+    // Removed existing updateFinancialDashboard function (if any was left from previous steps)
+    // The new renderFinancialDashboard from the previous step should be here.
+    // Assuming it is, just ensuring no duplication.
+
+    function renderFinancialDashboard(data) {
+      const dashboardDiv = document.getElementById('financial-dashboard');
+      if (!dashboardDiv) {
+          console.error('Error: financial-dashboard div not found.');
+          return;
+      }
+
+      // Helper to create a display item
+      const createItem = (label, value, isCurrency = true, isPercentage = false) => {
+          let displayValue = value;
+          if (value === null || value === undefined || isNaN(value)) {
+              displayValue = 'N/A';
+          } else {
+              displayValue = isCurrency ? `$${Number(value).toFixed(2)}` : (isPercentage ? `${Number(value).toFixed(2)}%` : Number(value).toFixed(0));
+          }
+          return `<div class="dashboard-item"><span>${label}:</span> <span class="value">${displayValue}</span></div>`;
+      };
+      
+      // Calculate derived values
+      const kidsGroupRevenue = (data.kids_group_fee || 0) * (data.num_kids_enrolled || 0);
+      const adultGroupRevenue = (data.adult_group_fee || 0) * (data.num_adults_enrolled || 0);
+      // Private lesson revenue is directly from data.private_lesson_revenue
+      const clinicCampRevenue = (data.clinic_camp_fee || 0) * (data.num_clinic_participants || 0);
+      
+      const totalRevenue = kidsGroupRevenue + adultGroupRevenue + (data.private_lesson_revenue || 0) + clinicCampRevenue;
+
+      // Coach Payouts - Assuming these are calculated in backend or settings
+      // For this example, let's assume coach pay for group/clinic is also part of 'data' if applicable, or use settings
+      // For simplicity, we'll use placeholders if not directly in 'data'.
+      // The issue implies `total_private_coach_pay` comes from API.
+      // Other coach pays might need to be derived from num_enrolled * coach_rate from settings if not in `data`
+      const kidsGroupCoachPay = (data.coach_kids_group_rate || 0) * (data.num_kids_enrolled || 0);
+      const adultGroupCoachPay = (data.coach_adult_group_rate || 0) * (data.num_adults_enrolled || 0);
+      const clinicCampCoachPay = (data.coach_clinic_camp_fee || 0) * (data.num_clinic_participants || 0);
+      
+      const totalCoachPayroll = kidsGroupCoachPay + adultGroupCoachPay + (data.total_private_coach_pay || 0) + clinicCampCoachPay;
+      
+      const grossProfit = totalRevenue - totalCoachPayroll;
+      const totalOverhead = (data.director_salary || 0) + (data.admin_expenses || 0); // admin_expenses here is from settings, not the new table
+      const netProfit = grossProfit - totalOverhead;
+      const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+      let html = '<fieldset><legend>Financial Dashboard (Calculated)</legend>';
+      html += createItem('Kids Group Revenue', kidsGroupRevenue);
+      html += createItem('Adult Group Revenue', adultGroupRevenue);
+      html += createItem('Private Lesson Revenue', data.private_lesson_revenue);
+      html += createItem('Clinic/Camp Revenue', clinicCampRevenue);
+      html += '<strong>Total Revenue: ' + createItem('Total Revenue', totalRevenue).replace(/<span>.*?<\/span>/, '') + '</strong><hr>'; // Simplified display
+
+      html += createItem('Kids Group Coach Pay', kidsGroupCoachPay);
+      html += createItem('Adult Group Coach Pay', adultGroupCoachPay);
+      html += createItem('Private Lesson Coach Pay', data.total_private_coach_pay);
+      html += createItem('Clinic/Camp Coach Pay', clinicCampCoachPay);
+      html += '<strong>Total Coach Payroll: ' + createItem('Total Coach Payroll', totalCoachPayroll).replace(/<span>.*?<\/span>/, '') + '</strong><hr>';
+
+      html += createItem('Gross Profit (Revenue - Coach Payroll)', grossProfit);
+      html += createItem('Fixed Overhead (Director + Admin Settings)', totalOverhead);
+      html += '<strong>Net Profit (Gross Profit - Overhead): ' + createItem('Net Profit', netProfit).replace(/<span>.*?<\/span>/, '') + '</strong>';
+      html += createItem('Profit Margin', profitMargin, false, true);
+      html += '</fieldset>';
+
+      dashboardDiv.innerHTML = html;
+    }
+
+    // This is the new renderExpensesList
+    function formatDollar(value) {
+        const num = parseFloat(value);
+        return isNaN(num) ? '$0.00' : `$${num.toFixed(2)}`;
+    }
+
+    function renderExpensesList(expenses) {
+        const expenseTableTbody = document.getElementById('expenseTableTbody');
+        if (!expenseTableTbody) {
+            console.error('Error: expenseTableTbody not found.');
+            return;
+        }
+        expenseTableTbody.innerHTML = ''; // Clear existing rows
+
+        if (!expenses || expenses.length === 0) {
+            const row = expenseTableTbody.insertRow();
+            const cell = row.insertCell();
+            cell.colSpan = 3; // Span across all columns
+            cell.textContent = 'No expenses for this period.';
+            cell.style.textAlign = 'center';
+            return;
+        }
+
+        expenses.forEach(exp => {
+            const row = expenseTableTbody.insertRow();
+            row.insertCell().textContent = exp.description || '—';
+            const amountCell = row.insertCell();
+            amountCell.textContent = formatDollar(exp.amount);
+            amountCell.style.textAlign = 'right';
+            
+            const actionsCell = row.insertCell();
+            actionsCell.style.textAlign = 'center';
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'delete-expense-btn';
+            deleteButton.setAttribute('data-id', exp.id);
+            deleteButton.innerHTML = '🗑'; // Trash can icon
+            deleteButton.style.background = 'none';
+            deleteButton.style.border = 'none';
+            deleteButton.style.color = '#dc3545';
+            deleteButton.style.cursor = 'pointer';
+            actionsCell.appendChild(deleteButton);
+        });
+
+        // Attach event listeners after rows are created
+        document.querySelectorAll('.delete-expense-btn').forEach(button => {
+            button.addEventListener('click', async (event) => {
+                const expenseId = event.target.closest('button').dataset.id;
+                if (confirm(`Are you sure you want to delete expense ID ${expenseId}?`)) {
+                    setLoadingState(true);
+                    try {
+                        const response = await fetch(`/api/admin/expenses/${expenseId}`, {
+                            method: 'DELETE',
+                            credentials: 'include'
+                        });
+                        if (!response.ok) {
+                            const errData = await response.json().catch(() => ({ message: 'Failed to delete expense.' }));
+                            alert(`Error: ${errData.message || response.statusText}`);
+                        } else {
+                            alert('Expense deleted successfully.');
+                            if (currentPeriod) { // currentPeriod should be defined in a higher scope
+                                loadExpensesForPeriod(currentPeriod); // Refresh list
+                            }
+                        }
+                    } catch (networkError) {
+                        console.error('Network error deleting expense:', networkError);
+                        alert('Network error: ' + networkError.message);
+                    } finally {
+                        setLoadingState(false);
+                    }
+                }
+            });
+        });
+    }
+
+
+    function updateFinancialDashboard_OLD(apiData = null) { // Renamed old function to avoid conflict
+        const values = getFormValues();
 
         // Calculations for other items (Kids, Adult, Clinic/Camp) remain the same
         const kidsGroupRevenue = values.kidsGroupFee * values.numKidsEnrolled;
@@ -694,17 +865,47 @@ document.addEventListener('DOMContentLoaded', () => {
         updateElement('dash_profit_margin', profitMargin, false, true);
     }
 
+    let currentPeriod = null; // To store YYYY-MM string
+
+    async function loadExpensesForPeriod(period) {
+        if (!period) {
+            console.warn('loadExpensesForPeriod called without a period.');
+            renderExpensesList([]); // Render empty list if no period
+            return;
+        }
+        currentPeriod = period; // Store the currently loaded period
+        setLoadingState(true);
+        try {
+            const response = await fetch(`/api/admin/expenses?period=${period}`, { credentials: 'include' });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: 'Failed to load expenses.' }));
+                displayError(`Error loading expenses: ${errorData.message || response.statusText}`);
+                renderExpensesList([]); // Render empty on error
+                return;
+            }
+            const exList = await response.json();
+            renderExpensesList(exList);
+        } catch (error) {
+            console.error('Error fetching expenses:', error);
+            displayError('Network error while fetching expenses.');
+            renderExpensesList([]);
+        } finally {
+            setLoadingState(false);
+        }
+    }
+
     async function fetchFinancialData(selectedPeriod = null) {
         setLoadingState(true);
         if (errorBanner) errorBanner.style.display = 'none';
 
-        let periodForUpdateAndFetch = selectedPeriod;
-        if (!periodForUpdateAndFetch) {
+        let periodToLoad = selectedPeriod;
+        if (!periodToLoad) {
             const now = new Date();
             const currentYear = now.getFullYear();
             const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
-            periodForUpdateAndFetch = `${currentYear}-${currentMonth}`;
+            periodToLoad = `${currentYear}-${currentMonth}`;
         }
+        currentPeriod = periodToLoad; // Update currentPeriod global
 
         try {
             // Step 1: Update enrollments summary for the target period
@@ -712,14 +913,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    // 'Credentials': 'include' // Not needed for same-origin, browser handles cookies
+                    credentials: 'include' 
                 },
-                body: JSON.stringify({ period: periodForUpdateAndFetch })
+                body: JSON.stringify({ period: periodToLoad })
             });
 
             if (!summaryUpdateResponse.ok) {
                 const errorData = await summaryUpdateResponse.json().catch(() => ({ message: 'Summary update failed, and error response was not valid JSON.' }));
-                let errorMessage = `Failed to update financial summaries for period ${periodForUpdateAndFetch}.`;
+                let errorMessage = `Failed to update financial summaries for period ${periodToLoad}.`;
                 if (errorData && errorData.message) {
                     errorMessage += ` Details: ${errorData.message}`;
                 } else {
@@ -727,18 +928,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (textError) errorMessage += ` Raw error: ${textError}`;
                 }
                 displayError(errorMessage);
-                // setLoadingState(false) will be handled by the finally block
-                return; // Stop further execution
+                setLoadingState(false);
+                return; 
             }
             
-            // Optional: Log success of summary update
-            // const summaryUpdateResult = await summaryUpdateResponse.json();
-            // console.log(summaryUpdateResult.message || `Enrollments summary for period ${periodForUpdateAndFetch} updated successfully.`);
-
             // Step 2: Fetch financial data for the target period
             let apiUrl = '/api/financials';
-            if (periodForUpdateAndFetch) { // Always true here due to logic above, but good for clarity
-                apiUrl += '?period=' + periodForUpdateAndFetch;
+            if (periodToLoad) {
+                apiUrl += '?period=' + periodToLoad;
             }
             
             const financialsResponse = await fetch(apiUrl, { credentials: 'include' });
@@ -750,7 +947,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!financialsResponse.ok) {
                 const errorData = await financialsResponse.json().catch(() => null);
-                displayError(errorData?.message || `Error ${financialsResponse.status}: Failed to load financial data for period ${periodForUpdateAndFetch}.`);
+                displayError(errorData?.message || `Error ${financialsResponse.status}: Failed to load financial data for period ${periodToLoad}.`);
+                setLoadingState(false);
                 return;
             }
 
@@ -777,11 +975,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateElement('dash_private_coach_pay', data.total_private_coach_pay);
             }
             
-            // The call to updateFinancialDashboard() will still run,
-            // but we need to ensure it doesn't overwrite these values
-            // or that it uses these pre-filled values correctly.
-            updateFinancialDashboard(data); // Pass fetched data to updateFinancialDashboard
-            // formInputs are re-enabled in finally block by setLoadingState(false)
+            // The call to updateFinancialDashboard_OLD() might be removed or adapted.
+            // For now, new renderFinancialDashboard will handle its display.
+            // The old display_ and dash_ spans will not be updated by this loop for private_lesson_revenue and total_private_coach_pay.
+            // renderFinancialDashboard will use the `data` object which has the correct values from API.
+            
+            renderFinancialDashboard(data); 
+            
+            // After financial data is fetched and dashboard rendered, load expenses for the same period
+            await loadExpensesForPeriod(periodToLoad); // Make sure this is awaited if it's async and setLoadingState(false) is at the very end
 
         } catch (error) {
             console.error('Error during financial data processing:', error);
@@ -794,16 +996,31 @@ document.addEventListener('DOMContentLoaded', () => {
     if (financialsForm) {
         // Pre-fill year and month with current date
         const now = new Date();
-        if (selectYear) selectYear.value = now.getFullYear();
-        if (selectMonth) selectMonth.value = now.getMonth() + 1; // JS months are 0-indexed
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1;
+        if (selectYear) selectYear.value = currentYear;
+        if (selectMonth) selectMonth.value = currentMonth;
+        
+        const defaultPeriod = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+        fetchFinancialData(defaultPeriod); // Initial load for current month
+        // loadExpensesForPeriod(defaultPeriod); // This is now called at the end of fetchFinancialData
 
-        fetchFinancialData(); // Initial load for current month (default)
-
-        // Add event listeners for live recalculation on data inputs
+        // Add event listeners for live recalculation on data inputs (if still needed for old display parts)
         inputFieldIds.forEach(id => {
             const inputElement = document.getElementById(id);
             if (inputElement) {
-                inputElement.addEventListener('input', updateFinancialDashboard);
+                // Keep listeners on input fields if they are still used for live calculation for other parts,
+                // or if renderFinancialDashboard itself relies on these being up-to-date.
+                // For now, assume they might still be needed for parts of the old display or if renderFinancialDashboard uses getFormValues().
+                // If renderFinancialDashboard exclusively uses its `data` argument, these listeners might only affect the old summary spans.
+                inputElement.addEventListener('input', () => {
+                    // If the old updateFinancialDashboard_OLD is kept for some reason:
+                    // updateFinancialDashboard_OLD(getFormValues()); // Pass current form values if it relies on them.
+                    // Or, if new dashboard should also react live to input changes (outside of API refresh):
+                    // const currentDataFromForm = getFormValues(); // This gets values from inputs
+                    // const apiPeriodData = ???; // Need a way to store/recall last API data if mixing live input with API data
+                    // renderFinancialDashboard({...apiPeriodData, ...currentDataFromForm}); // Merge if needed
+                });
             }
         });
 
@@ -827,7 +1044,66 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetchFinancialData(period);
             });
         }
+
+        const saveExpenseButton = document.getElementById('save_expense_button');
+        if (saveExpenseButton) {
+        // Event listener for the new "Add Expense" button
+        const addExpenseButton = document.getElementById('add_expense_button');
+        if (addExpenseButton) {
+            addExpenseButton.addEventListener('click', async () => {
+                const description = document.getElementById('new_expense_description').value;
+                const amount = document.getElementById('new_expense_amount').value;
+
+                if (!description.trim() || !amount.trim()) {
+                    alert('Expense Description and Amount are required.');
+                    return;
+                }
+                if (isNaN(parseFloat(amount))) {
+                    alert('Invalid amount format.');
+                    return;
+                }
+                if (!currentPeriod) {
+                    alert('Please load a period before adding expenses.');
+                    return;
+                }
+
+                setLoadingState(true);
+                try {
+                    const response = await fetch('/api/admin/expenses', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', credentials: 'include' },
+                        body: JSON.stringify({
+                            description: description,
+                            amount: parseFloat(amount),
+                            period: currentPeriod 
+                        })
+                    });
+                    if (!response.ok) {
+                        const errData = await response.json().catch(() => ({ message: 'Failed to add expense.' }));
+                        alert(`Error: ${errData.message || response.statusText}`);
+                    } else {
+                        alert('Expense added successfully.');
+                        document.getElementById('new_expense_description').value = '';
+                        document.getElementById('new_expense_amount').value = '';
+                        loadExpensesForPeriod(currentPeriod); // Refresh the expenses list
+                    }
+                } catch (networkError) {
+                    console.error('Network error adding expense:', networkError);
+                    alert('Network error: ' + networkError.message);
+                } finally {
+                    setLoadingState(false);
+                }
+            });
+        }
+        // Remove old save_expense_button listener if it was different
+        const oldSaveExpenseButton = document.getElementById('save_expense_button');
+        if (oldSaveExpenseButton) {
+            // To fully remove, you'd need to replace its clone or use AbortController if added with one.
+            // For simplicity, if its functionality is replaced by add_expense_button, ensure it's not active
+            // or remove the old button HTML element itself. The HTML replacement already handled this.
+        }
     }
+  }
 });
 </script>
 </body>

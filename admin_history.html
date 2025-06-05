@@ -269,6 +269,13 @@ ul.nav-links-mobile li a {
       <button class="category-filter-button" data-category="Camps">Camps & Passes</button>
       <button class="category-filter-button" data-category="Clinics">Clinics & Other</button>
     </div>
+    
+    <button id="enable-history-editing-btn" style="margin-bottom:10px;">Enable Editing</button>
+    <div style="text-align:right; margin-bottom: 5px;">
+      <button id="save-history-btn" disabled>Save All History Changes</button>
+    </div>
+    
+    <!-- The bulk update button for costs is kept separate for now, can be integrated later if needed -->
     <div style="text-align: right; margin-bottom: 5px;">
         <button class="bulk-update-costs-btn" data-table-id="past-lessons-table-container" disabled>Update All Changed Prices</button>
     </div>
@@ -283,11 +290,31 @@ ul.nav-links-mobile li a {
 
   <script>
   // This script block is intentionally left empty as the form-related JS was removed.
+  // New JS logic will be added in the next script tag or by replacing this one.
   </script>
 
   <script>
   let allFetchedPastLessons = []; 
   let activeCategoryFilter = 'All'; 
+  let editing = false; // Flag for editing state
+
+  // DOM Elements
+  let enableHistoryEditingBtn;
+  let saveHistoryBtn;
+  let historyTableContainer; // Will be past-lessons-table-container
+
+  // Helper to format time (assuming it's still needed)
+  function formatTime_12hr(timeStr) {
+    if (!timeStr || !timeStr.includes(':')) { return timeStr; }
+    const parts = timeStr.split(':');
+    let hours = parseInt(parts[0], 10);
+    const minutes = parseInt(parts[1], 10);
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; 
+    const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+    return hours + ':' + minutesStr + ' ' + ampm;
+  }
 
   function checkTableInputChanges(tableContainerId) {
     const container = document.getElementById(tableContainerId);
@@ -377,6 +404,8 @@ ul.nav-links-mobile li a {
             <th style="padding:8px; border:1px solid #ddd;">Email</th>
             <th style="padding:8px; border:1px solid #ddd;">Phone</th>
             <th style="padding:8px; border:1px solid #ddd;">Lesson Cost</th>
+            <th style="padding:8px; border:1px solid #ddd;">Referral Source</th>
+            <th style="padding:8px; border:1px solid #ddd;">Paid</th>
             <th style="padding:8px; border:1px solid #ddd;">Actions</th>
           </tr>
         </thead>
@@ -387,21 +416,26 @@ ul.nav-links-mobile li a {
       const dateStr = new Date(les.date).toLocaleDateString();
       const formattedTime = formatTime_12hr(les.time);
       let rowStyle = '';
-      // The specific styling for unpaid rows might be redundant now with the button,
-      // but we'll keep it for now as it might still be desired for overall row visibility.
-      if (!les.paid) { // This condition might need re-evaluation if 'Paid?' column is truly gone
-          rowStyle = 'background-color: #ffebee;'; 
-      }
+      // The specific styling for unpaid rows might be redundant now.
+      // if (!les.paid) { rowStyle = 'background-color: #ffebee;'; }
+
+      // Add referral_source to the displayed columns if it's part of `les` object
+      const referralSourceDisplay = les.referral_source || '—';
+
+      const originalDate = les.date ? les.date.substring(0,10) : ''; // Assuming les.date is in ISO format or similar
+
       html += `
         <tr data-id="${les.id}" ${rowStyle ? `style="${rowStyle}"` : ''}>
-          <td style="padding:8px; border:1px solid #ddd;">${les.program}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${les.coach}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td>
-          <td style="padding:8px; border:1px solid #ddd;">$<input type="number" class="lesson-cost-input" data-booking-id="${les.id}" value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" data-original-cost="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" placeholder="N/A" style="width: 70px;"></td>
+          <td class="history-cell" data-id="${les.id}" data-field="program" data-original-value="${les.program || ''}" style="padding:8px; border:1px solid #ddd;">${les.program}</td>
+          <td class="history-cell" data-id="${les.id}" data-field="coach" data-original-value="${les.coach || ''}" style="padding:8px; border:1px solid #ddd;">${les.coach}</td>
+          <td class="history-cell" data-id="${les.id}" data-field="date" data-original-value="${originalDate}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
+          <td class="history-cell" data-id="${les.id}" data-field="time" data-original-value="${les.time || ''}" style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
+          <td class="history-cell" data-id="${les.id}" data-field="student" data-original-value="${les.student || ''}" style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
+          <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td> {/* Email not typically editable here */}
+          <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td> {/* Phone not typically editable here */}
+          <td class="history-cell" data-id="${les.id}" data-field="lesson_cost" data-original-value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}</td>
+          <td class="history-cell" data-id="${les.id}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
+          <td class="history-cell" data-id="${les.id}" data-field="paid" data-original-value="${String(les.paid === true || String(les.paid).toLowerCase() === 'true')}" style="padding:8px; border:1px solid #ddd;">${(les.paid === true || String(les.paid).toLowerCase() === 'true') ? 'Yes' : 'No'}</td>
           <td style="padding:8px; border:1px solid #ddd;">
             <button onclick="deleteAdminLesson(${les.id})">Delete</button>
           </td>
@@ -412,29 +446,29 @@ ul.nav-links-mobile li a {
     container.innerHTML = html;
     console.log('HISTORY.HTML: Rendering actual table into:', containerId, 'HTML length:', html.length > 0 ? html.length : 'EMPTY!');
     
-    // Event listeners for .update-cost-btn are removed as the buttons themselves are removed.
-    const costInputsInTable = container.querySelectorAll('.lesson-cost-input');
-    costInputsInTable.forEach(input => {
-        input.addEventListener('input', function() {
-            checkTableInputChanges(containerId); // containerId is from renderPastLessonsTable's args
-        });
-    });
-    // Initial check for button state when table loads
-    checkTableInputChanges(containerId);
+    // Cost input specific logic is removed from here as cells are now directly editable.
+    // The general checkTableInputChanges for the bulk cost update button remains if that button is kept.
+    // If the bulk-update-costs-btn is still desired, its checkTableInputChanges will need to be adjusted or it should be removed.
+    // For now, assuming it might still be there for cost inputs if any remain.
+    // checkTableInputChanges(containerId); // This might be redundant if cost inputs are removed in favor of editable cells
   }
 
-  async function loadPastLessons() {
-    const res = await fetch('/api/admin/lessons', { credentials: 'include' });
-    if (!res.ok) {
-      const errorMsg = '<p style="color:red;">Could not load lessons data.</p>';
-      document.getElementById('past-lessons-table-container').innerHTML = errorMsg;
-      return;
-    }
-    const lessons = await res.json();
-    console.log('HISTORY.HTML: Fetched total lessons:', lessons.length, lessons.slice(0,2));
+  async function loadHistory() { // Renamed from loadPastLessons
+    if (!historyTableContainer) historyTableContainer = document.getElementById('past-lessons-table-container');
+    historyTableContainer.innerHTML = '<p>Loading history...</p>';
+    
+    try {
+      const res = await fetch('/api/admin/lessons', { credentials: 'include' }); // Assuming this endpoint provides all necessary data
+      if (!res.ok) {
+        const errorMsg = '<p style="color:red;">Could not load lesson history data.</p>';
+        historyTableContainer.innerHTML = errorMsg;
+        return;
+      }
+      const lessons = await res.json();
+      console.log('HISTORY.HTML: Fetched total lessons for history:', lessons.length);
 
-    const now = new Date();
-    const pastLessons = lessons.filter(les => {
+      const now = new Date();
+      const pastLessons = lessons.filter(les => {
         if (!les.date) return false; 
         const dateStr = les.date.substring(0, 10); 
         const dateParts = dateStr.split('-');
@@ -462,22 +496,30 @@ ul.nav-links-mobile li a {
             return false;
         }
     });
-    console.log('HISTORY.HTML: Filtered past lessons count:', pastLessons.length, pastLessons.slice(0,2));
-    allFetchedPastLessons = [...pastLessons]; 
-    console.log('HISTORY.HTML: Stored allFetchedPastLessons:', allFetchedPastLessons.length);
-    filterAndRenderHistory(''); 
+      console.log('HISTORY.HTML: Filtered past lessons count for history:', pastLessons.length);
+      allFetchedPastLessons = [...pastLessons]; 
+      filterAndRenderHistory(''); // Initial render with no search term
+    } catch (error) {
+        console.error('Error loading lesson history:', error);
+        historyTableContainer.innerHTML = '<p style="color:red;">Failed to load history due to a network error.</p>';
+    }
   }
 
   async function deleteAdminLesson(id) {
     if (!confirm('Are you sure you want to delete this lesson?')) return;
-    const res = await fetch(`/api/admin/lessons/${id}`, {
-      method: 'DELETE',
-      credentials: 'include'
-    });
-    if (res.ok) {
-      loadPastLessons(); 
-    } else {
-      alert('Delete failed: ' + await res.text());
+    try {
+        const res = await fetch(`/api/admin/lessons/${id}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        if (res.ok) {
+            loadHistory(); // Refresh after delete
+        } else {
+            alert('Delete failed: ' + await res.text());
+        }
+    } catch (err) {
+        console.error('Error deleting lesson:', err);
+        alert('Delete failed due to a network error.');
     }
   }
   
@@ -631,10 +673,137 @@ ul.nav-links-mobile li a {
   }
 
   window.addEventListener('DOMContentLoaded', () => {
-    loadPastLessons(); 
+    enableHistoryEditingBtn = document.getElementById('enable-history-editing-btn');
+    saveHistoryBtn = document.getElementById('save-history-btn');
+    historyTableContainer = document.getElementById('past-lessons-table-container'); // Ensure this ID matches your table container
+
+    loadHistory(); // Initial load of lesson history
     
-    const bulkUpdateButton = document.querySelector('.bulk-update-costs-btn[data-table-id="past-lessons-table-container"]');
-    if (bulkUpdateButton) {
+    if (enableHistoryEditingBtn) {
+        enableHistoryEditingBtn.addEventListener('click', () => {
+            editing = !editing;
+            enableHistoryEditingBtn.textContent = editing ? 'Disable Editing' : 'Enable Editing';
+            if (saveHistoryBtn) saveHistoryBtn.disabled = !editing;
+
+            const cells = document.querySelectorAll('.history-cell');
+            cells.forEach(cell => {
+                cell.contentEditable = editing;
+                if (!editing) {
+                    cell.blur(); // Remove focus if editing is disabled
+                }
+            });
+        });
+    }
+
+    if (saveHistoryBtn) {
+        saveHistoryBtn.addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to save all changes to the history?')) return;
+
+            if (enableHistoryEditingBtn) enableHistoryEditingBtn.disabled = true;
+            saveHistoryBtn.disabled = true;
+
+            const updates = [];
+            document.querySelectorAll('.history-cell').forEach(td => {
+                if (td.contentEditable === 'true') { // Ensure we only check editable cells
+                    const bookingId = td.dataset.id;
+                    const fieldName = td.dataset.field;
+                    const originalValue = td.dataset.originalValue;
+                    let newValue = td.innerText.trim();
+
+                    // Special handling for date display vs actual value if needed
+                    // Special handling for fields before comparison and for payload
+                    if (fieldName === 'date' && td.innerText.includes('/')) {
+                        // Attempt to convert display MM/DD/YYYY to YYYY-MM-DD for consistency if user edits this way
+                        // This is a basic conversion and might need a more robust date parsing library for other formats
+                        const parts = newValue.split('/');
+                        if (parts.length === 3) {
+                            newValue = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+                        }
+                        // It's generally better to use originalValue for dates if display format is ambiguous
+                        // or use a proper date picker input when editing.
+                        // For this implementation, we'll assume originalValue is the reliable YYYY-MM-DD.
+                        // If user manually types a date, it should be YYYY-MM-DD or server validation will catch it.
+                    } else if (fieldName === 'lesson_cost') {
+                        newValue = newValue.replace('$', '').trim();
+                    } else if (fieldName === 'paid') {
+                        // Normalize to "true" or "false" string for consistent comparison and sending
+                        const lowerNewValue = newValue.toLowerCase();
+                        if (lowerNewValue === 'yes' || lowerNewValue === 'true') {
+                            newValue = 'true';
+                        } else if (lowerNewValue === 'no' || lowerNewValue === 'false') {
+                            newValue = 'false';
+                        }
+                        // originalValue for 'paid' is already "true" or "false" string
+                    }
+
+                    if (newValue !== originalValue) {
+                        updates.push({
+                            bookingId: bookingId,
+                            fieldName: fieldName,
+                            newValue: newValue,
+                            originalValueForDebug: originalValue 
+                        });
+                    }
+                }
+            });
+
+            if (updates.length === 0) {
+                alert('No actual changes detected to save.');
+                if (enableHistoryEditingBtn) enableHistoryEditingBtn.disabled = false;
+                if (editing) { // If editing was active, save button should reflect that (it's disabled if no changes)
+                   saveHistoryBtn.disabled = false; 
+                } else {
+                   saveHistoryBtn.disabled = true;
+                }
+                return;
+            }
+
+            let successes = 0;
+            let failures = 0;
+            const failureDetails = [];
+
+            for (const upd of updates) {
+                try {
+                    const res = await fetch(`/api/admin/history/${upd.bookingId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
+                        body: JSON.stringify({ field: upd.fieldName, value: upd.newValue })
+                    });
+                    if (res.ok) {
+                        successes++;
+                    } else {
+                        failures++;
+                        const errData = await res.json().catch(() => ({ message: `Update failed for ID ${upd.bookingId}, Field ${upd.fieldName} with status ${res.status}` }));
+                        failureDetails.push(errData.message);
+                    }
+                } catch (networkError) {
+                    failures++;
+                    failureDetails.push(`Network error for ID ${upd.bookingId}, Field ${upd.fieldName}: ${networkError.message}`);
+                }
+            }
+
+            let summaryMessage = `${successes} updates successful.`;
+            if (failures > 0) {
+                summaryMessage += `\n${failures} updates failed.\nDetails:\n${failureDetails.join('\n')}`;
+            }
+            alert(summaryMessage);
+
+            // Reset editing state
+            editing = false;
+            if (enableHistoryEditingBtn) {
+                enableHistoryEditingBtn.disabled = false;
+                enableHistoryEditingBtn.textContent = 'Enable Editing';
+            }
+            if (saveHistoryBtn) saveHistoryBtn.disabled = true;
+            document.querySelectorAll('.history-cell').forEach(cell => cell.contentEditable = false);
+            
+            loadHistory(); // Refresh table
+        });
+    }
+    
+    // Keep existing bulk cost update button logic if it's still relevant
+    const bulkCostUpdateButton = document.querySelector('.bulk-update-costs-btn[data-table-id="past-lessons-table-container"]');
+    if (bulkCostUpdateButton) {
         bulkUpdateButton.addEventListener('click', function() {
             const tableId = this.getAttribute('data-table-id');
             if (tableId) { // Should always be past-lessons-table-container here
@@ -662,6 +831,8 @@ ul.nav-links-mobile li a {
             filterAndRenderHistory(currentSearchTerm); 
         });
     });
+    // Note: The checkSession() and logout() functions are in the subsequent script tag,
+    // so their functionality should remain as is.
   });
 </script>
   <script>

@@ -359,55 +359,49 @@ app.get('/api/financials', async (req, res) => {
     let totalAcademyCommission  = 0;
 
     for (const booking of privateRows) {
-      const lessonCost = parseFloat(booking.lesson_cost) || 0;
+      const lessonCost = parseFloat(booking.lesson_cost);
+      if (isNaN(lessonCost)) {
+        console.warn(`Invalid lesson_cost found for booking ID (if available): ${booking.id || 'N/A'}. Skipping payout calculation for this booking.`);
+        continue; // Skip this booking if lesson_cost is not a valid number
+      }
+      totalPrivateRevenue += lessonCost;
+
+      const coachFullName = booking.coach || '';
+      const simpleCoach = coachFullName.split(' ')[0]; // Gets the first name
+      const ref = (booking.referral_source || '').trim();
+
       let coachGets = 0;
       let academyGets = 0;
-      const payoutType = booking.payout_type; // Assumes payout_type column exists and is populated
-      const coachFullName = booking.coach; 
 
-      totalPrivateRevenue += lessonCost; 
-
-      switch (payoutType) {
-        case 'coach_private':
-          academyGets = 10;
-          coachGets   = lessonCost - 10;
-          break;
-        case 'zach_private':
-          { // Scope simpleCoachName
-            let simpleCoachName = '';
-            if (coachFullName) {
-                simpleCoachName = coachFullName.split(' ')[0];
-            }
-            if (simpleCoachName.toLowerCase() === 'zach') {
-              academyGets = lessonCost * 0.10;
-              coachGets   = lessonCost * 0.90; // Or lessonCost - academyGets
-            } else {
-              // Fallback if coach is not Zach but type is zach_private
-              console.warn(`WARN: payout_type 'zach_private' assigned to non-Zach coach: ${coachFullName}. Defaulting to coach gets full cost.`);
-              coachGets = lessonCost;
-              academyGets = 0;
-            }
-          }
-          break;
-        case 'ricardo_referral':
-          academyGets = 20;
-          coachGets   = lessonCost - 20;
-          break;
-        default:
-          // Fallback for null, empty, or unrecognized payout_type
-          // This includes cases where payout_type might be an old referral_source value if migration wasn't perfect
-          // or if new lessons don't have a payout_type set yet.
-          // The issue suggests "coach gets 100%, academy 0%" for fallback.
-          // Consider logging this case.
-          console.warn(`WARN: Unhandled or missing payout_type: '${payoutType}' for booking by coach ${coachFullName}. Defaulting to coach gets full lesson cost.`);
-          coachGets   = lessonCost;
-          academyGets = 0;
-          break;
+      if (simpleCoach === 'Ricardo') {
+        // Case 1: Coach is Ricardo
+        academyGets = lessonCost;
+        coachGets = 0;
+      } else if (ref === 'Ricardo') {
+        // Case 2: Referred by Ricardo (and coach is not Ricardo)
+        academyGets = 20;
+        coachGets = Math.max(0, lessonCost - 20);
+      } else if (ref === 'Jacob' && simpleCoach === 'Jacob') {
+        // Case 3: Jacob's own student (referred by Jacob, coached by Jacob)
+        academyGets = 10;
+        coachGets = Math.max(0, lessonCost - 10);
+      } else if ((simpleCoach === 'Paula' || simpleCoach === 'Zach') && ref === simpleCoach) {
+        // Case 4: Paula's own (referred by Paula, coached by Paula) OR Zach's own (referred by Zach, coached by Zach)
+        academyGets = lessonCost * 0.10;
+        coachGets = lessonCost - academyGets;
+      } else {
+        // Fallback case: Default behavior if none of the above conditions are met
+        // This includes RicardoOwn if simpleCoach is Ricardo (handled by case 1)
+        // and other non-specified referral sources or coach combinations.
+        // As per original logic for default/unhandled: coach gets full amount.
+        console.warn(`WARN: Payout fallback case for booking by ${coachFullName}, referral: '${ref}', lesson cost: ${lessonCost}. Coach gets full lesson cost.`);
+        coachGets = lessonCost;
+        academyGets = 0;
       }
-
-      // Ensure values are not negative (e.g. if lessonCost is less than the fixed commission)
-      if (coachGets < 0) coachGets = 0;
-      if (academyGets < 0) academyGets = 0; // Though current logic makes this unlikely for academyGets
+      
+      // Ensure no negative payouts, though Math.max should handle some cases.
+      coachGets = Math.max(0, coachGets);
+      academyGets = Math.max(0, academyGets);
 
       totalCoachPayroll     += coachGets;
       totalAcademyCommission += academyGets;
@@ -570,32 +564,32 @@ app.put('/api/admin/update-booking/:id', async (req, res) => {
 
   // Basic check: At least one field must be provided for update
   if (newPayoutType === undefined && newLessonCost === undefined && newPaidStatus === undefined && newReferralSource === undefined) {
-    return res.status(400).json({ message: 'Bad request: Must provide payout_type, lesson_cost, paid, or referral_source.' });
+    return res.status(400).json({ message: 'Bad request: Must provide at least one field: payout_type, lesson_cost, paid, or referral_source.' });
   }
 
   const updateFields = {};
   const values = [];
-
-  if (newPayoutType !== undefined) {
-    const allowedPayoutTypes = ['coach_private', 'zach_private', 'ricardo_referral'];
-    if (newPayoutType === null || newPayoutType === '' || allowedPayoutTypes.includes(newPayoutType)) {
-      // Allow null or empty string to clear payout_type, or one of the allowed values.
-      // Store empty string as NULL in the database for consistency.
-      updateFields.payout_type = (newPayoutType === '' || newPayoutType === null) ? null : newPayoutType;
-      values.push(updateFields.payout_type);
-    } else {
-      return res.status(400).json({ message: 'Invalid payout_type value. Must be one of ' + allowedPayoutTypes.join(', ') + ' or null/empty.' });
-    }
-  }
   
+  // Prioritize referral_source if both referral_source and payout_type are sent
   if (newReferralSource !== undefined) {
-    // Allow null or empty string to clear referral, or a non-empty string to set it.
     if (typeof newReferralSource !== 'string' && newReferralSource !== null) { 
         return res.status(400).json({ message: 'Bad request: referral_source must be a string or null.' });
     }
-    // If an empty string is passed, store it as NULL, consistent with how other logic might treat "no referral"
-    updateFields.referral_source = (newReferralSource === '') ? null : newReferralSource;
+    // If an empty string is passed, store it as NULL.
+    updateFields.referral_source = (newReferralSource === '' || newReferralSource === null) ? null : newReferralSource;
     values.push(updateFields.referral_source);
+    if (newPayoutType !== undefined) {
+        console.warn(`WARN: Both referral_source ('${newReferralSource}') and payout_type ('${newPayoutType}') were provided for booking ID ${bookingId}. Prioritizing referral_source.`);
+        // payout_type will be ignored if referral_source is set.
+    }
+  } else if (newPayoutType !== undefined) { // Only consider payout_type if referral_source is not provided
+    const allowedPayoutTypes = ['coach_private', 'zach_private', 'ricardo_referral'];
+    if (newPayoutType === null || newPayoutType === '' || allowedPayoutTypes.includes(newPayoutType)) {
+      updateFields.payout_type = (newPayoutType === '' || newPayoutType === null) ? null : newPayoutType;
+      values.push(updateFields.payout_type);
+    } else {
+      return res.status(400).json({ message: 'Invalid payout_type value. Must be one of ' + allowedPayoutTypes.join(', ') + ' or null/empty if referral_source is not provided.' });
+    }
   }
 
   if (newLessonCost !== undefined) {
@@ -1066,6 +1060,160 @@ app.post('/api/book-pay-later', async (req, res) => {
     res.status(500).json({ message: 'Booking failed due to a server error.' });
   }
 });
+
+// ---- Admin Expense Tracking Routes ----
+app.post('/api/admin/expenses', async (req, res) => {
+  if (!req.session?.user?.isAdmin) {
+    return res.status(401).json({ message: 'Unauthorized: Admin access required.' });
+  }
+
+  const { description, amount, period } = req.body; // Expect period (YYYY-MM)
+
+  if (!period || !description || description.trim() === '' || amount === undefined || amount === null) {
+    return res.status(400).json({ message: 'Bad Request: description (non-empty), amount, and period (YYYY-MM) are required.' });
+  }
+
+  if (!/^\d{4}-\d{2}$/.test(period)) {
+    return res.status(400).json({ message: 'Invalid period format. Use YYYY-MM.' });
+  }
+  const periodDate = `${period}-01`; // Convert to YYYY-MM-01 for DATE storage
+
+  const parsedAmount = parseFloat(amount);
+  if (isNaN(parsedAmount) || parsedAmount <= 0) {
+    return res.status(400).json({ message: 'Bad Request: amount must be a valid positive number.' });
+  }
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO expenses (description, amount, period)
+       VALUES ($1, $2, $3)
+       RETURNING id, description, amount, period`, // period will be the YYYY-MM-01 date
+      [description.trim(), parsedAmount, periodDate]
+    );
+    res.status(201).json({ message: 'Expense added successfully.', expense: result.rows[0] });
+  } catch (err) {
+    console.error('Error adding expense:', err);
+    res.status(500).json({ message: 'Failed to add expense due to a server error.' });
+  }
+});
+
+app.get('/api/admin/expenses', async (req, res) => {
+  if (!req.session?.user?.isAdmin) {
+    return res.status(401).json({ message: 'Unauthorized: Admin access required.' });
+  }
+
+  const { period } = req.query; // e.g., "YYYY-MM"
+  // Query now selects 'period' (which is DATE type) instead of 'expense_date' and 'category'
+  let query = 'SELECT id, description, amount, period FROM expenses';
+  const queryParams = [];
+
+  if (period) {
+    if (!/^\d{4}-\d{2}$/.test(period)) {
+      return res.status(400).json({ message: 'Invalid period format. Use YYYY-MM.' });
+    }
+    // Compare the 'period' DATE column with the provided 'YYYY-MM' string
+    query += ` WHERE TO_CHAR(period, 'YYYY-MM') = $1`; 
+    queryParams.push(period);
+  }
+
+  query += ' ORDER BY period DESC, id DESC'; // Order by period, then by id for consistent ordering within the same period
+
+  try {
+    const { rows } = await pool.query(query, queryParams);
+    res.json(rows);
+  } catch (err) {
+    console.error('Error fetching expenses:', err);
+    res.status(500).json({ message: 'Failed to fetch expenses due to a server error.' });
+  }
+});
+
+app.delete('/api/admin/expenses/:id', async (req, res) => {
+  if (!req.session?.user?.isAdmin) {
+    return res.status(401).json({ message: 'Unauthorized: Admin access required.' });
+  }
+
+  const { id } = req.params;
+  const expenseId = parseInt(id, 10);
+
+  if (isNaN(expenseId) || expenseId <= 0) {
+    return res.status(400).json({ message: 'Invalid expense ID.' });
+  }
+
+  try {
+    const result = await pool.query('DELETE FROM expenses WHERE id = $1', [expenseId]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: 'Expense not found.' });
+    }
+    res.status(204).send(); // Successfully deleted, no content to return
+  } catch (err) {
+    console.error(`Error deleting expense with ID ${expenseId}:`, err);
+    res.status(500).json({ message: 'Failed to delete expense due to a server error.' });
+  }
+});
+
+// ---- Admin History Update Route ----
+app.put('/api/admin/history/:id', async (req, res) => {
+  if (!req.session?.user?.isAdmin) {
+    return res.status(401).json({ message: 'Unauthorized: Admin only.' });
+  }
+
+  const bookingId = parseInt(req.params.id, 10);
+  const { field, value } = req.body;
+
+  if (isNaN(bookingId) || bookingId <= 0) {
+    return res.status(400).json({ message: 'Invalid booking ID.' });
+  }
+
+  if (typeof field !== 'string' || field.trim() === '' || typeof value === 'undefined') { // Allow empty string for value
+    return res.status(400).json({ message: 'Field name and value are required.' });
+  }
+
+  const allowedFields = ['program', 'coach', 'date', 'time', 'student', 'lesson_cost', 'referral_source', 'paid', 'payout_type'];
+  if (!allowedFields.includes(field)) {
+    return res.status(400).json({ message: `Field '${field}' is not allowed for update.` });
+  }
+  
+  let processedValue = value;
+  if (field === 'lesson_cost') {
+    processedValue = parseFloat(value);
+    if (isNaN(processedValue)) {
+      return res.status(400).json({ message: 'Invalid lesson_cost format. Must be a number.' });
+    }
+  } else if (field === 'paid') {
+    if (typeof value !== 'boolean' && value !== 'true' && value !== 'false') {
+        return res.status(400).json({ message: 'Invalid paid status. Must be true or false.' });
+    }
+    processedValue = (value === 'true' || value === true);
+  } else if (field === 'date') {
+    // Basic validation for YYYY-MM-DD. More robust validation might be needed.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return res.status(400).json({ message: 'Invalid date format. Use YYYY-MM-DD.'});
+    }
+    // Further check if it's a valid date
+    const dateObj = new Date(value);
+    if (isNaN(dateObj.getTime())) {
+        return res.status(400).json({ message: 'Invalid date value.'});
+    }
+    processedValue = value; // Use the validated string
+  }
+
+
+  // Sanitize field name for use in SQL query - already did by whitelisting.
+  // The column name is directly from allowedFields, which is safe.
+  const sql = `UPDATE bookings SET "${field}" = $1 WHERE id = $2 RETURNING *`;
+
+  try {
+    const result = await pool.query(sql, [processedValue, bookingId]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: 'Booking not found.' });
+    }
+    res.status(200).json({ message: `Booking ${field} updated successfully.`, booking: result.rows[0] });
+  } catch (dbError) {
+    console.error(`Error updating booking ID ${bookingId}, field ${field}:`, dbError);
+    res.status(500).json({ message: `Database error updating booking: ${dbError.message}` });
+  }
+});
+
 
 // ---- Miscellaneous Routes ----
 app.post('/api/signup', async (req, res) => { 

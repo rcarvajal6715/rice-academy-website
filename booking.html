@@ -277,7 +277,7 @@ ul.nav-links-mobile li a {
           <label for="program">Program</label>
       <select id="program" name="program" required>
           <option value="" disabled selected>Select a program</option>
-          <option value="Tennis Private">Tennis Private — $80</option>
+          <option value="Private Lesson">Private Lesson — $80</option>
          <option value="Summer Camp - Day Pass">Summer Camp - Day Pass — $30</option>
          <option value="Summer Camp - Week Pass">Summer Camp - Week Pass — $130</option>
          <option value="Kids Camp - Day Pass">Kids Camp - Day Pass — $40</option>
@@ -387,7 +387,7 @@ const availability = {
     const program    = programEl.value;
     const isCampDay  = program === 'Summer Camp - Day Pass' || program === 'Kids Camp - Day Pass';
     const isCampWeek = program === 'Summer Camp - Week Pass' || program === 'Kids Camp - Week Pass';
-    const showCoach  = program === 'Tennis Private';
+    const showCoach  = program === 'Private Lesson';
 
     coachEl.style.display = showCoach ? 'block' : 'none';
     coachLbl.style.display = showCoach ? 'block' : 'none';

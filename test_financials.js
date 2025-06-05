@@ -107,7 +107,7 @@ app.get('/api/financials', async (req, res) => {
 
     // 5) Fetch all private-lesson bookings for this period
     // Mocked: pool.query for bookings
-    const privateRows = (await pool.query(`SELECT coach, lesson_cost, referral_source FROM bookings WHERE program = 'Tennis Private' AND date >= $1 AND date <= $2`)).rows;
+    const privateRows = (await pool.query(`SELECT coach, lesson_cost, referral_source FROM bookings WHERE program = 'Private Lesson' AND date >= $1 AND date <= $2`)).rows;
 
 
     // 6) Fetch payout rates from coach_rates.rate_numeric

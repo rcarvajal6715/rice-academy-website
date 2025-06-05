@@ -148,7 +148,7 @@ app.post('/api/admin/update-enrollments-summary', async (req, res) => {
                 ELSE 0
             END) AS num_adults_enrolled,
             SUM(CASE
-                WHEN LOWER(program) LIKE ANY (ARRAY['%private%', '%private lesson%', '%tennis private%']) THEN 1
+                WHEN LOWER(program) LIKE ANY (ARRAY['%private%', '%private lesson%']) THEN 1
                 ELSE 0
             END) AS total_private_hours, -- Count of private lessons
             SUM(CASE
@@ -323,7 +323,7 @@ app.get('/api/financials', async (req, res) => {
         `
         SELECT coach, lesson_cost, referral_source
         FROM bookings
-        WHERE program = 'Tennis Private'
+        WHERE program = 'Private Lesson'
           AND date >= $1 AND date <= $2
         `,
         [sqlStartDate, sqlEndDate]
@@ -708,7 +708,10 @@ app.post('/api/admin/lessons', async (req, res) => {
   if (!req.session?.user?.isAdmin) {
     return res.status(403).json({ message: 'Forbidden' });
   }
-  const { program, coachName, date, time, student } = req.body;
+  let { program, coachName, date, time, student } = req.body; // Use let for program
+  if (program === 'Tennis Private') {
+    program = 'Private Lesson';
+  }
   console.log('🎾 Adding lesson via admin for coach:', coachName);
   try {
     await pool.query(
@@ -812,7 +815,10 @@ app.post('/api/coach/lessons', async (req, res) => {
   if (!req.session.coachId || !req.session.coachName) {
     return res.status(401).send('Unauthorized: Coach not logged in.');
   }
-  const { program, date, time, student, lesson_cost } = req.body; 
+  let { program, date, time, student, lesson_cost } = req.body; // Use let for program
+  if (program === 'Tennis Private') {
+    program = 'Private Lesson';
+  }
   try {
     await pool.query(
       `INSERT INTO bookings
@@ -867,7 +873,7 @@ app.get('/api/public-availability', async (req, res) => {
 
 // ---- Payment and Booking Creation ----
 const PRODUCTS = { 
-  'Tennis Private':        { product: 'prod_SLdhVg9OLZ9ZXg', unit_amount: 8000 },
+  'Private Lesson':        { product: 'prod_SLdhVg9OLZ9ZXg', unit_amount: 8000 },
   'Summer Camp - Day Pass':  { product: 'prod_SLdiXatBCgPcdq', unit_amount: 3000 },
   'Summer Camp - Week Pass': { product: 'prod_SLdiTQnw5R0ZRz', unit_amount: 13000 },
   'Kids Camp - Day Pass':    { product: 'prod_SLdiVIknjyel8g', unit_amount: 4000 },

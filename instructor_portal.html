@@ -432,7 +432,7 @@ ul.nav-links-mobile li a {
           <label for="coach-program">Program</label>
           <select id="coach-program" required>
             <option value="" disabled selected>Choose a program</option>
-            <option value="Tennis Private">Tennis Private</option>
+            <option value="Private Lesson">Private Lesson</option>
             <option value="Summer Camp - Day Pass">Summer Camp - Day Pass</option>
             <option value="Summer Camp - Week Pass">Summer Camp - Week Pass</option>
             <option value="Kids Camp - Day Pass">Kids Camp - Day Pass</option>
@@ -617,7 +617,7 @@ function populateTimeDropdowns() {
     const coachProg  = document.getElementById('coach-program');
     const coachStudC = document.getElementById('coach-student-container');
     coachProg.addEventListener('change', () => {
-      coachStudC.style.display = coachProg.value === 'Tennis Private' ? 'block' : 'none';
+      coachStudC.style.display = coachProg.value === 'Private Lesson' ? 'block' : 'none';
     });
     document.getElementById('coach-lesson-form').addEventListener('submit', async e => {
       e.preventDefault();

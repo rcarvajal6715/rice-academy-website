@@ -1037,64 +1037,64 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        const saveExpenseButton = document.getElementById('save_expense_button');
-        if (saveExpenseButton) {
-        // Event listener for the new "Add Expense" button
+        // Find the “Add Expense” button directly, without checking for #save_expense_button
         const addExpenseButton = document.getElementById('add_expense_button');
         if (addExpenseButton) {
-            addExpenseButton.addEventListener('click', async () => {
-                const description = document.getElementById('new_expense_description').value;
-                const amount = document.getElementById('new_expense_amount').value;
+          addExpenseButton.addEventListener('click', async () => {
+            const description = document.getElementById('new_expense_description').value;
+            const amount = document.getElementById('new_expense_amount').value;
 
-                if (!description.trim() || !amount.trim()) {
-                    alert('Expense Description and Amount are required.');
-                    return;
-                }
-                if (isNaN(parseFloat(amount))) {
-                    alert('Invalid amount format.');
-                    return;
-                }
-                if (!currentPeriod) {
-                    alert('Please load a period before adding expenses.');
-                    return;
-                }
+            if (!description.trim() || !amount.trim()) {
+              alert('Expense Description and Amount are required.');
+              return;
+            }
+            if (isNaN(parseFloat(amount))) {
+              alert('Invalid amount format.');
+              return;
+            }
+            if (!currentPeriod) {
+              alert('Please load a period before adding expenses.');
+              return;
+            }
 
-                setLoadingState(true);
-                try {
-                    const response = await fetch('/api/admin/expenses', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', credentials: 'include' },
-                        body: JSON.stringify({
-                            description: description,
-                            amount: parseFloat(amount),
-                            period: currentPeriod 
-                        })
-                    });
-                    if (!response.ok) {
-                        const errData = await response.json().catch(() => ({ message: 'Failed to add expense.' }));
-                        alert(`Error: ${errData.message || response.statusText}`);
-                    } else {
-                        alert('Expense added successfully.');
-                        document.getElementById('new_expense_description').value = '';
-                        document.getElementById('new_expense_amount').value = '';
-                        loadExpensesForPeriod(currentPeriod); // Refresh the expenses list
-                    }
-                } catch (networkError) {
-                    console.error('Network error adding expense:', networkError);
-                    alert('Network error: ' + networkError.message);
-                } finally {
-                    setLoadingState(false);
-                }
-            });
+            setLoadingState(true);
+            try {
+              const response = await fetch('/api/admin/expenses', {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  credentials: 'include' 
+                },
+                body: JSON.stringify({
+                  description: description,
+                  amount: parseFloat(amount),
+                  period: currentPeriod
+                })
+              });
+              if (!response.ok) {
+                const errData = await response.json().catch(() => ({ message: 'Failed to add expense.' }));
+                alert(`Error: ${errData.message || response.statusText}`);
+              } else {
+                alert('Expense added successfully.');
+                document.getElementById('new_expense_description').value = '';
+                document.getElementById('new_expense_amount').value = '';
+                loadExpensesForPeriod(currentPeriod); // Refresh the table
+              }
+            } catch (networkError) {
+              console.error('Network error adding expense:', networkError);
+              alert('Network error: ' + networkError.message);
+            } finally {
+              setLoadingState(false);
+            }
+          });
         }
         // Remove old save_expense_button listener if it was different
-        const oldSaveExpenseButton = document.getElementById('save_expense_button');
-        if (oldSaveExpenseButton) {
+        // const oldSaveExpenseButton = document.getElementById('save_expense_button'); // This line is commented out as save_expense_button is no longer used here.
+        // if (oldSaveExpenseButton) { // This block is also commented out.
             // To fully remove, you'd need to replace its clone or use AbortController if added with one.
             // For simplicity, if its functionality is replaced by add_expense_button, ensure it's not active
             // or remove the old button HTML element itself. The HTML replacement already handled this.
-        }
-    }
+        // }
   }
 });
 </script>

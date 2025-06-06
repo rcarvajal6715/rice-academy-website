@@ -29,6 +29,29 @@ pool.on('error', (err, client) => {
   // process.exit(-1); // Good for production, commented out for debugging
 });
 
+// Ensure 'expenses' table exists
+(async () => {
+  const createExpensesTableQuery = `
+    CREATE TABLE IF NOT EXISTS expenses (
+        id SERIAL PRIMARY KEY,
+        description TEXT NOT NULL,
+        amount NUMERIC(10, 2) NOT NULL,
+        period DATE NOT NULL, -- To store the first day of the month (YYYY-MM-01) for the expense period
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+  try {
+    const client = await pool.connect();
+    await client.query(createExpensesTableQuery);
+    console.log('Table "expenses" is ready (created if it did not exist).');
+    client.release();
+  } catch (err) {
+    console.error('Error creating "expenses" table:', err.stack);
+    // Decide if the application should exit or continue if table creation fails
+    // For now, just log the error. In production, you might want to process.exit(1)
+  }
+})();
+
 // Session Store Initialization (using connect-pg-simple)
 const sessionStore = new pgSession({
   pool: pool, // Pass the pool instance
@@ -375,8 +398,8 @@ app.get('/api/financials', async (req, res) => {
 
       // Rule 1: Ricardo teaches
       if (simpleCoachName === 'Ricardo') {
-        academyGetsThisLesson = lessonCost;
-        coachGetsThisLesson = 0;
+        academyGetsThisLesson = 0; // Ricardo keeps 100%
+        coachGetsThisLesson = lessonCost;
       } else {
         // Other coach teaches
         // Rule 4: Ricardo refers (and coach is not Ricardo)
@@ -1251,10 +1274,11 @@ app.put('/api/admin/history/:id', async (req, res) => {
   }
   
   let processedValue = value;
+  // Apply specific validation and processing based on the 'field'
   if (field === 'lesson_cost') {
     processedValue = parseFloat(value);
     if (isNaN(processedValue)) {
-      return res.status(400).json({ message: 'Invalid lesson_cost format. Must be a number.' });
+        return res.status(400).json({ message: 'Invalid lesson_cost format. Must be a number.' });
     }
   } else if (field === 'paid') {
     if (typeof value !== 'boolean' && value !== 'true' && value !== 'false') {
@@ -1262,28 +1286,45 @@ app.put('/api/admin/history/:id', async (req, res) => {
     }
     processedValue = (value === 'true' || value === true);
   } else if (field === 'date') {
-    // Basic validation for YYYY-MM-DD. More robust validation might be needed.
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
         return res.status(400).json({ message: 'Invalid date format. Use YYYY-MM-DD.'});
     }
-    // Further check if it's a valid date
     const dateObj = new Date(value);
     if (isNaN(dateObj.getTime())) {
         return res.status(400).json({ message: 'Invalid date value.'});
     }
-    processedValue = value; // Use the validated string
+    // processedValue = value; // Already assigned, string format is fine.
   } else if (field === 'time') {
     if (value === null || String(value).trim() === '' || String(value).toLowerCase() === 'null') {
         processedValue = null;
     } else if (!/^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/.test(String(value).trim())) {
-        // Log the invalid time value for easier debugging
         console.error(`Invalid time format received for booking ID ${bookingId}, field '${field}': '${value}'`);
         return res.status(400).json({ message: 'Invalid time format. Please use HH:MM or HH:MM:SS.' });
     } else {
-        processedValue = String(value).trim(); // Use the validated and trimmed string
+        processedValue = String(value).trim();
     }
+  } else if (field === 'referral_source') {
+    // Assuming allowedReferralSources is defined as in the previous validation step for this field
+    // The actual check against allowedReferralSources is done before this block.
+    // Here, we just process "" to null.
+    if (value === '' || value === null) {
+        processedValue = null;
+    } else {
+        processedValue = String(value).trim(); // Trim if not null/empty
+    }
+  } else if (field === 'payout_type') {
+    // Assuming payout_type can also be set to null if an empty string is provided.
+    // If payout_type has a specific list of allowed values, further validation similar to referral_source would be needed here.
+    if (value === '' || value === null) {
+        processedValue = null;
+    } else {
+        processedValue = String(value).trim(); // Trim if not null/empty
+    }
+  } else if (typeof value === 'string' && (field === 'program' || field === 'coach' || field === 'student')) {
+    // General string trim for other text fields
+    processedValue = value.trim();
   }
-
+  // No specific validation for other fields in allowedFields means they are accepted as is (after potential general trim if string)
 
   // Sanitize field name for use in SQL query - already did by whitelisting.
   // The column name is directly from allowedFields, which is safe.

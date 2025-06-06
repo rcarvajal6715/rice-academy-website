@@ -820,39 +820,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const netProfit = grossProfit - totalOverhead;
         const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 
-    // Helper to update text content and format
-    function updateElement(id, value, isCurrency = true, isPercentage = false) {
-        const element = document.getElementById(id);
-        if (element) {
-            let formattedValue;
-            if (isNaN(parseFloat(value))) {
-                if (isCurrency) {
-                    formattedValue = '$0.00';
-                } else if (isPercentage) {
-                    formattedValue = '0.00%';
-                } else {
-                    formattedValue = '0';
-                }
-            } else {
-                const numValue = parseFloat(value);
-                if (isCurrency) {
-                    formattedValue = '$' + numValue.toFixed(2);
-                } else if (isPercentage) {
-                    formattedValue = numValue.toFixed(2) + '%';
-                } else {
-                    // If not currency and not percentage, format to 2 decimal places if it's a number, otherwise as is.
-                    // However, the original prompt implies direct value or specific formatting for non-currency/non-percentage.
-                    // Given the existing function's behavior, it defaults to 2 decimal places for numbers.
-                    // Let's stick to a simple toFixed(2) for numbers if no specific format, or the direct value if not a number that was caught by isNaN.
-                    // The requirement was "Format the value. If isNaN(value), display it as '0' or '$0.00' or '0.00%'."
-                    // The case for isNaN is handled. For other cases:
-                    formattedValue = numValue.toFixed(2); // Default formatting for numbers if not currency/percentage
-                }
-            }
-            element.textContent = formattedValue;
-        }
-    }
-
             // Update Financial Summary Spans (private lesson ones will use the new variables)
         updateElement('display_kids_group_revenue', kidsGroupRevenue);
         updateElement('display_adult_group_revenue', adultGroupRevenue);

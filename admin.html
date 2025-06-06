@@ -334,6 +334,9 @@ ul.nav-links-mobile li a {
           <option value="Paula">Paula's Own</option>
           <option value="Zach">Zach's Own</option>
           <option value="RicardoOwn">Ricardo's Own</option>
+          <option value="Google">Google</option>
+          <option value="Friend">Friend</option>
+          <option value="Flyer">Flyer</option>
         </select>
       </div>
 
@@ -635,12 +638,15 @@ ul.nav-links-mobile li a {
         html += `
           <td style="padding:8px; border:1px solid #ddd;">
             <select class="referral-select" data-booking-id="${les.id}" data-original-referral="${refVal}" style="min-width:140px;" disabled>
-              <option value="" disabled ${refVal === '' ? 'selected' : ''}>Choose...</option>
+              <option value="" ${refVal === '' ? 'selected' : ''}>None</option>
               <option value="Ricardo" ${refVal === 'Ricardo' ? 'selected' : ''}>Referred by Ricardo ($20)</option>
               <option value="Jacob" ${refVal === 'Jacob' ? 'selected' : ''}>Jacob’s Own ($10)</option>
               <option value="Paula" ${refVal === 'Paula' ? 'selected' : ''}>Paula’s Own (10%)</option>
               <option value="Zach" ${refVal === 'Zach' ? 'selected' : ''}>Zach’s Own (10%)</option>
               <option value="RicardoOwn" ${les.coach === 'Ricardo Carvajalino' && refVal !== 'Ricardo' ? 'selected' : ''}>Ricardo’s Own (100%)</option>
+              <option value="Google" ${refVal === 'Google' ? 'selected' : ''}>Google</option>
+              <option value="Friend" ${refVal === 'Friend' ? 'selected' : ''}>Friend</option>
+              <option value="Flyer" ${refVal === 'Flyer' ? 'selected' : ''}>Flyer</option>
             </select>
           </td>
         `;

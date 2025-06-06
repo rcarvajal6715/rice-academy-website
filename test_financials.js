@@ -206,6 +206,18 @@ describe('POST /api/admin/expenses', () => {
             });
     });
 
+    it('should return 400 if amount exceeds maximum value (99999999.99)', (done) => {
+        agent // Use the agent
+            .post('/api/admin/expenses')
+            .send({ description: 'Test Max Amount Exceeded', amount: 100000000, period: '2023-09' }) // 100,000,000
+            .expect(400)
+            .end((err, res) => {
+                if (err) return done(err);
+                expect(res.body.message).to.equal('Bad Request: amount exceeds the maximum allowed value (99999999.99).');
+                done();
+            });
+    });
+
     it('should return 400 if period is missing', (done) => {
         agent // Use the agent
             .post('/api/admin/expenses')

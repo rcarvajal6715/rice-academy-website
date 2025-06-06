@@ -1184,7 +1184,7 @@ app.post('/api/admin/expenses', async (req, res) => {
     );
     res.status(201).json({ message: 'Expense added successfully.', expense: result.rows[0] });
   } catch (err) {
-    console.error('Error adding expense:', err);
+    console.error('Error adding expense:', { message: err.message, stack: err.stack, code: err.code, detail: err.detail, routine: err.routine });
     res.status(500).json({ message: 'Failed to add expense due to a server error.' });
   }
 });

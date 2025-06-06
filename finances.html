@@ -1071,9 +1071,10 @@ document.addEventListener('DOMContentLoaded', () => {
           addExpenseButton.addEventListener('click', async () => {
             const description = document.getElementById('new_expense_description').value;
             const amount = document.getElementById('new_expense_amount').value;
+            const expenseDate = document.getElementById('new_expense_date').value;
 
-            if (!description.trim() || !amount.trim()) {
-              alert('Expense Description and Amount are required.');
+            if (!description.trim() || !amount.trim() || !expenseDate.trim()) {
+              alert('Expense Date, Description, and Amount are required.');
               return;
             }
             if (isNaN(parseFloat(amount))) {
@@ -1096,7 +1097,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({
                   description: description,
                   amount: parseFloat(amount),
-                  period: currentPeriod
+                  period: currentPeriod,
+                  expense_date: expenseDate
                 })
               });
               if (!response.ok) {

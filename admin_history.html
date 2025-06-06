@@ -602,11 +602,15 @@ window.addEventListener('DOMContentLoaded', () => {
           }
         } else if (td.contentEditable === 'true') {
           newValue = td.innerText.trim();
+          const bookingId = td.dataset.id; // Ensure bookingId is defined for console warn
 
+          // Specific handling for 'time' field
           if (fieldName === 'time') {
-            if (newValue === '') {
+            if (newValue === '' || newValue.toLowerCase() === 'n/a') { // Check for empty string or 'N/A'
               newValue = null;
             }
+            // If it's not empty or 'N/A', it will be passed as is (e.g., "10:00:00")
+            // The backend is expected to validate HH:MM or HH:MM:SS formats.
           } else if (fieldName === 'coach' || fieldName === 'program' || fieldName === 'student') {
             if (newValue === '' || newValue.toLowerCase() === 'null') {
               newValue = null;

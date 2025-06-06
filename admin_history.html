@@ -16,82 +16,6 @@
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { padding: 8px; border:1px solid #ddd; }
     thead th { background: #0c3c78; color: white; }
-    .edit-coaches-btn-history {
-        background-color: #ffc107; /* Amber */
-        color: black;
-        padding: 5px 10px;
-        border-radius: 4px;
-        border: 1px solid #e0a800; /* Darker amber */
-        cursor: pointer;
-        font-size: 0.9em;
-        margin-left: 5px; /* Space from delete button */
-    }
-    .edit-coaches-btn-history:hover { background-color: #e0a800; }
-
-    /* Modal Styles (same as admin.html) */
-    .modal {
-      display: none; 
-      position: fixed; 
-      z-index: 1001; 
-      left: 0;
-      top: 0;
-      width: 100%; 
-      height: 100%; 
-      overflow: auto; 
-      background-color: rgba(0,0,0,0.4); 
-    }
-    .modal-content {
-      background-color: #fefefe;
-      margin: 10% auto; 
-      padding: 20px;
-      border: 1px solid #888;
-      width: 80%;
-      max-width: 500px;
-      border-radius: 8px;
-      box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
-    }
-    .modal-header {
-      padding: 10px 16px;
-      background-color: #0c3c78;
-      color: white;
-      border-top-left-radius: 8px;
-      border-top-right-radius: 8px;
-    }
-    .modal-header h2 {
-      margin: 0;
-      color: white;
-    }
-    .modal-body { padding: 15px; }
-    .modal-footer {
-      padding: 10px 16px;
-      text-align: right;
-    }
-    .modal-footer button {
-      width: auto;
-      padding: 8px 15px;
-      margin-left: 10px;
-    }
-    .modal-footer button.cancel-btn {
-      background-color: #ccc;
-      color: black;
-    }
-    .modal-footer button.cancel-btn:hover {
-      background-color: #bbb;
-    }
-    #coach-checkboxes-container-history label { /* Unique ID for history page modal */
-        display: block;
-        margin-bottom: 8px;
-        font-weight: normal;
-        color: #333;
-    }
-    #coach-checkboxes-container-history input[type="checkbox"] { /* Unique ID */
-        width: auto;
-        margin-right: 8px;
-        vertical-align: middle;
-    }
-    .session-info p { margin: 5px 0; }
-    .session-info strong { color: #0c3c78; }
-
 /* === Global Header & Navigation Styles (Finalized Version) === */
      header {
        background-color: #0c3c78; 
@@ -360,36 +284,6 @@ ul.nav-links-mobile li a {
     <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
   </footer>
 
-  <!-- Edit Coaches Modal (for History Page) -->
-  <div id="editCoachesModalHistory" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>Edit Coaches for Past Session</h2>
-      </div>
-      <div class="modal-body">
-        <div class="session-info">
-          <p><strong>Program:</strong> <span id="modalSessionProgramHistory"></span></p>
-          <p><strong>Date:</strong> <span id="modalSessionDateHistory"></span></p>
-          <p><strong>Time:</strong> <span id="modalSessionTimeHistory"></span></p>
-        </div>
-        <hr>
-        <p><strong>Assign Coaches:</strong></p>
-        <div id="coach-checkboxes-container-history">
-          <!-- Coach checkboxes will be populated here -->
-        </div>
-        <input type="hidden" id="modalOriginalBookingIdsHistory">
-        <input type="hidden" id="modalLessonCostHistory">
-        <input type="hidden" id="modalStudentNameHistory">
-        <input type="hidden" id="modalStudentEmailHistory">
-        <input type="hidden" id="modalStudentPhoneHistory">
-      </div>
-      <div class="modal-footer">
-        <button type="button" id="cancelEditCoachesBtnHistory" class="cancel-btn">Cancel</button>
-        <button type="button" id="saveCoachesChangesBtnHistory">Save Changes</button>
-      </div>
-    </div>
-  </div>
-
   <script>
   // This script block is intentionally left empty as the form-related JS was removed.
   // New JS logic will be added in the next script tag or by replacing this one.
@@ -421,10 +315,9 @@ function formatTime_12hr(timeStr) {
 function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
   const container = document.getElementById(containerId);
   if (!container) {
-    console.error('ADMIN_HISTORY: Container not found for ID:', containerId);
+    console.error('Container not found for ID:', containerId);
     return;
   }
-  console.log('ADMIN_HISTORY: Rendering lessons. Count:', lessonsArray.length, 'First lesson:', lessonsArray[0]);
 
   if (lessonsArray.length === 0) {
     container.innerHTML = `<p>${placeholderMessage}</p>`;
@@ -453,57 +346,33 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
   `;
 
   lessonsArray.forEach(les => {
-    const isGroupedCamp = les.coaches && Array.isArray(les.coaches);
-    const displayId = isGroupedCamp ? (les.booking_ids ? les.booking_ids.join(',') : (les.id || 'group')) : les.id;
-    const firstBookingId = isGroupedCamp ? (les.booking_ids ? les.booking_ids[0] : null) : les.id;
-
-
     const dateStr = les.date ? new Date(les.date).toLocaleDateString() : 'N/A';
     const formattedTime = les.time ? formatTime_12hr(les.time) : 'N/A';
-    const originalDate = les.date ? (typeof les.date === 'string' ? les.date.substring(0,10) : '') : '';
-    
-    // For grouped camps, some fields might be from the first lesson or N/A
-    const programDisplay = les.program || '—';
-    const coachDisplay = isGroupedCamp ? les.coaches.join(', ') : (les.coach || '—');
-    const studentDisplay = isGroupedCamp ? 'N/A' : (les.student || '—');
-    const emailDisplay = isGroupedCamp ? 'N/A' : (les.email || '—');
-    const phoneDisplay = isGroupedCamp ? 'N/A' : (les.phone || '—');
-    const costDisplay = isGroupedCamp ? (les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : 'N/A') : (les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : '');
-    const referralDisplay = isGroupedCamp ? 'N/A' : (les.referral_source || '—');
-    // Paid status for a group: Display from first booking or 'N/A' if ambiguous. For simplicity, using first booking's status or false.
-    const paidStatus = isGroupedCamp ? (les.paid === true || String(les.paid).toLowerCase() === 'true') : (les.paid === true || String(les.paid).toLowerCase() === 'true');
-    const paidDisplay = paidStatus ? 'Yes' : 'No';
+    const referralSourceDisplay = les.referral_source || '—';
+    const originalDate = les.date ? les.date.substring(0,10) : '';
+    const isPaid = les.paid === true || String(les.paid).toLowerCase() === 'true';
 
     tableHTML += `
-      <tr data-id="${displayId}">
-        <td style="padding:8px; border:1px solid #ddd;"><input type="checkbox" class="history-row-checkbox" data-id="${displayId}"></td>
-        <td class="history-cell" data-id="${firstBookingId}" data-field="program" data-original-value="${les.program || ''}" data-is-grouped="${isGroupedCamp}" style="padding:8px; border:1px solid #ddd;">${programDisplay}</td>
-        <td class="history-cell" data-id="${firstBookingId}" data-field="coach" data-original-value="${isGroupedCamp ? les.coaches.join(',') : (les.coach || '')}" data-is-grouped="${isGroupedCamp}" style="padding:8px; border:1px solid #ddd;">${coachDisplay}</td>
-        <td class="history-cell" data-id="${firstBookingId}" data-field="date" data-original-value="${originalDate}" data-is-grouped="${isGroupedCamp}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
-        <td class="history-cell" data-id="${firstBookingId}" data-field="time" data-original-value="${les.time || ''}" data-is-grouped="${isGroupedCamp}" style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
-        <td class="history-cell" data-id="${firstBookingId}" data-field="student" data-original-value="${les.student || ''}" data-is-grouped="${isGroupedCamp}" style="padding:8px; border:1px solid #ddd;">${studentDisplay}</td>
-        <td style="padding:8px; border:1px solid #ddd;">${emailDisplay}</td>
-        <td style="padding:8px; border:1px solid #ddd;">${phoneDisplay}</td>
-        <td class="history-cell" data-id="${firstBookingId}" data-field="lesson_cost" data-original-value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" data-is-grouped="${isGroupedCamp}" style="padding:8px; border:1px solid #ddd;">${costDisplay}</td>
-        <td class="history-cell" data-id="${firstBookingId}" data-field="referral_source" data-original-value="${isGroupedCamp ? '' : (les.referral_source || '—')}" data-is-grouped="${isGroupedCamp}" style="padding:8px; border:1px solid #ddd;">${referralDisplay}</td>
-        <td class="history-cell" data-id="${firstBookingId}" data-field="paid" data-original-value="${String(paidStatus)}" data-is-grouped="${isGroupedCamp}" style="padding:8px; border:1px solid #ddd;">${paidDisplay}</td>
-        <td style="padding:8px; border:1px solid #ddd;">`;
-          if (isGroupedCamp) {
-            tableHTML += `<button onclick="deleteGroupedCampLessonHistory('${les.booking_ids.join(',')}')">Delete Session</button>`;
-            tableHTML += `<button class="edit-coaches-btn-history" 
-                                  data-program="${les.program}" 
-                                  data-date="${originalDate}" 
-                                  data-time="${les.time || ''}" 
-                                  data-booking-ids="${les.booking_ids.join(',')}" 
-                                  data-coaches="${les.coaches.join(',')}">Edit Coaches</button>`;
-          } else {
-            tableHTML += `<button onclick="deleteAdminLesson(${les.id})">Delete</button>`;
-          }
-    tableHTML += `</td></tr>`;
+      <tr data-id="${les.id}">
+        <td style="padding:8px; border:1px solid #ddd;"><input type="checkbox" class="history-row-checkbox" data-id="${les.id}"></td>
+        <td class="history-cell" data-id="${les.id}" data-field="program" data-original-value="${les.program || ''}" style="padding:8px; border:1px solid #ddd;">${les.program || '—'}</td>
+        <td class="history-cell" data-id="${les.id}" data-field="coach" data-original-value="${les.coach || ''}" style="padding:8px; border:1px solid #ddd;">${les.coach || '—'}</td>
+        <td class="history-cell" data-id="${les.id}" data-field="date" data-original-value="${originalDate}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
+        <td class="history-cell" data-id="${les.id}" data-field="time" data-original-value="${les.time || ''}" style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
+        <td class="history-cell" data-id="${les.id}" data-field="student" data-original-value="${les.student || ''}" style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
+        <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td>
+        <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td>
+        <td class="history-cell" data-id="${les.id}" data-field="lesson_cost" data-original-value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}</td>
+        <td class="history-cell" data-id="${les.id}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
+        <td class="history-cell" data-id="${les.id}" data-field="paid" data-original-value="${String(isPaid)}" style="padding:8px; border:1px solid #ddd;">${isPaid ? 'Yes' : 'No'}</td>
+        <td style="padding:8px; border:1px solid #ddd;">
+          <button onclick="deleteAdminLesson(${les.id})">Delete</button>
+        </td>
+      </tr>
+    `;
   });
   tableHTML += `</tbody></table>`;
   container.innerHTML = tableHTML;
-
 
   const selectAllCheckbox = document.getElementById('selectAllHistoryRows');
   if (selectAllCheckbox) {
@@ -532,8 +401,6 @@ async function loadHistory() {
   if (!historyTableContainer) historyTableContainer = document.getElementById('past-lessons-table-container');
   historyTableContainer.innerHTML = '<p>Loading history...</p>';
   
-  const campLikePrograms = ["Summer Camp / Group Lessons", "High Performance Training", "Adult Clinics"];
-
   try {
     const res = await fetch('/api/admin/lessons', { credentials: 'include' });
     if (!res.ok) {
@@ -542,18 +409,15 @@ async function loadHistory() {
     }
     const lessons = await res.json();
     const now = new Date();
-    
-    const rawPastLessons = lessons.filter(les => {
+    const pastLessons = lessons.filter(les => {
       if (!les.date) return false;
-      const dateStr = typeof les.date === 'string' && les.date.length >=10 ? les.date.substring(0, 10) : null;
-      if (!dateStr) return false;
+      const dateStr = les.date.substring(0, 10);
       const dateParts = dateStr.split('-');
       if (dateParts.length !== 3) return false;
-      
       const year = parseInt(dateParts[0]);
       const month = parseInt(dateParts[1]) - 1;
       const day = parseInt(dateParts[2]);
-      let hours = 23, minutes = 59, seconds = 59; // Default to end of day for past lessons
+      let hours = 23, minutes = 59, seconds = 59;
       if (les.time) {
         const timeParts = les.time.split(':');
         if (timeParts.length >= 2) {
@@ -564,86 +428,18 @@ async function loadHistory() {
       }
       try {
         const lessonDate = new Date(year, month, day, hours, minutes, seconds);
-        if (isNaN(lessonDate.getTime())) return false;
         return lessonDate < now;
       } catch (e) {
-        console.error(`ADMIN_HISTORY: Error parsing date for lesson: ${les.id}`, e);
+        console.error(`Error parsing date for lesson: ${les.id}`, e);
         return false;
       }
     });
-
-    // Group camp-like lessons
-    const groupedPastCampLessons = {};
-    const otherPastLessons = [];
-
-    rawPastLessons.forEach(les => {
-        const programName = les.program;
-        if (campLikePrograms.includes(programName)) {
-            const groupKey = `${programName}-${les.date}-${les.time}`;
-            if (!groupedPastCampLessons[groupKey]) {
-                groupedPastCampLessons[groupKey] = {
-                    ...les, // Base details from the first lesson in group
-                    coaches: [les.coach].filter(c => c), // Filter out null/empty coaches
-                    booking_ids: [les.id],
-                    // isGrouped: true // Mark as grouped
-                };
-            } else {
-                if (les.coach && !groupedPastCampLessons[groupKey].coaches.includes(les.coach)) {
-                    groupedPastCampLessons[groupKey].coaches.push(les.coach);
-                }
-                groupedPastCampLessons[groupKey].booking_ids.push(les.id);
-            }
-        } else {
-            otherPastLessons.push(les);
-        }
-    });
-    
-    allFetchedPastLessons = [...Object.values(groupedPastCampLessons), ...otherPastLessons];
-    // Sort all lessons by date and time after processing
-    allFetchedPastLessons.sort((a,b) => {
-        const dateA = new Date(a.date + (a.time ? 'T' + a.time : 'T00:00:00'));
-        const dateB = new Date(b.date + (b.time ? 'T' + b.time : 'T00:00:00'));
-        return dateB - dateA; // Descending order (most recent first)
-    });
-
-    console.log('ADMIN_HISTORY: All fetched past lessons (processed, grouped):', allFetchedPastLessons.length);
-    filterAndRenderHistory(''); // Initial render with all (processed) past lessons
-
+    allFetchedPastLessons = [...pastLessons];
+    filterAndRenderHistory('');
   } catch (error) {
-    console.error('ADMIN_HISTORY: Error loading lesson history:', error);
+    console.error('Error loading lesson history:', error);
     historyTableContainer.innerHTML = '<p style="color:red;">Failed to load history due to a network error.</p>';
   }
-}
-
-
-async function deleteGroupedCampLessonHistory(bookingIdsString) {
-    console.log("ADMIN_HISTORY: Attempting to delete grouped past camp session with Booking IDs:", bookingIdsString);
-    const bookingIds = bookingIdsString.split(',');
-    if (!confirm(`Are you sure you want to delete this entire past camp session? This will delete ${bookingIds.length} booking(s) from history. This action cannot be undone.`)) {
-        return;
-    }
-    try {
-        let allSucceeded = true;
-        for (const id of bookingIds) {
-            const res = await fetch(`/api/admin/lessons/${id}`, {
-                method: 'DELETE',
-                credentials: 'include'
-            });
-            if (!res.ok) {
-                allSucceeded = false;
-                console.error(`ADMIN_HISTORY: Failed to delete booking ID ${id}: ${await res.text()}`);
-            }
-        }
-        if (allSucceeded) {
-            alert('Entire past camp session deleted successfully.');
-        } else {
-            alert('Some bookings in the past camp session could not be deleted. Please check the console and refresh.');
-        }
-    } catch (err) {
-        alert('An error occurred while trying to delete the past camp session. Check console.');
-        console.error('ADMIN_HISTORY: Error in deleteGroupedCampLessonHistory:', err);
-    }
-    loadHistory(); // Refresh
 }
 
 async function deleteAdminLesson(id) {
@@ -669,13 +465,8 @@ function filterAndRenderHistory(searchTerm) {
     searchFilteredLessons = allFetchedPastLessons.filter(les => {
       if (!les) return false;
       const dateStr = les.date ? new Date(les.date).toLocaleDateString().toLowerCase() : '';
-      // For grouped lessons, check if any coach in the array matches
-      const coachMatch = (les.coaches && Array.isArray(les.coaches)) 
-        ? les.coaches.some(c => c && String(c).toLowerCase().includes(searchTerm))
-        : (les.coach && String(les.coach).toLowerCase().includes(searchTerm));
-
-      return [les.program, les.student, les.email, les.phone, dateStr]
-        .some(field => field && String(field).toLowerCase().includes(searchTerm)) || coachMatch;
+      return [les.program, les.coach, les.student, les.email, les.phone, dateStr]
+        .some(field => field && String(field).toLowerCase().includes(searchTerm));
     });
   }
 
@@ -699,146 +490,10 @@ window.addEventListener('DOMContentLoaded', () => {
   enableHistoryEditingBtn = document.getElementById('enable-history-editing-btn');
   saveHistoryBtn = document.getElementById('save-history-btn');
   historyTableContainer = document.getElementById('past-lessons-table-container');
-  // bulkUpdateButton = document.getElementById('bulkUpdateButton'); // This ID was for a generic bulk update, not used here.
+  bulkUpdateButton = document.getElementById('bulkUpdateButton'); // Initialize new button
 
-  // --- Edit Coaches Modal Logic for History Page ---
-  const editCoachesModalHistory = document.getElementById('editCoachesModalHistory');
-  const cancelEditCoachesBtnHistory = document.getElementById('cancelEditCoachesBtnHistory');
-  const saveCoachesChangesBtnHistory = document.getElementById('saveCoachesChangesBtnHistory');
-  const coachCheckboxesContainerHistory = document.getElementById('coach-checkboxes-container-history');
-  
-  const availableCoachesForHistoryModal = [ // Same list as admin.html for consistency
-      "Ricardo Carvajalino", "Jacob Capone", "Zach Capone", "Matthew Abbey", "Paula Carvajalino"
-  ];
-
-  if (coachCheckboxesContainerHistory) {
-    availableCoachesForHistoryModal.forEach(coachName => {
-        const label = document.createElement('label');
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.name = 'modalCoachHistory';
-        checkbox.value = coachName;
-        label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(` ${coachName}`));
-        coachCheckboxesContainerHistory.appendChild(label);
-    });
-  } else {
-    console.warn("ADMIN_HISTORY: coach-checkboxes-container-history not found.");
-  }
-  
-  if (historyTableContainer) {
-    historyTableContainer.addEventListener('click', async (event) => {
-        if (event.target.classList.contains('edit-coaches-btn-history')) {
-            const button = event.target;
-            const program = button.dataset.program;
-            const date = button.dataset.date; // YYYY-MM-DD
-            const time = button.dataset.time; // HH:MM:SS or HH:MM
-            const originalBookingIds = button.dataset.bookingIds.split(',').map(Number);
-            const currentCoaches = button.dataset.coaches.split(',');
-
-            // For history, lesson_cost should be part of the 'les' object used for rendering.
-            // Attempt to find the full lesson object from `allFetchedPastLessons` to get lesson_cost
-            // This is a simplified lookup; more robust would be to find by a unique group identifier if available
-            const originalGroupData = allFetchedPastLessons.find(l => 
-                l.program === program && 
-                (l.date.startsWith(date) || l.date === date) && // Match YYYY-MM-DD from potentially YYYY-MM-DDTHH...
-                l.time === time && 
-                JSON.stringify(l.booking_ids) === JSON.stringify(originalBookingIds)
-            );
-            const lessonCost = originalGroupData ? originalGroupData.lesson_cost : 0;
-            const studentName = originalGroupData ? (originalGroupData.student || '') : '';
-            const studentEmail = originalGroupData ? (originalGroupData.email || '') : '';
-            const studentPhone = originalGroupData ? (originalGroupData.phone || '') : '';
-
-
-            document.getElementById('modalSessionProgramHistory').textContent = program;
-            document.getElementById('modalSessionDateHistory').textContent = new Date(date + 'T00:00:00').toLocaleDateString(); // Ensure correct date parsing for display
-            document.getElementById('modalSessionTimeHistory').textContent = formatTime_12hr(time);
-
-            editCoachesModalHistory.dataset.program = program;
-            editCoachesModalHistory.dataset.date = date; // YYYY-MM-DD
-            editCoachesModalHistory.dataset.time = time; 
-            document.getElementById('modalOriginalBookingIdsHistory').value = JSON.stringify(originalBookingIds);
-            document.getElementById('modalLessonCostHistory').value = lessonCost;
-            document.getElementById('modalStudentNameHistory').value = studentName;
-            document.getElementById('modalStudentEmailHistory').value = studentEmail;
-            document.getElementById('modalStudentPhoneHistory').value = studentPhone;
-
-            coachCheckboxesContainerHistory.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                cb.checked = currentCoaches.includes(cb.value);
-            });
-            editCoachesModalHistory.style.display = 'block';
-        }
-    });
-  } else {
-      console.warn("ADMIN_HISTORY: past-lessons-table-container not found for modal delegation.");
-  }
-
-  if(cancelEditCoachesBtnHistory) {
-    cancelEditCoachesBtnHistory.onclick = () => {
-        editCoachesModalHistory.style.display = 'none';
-    }
-  }
-
-  if(saveCoachesChangesBtnHistory) {
-    saveCoachesChangesBtnHistory.onclick = async () => {
-        const newSelectedCoaches = [];
-        coachCheckboxesContainerHistory.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
-            newSelectedCoaches.push(cb.value);
-        });
-
-        const payload = {
-            program: editCoachesModalHistory.dataset.program,
-            date: editCoachesModalHistory.dataset.date,
-            time: editCoachesModalHistory.dataset.time,
-            originalBookingIds: JSON.parse(document.getElementById('modalOriginalBookingIdsHistory').value),
-            newCoaches: newSelectedCoaches,
-            lesson_cost: parseFloat(document.getElementById('modalLessonCostHistory').value),
-            student: document.getElementById('modalStudentNameHistory').value,
-            email: document.getElementById('modalStudentEmailHistory').value,
-            phone: document.getElementById('modalStudentPhoneHistory').value
-        };
-
-        try {
-            const res = await fetch('/api/admin/lessons/update-coaches', { // Same endpoint
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
-                body: JSON.stringify(payload)
-            });
-            const responseData = await res.json();
-            if (res.ok) {
-                alert(responseData.message || 'Coaches updated successfully for past session!');
-                editCoachesModalHistory.style.display = 'none';
-                loadHistory(); // Refresh history table
-            } else {
-                alert('Failed to update coaches for past session: ' + (responseData.message || 'Unknown error'));
-            }
-        } catch (err) {
-            console.error('ADMIN_HISTORY: Error saving coach changes for past session:', err);
-            alert('An error occurred while saving changes for the past session. See console.');
-        }
-    }
-  }
-  
-  // Close modal if user clicks outside of it
-  window.onclick = (event) => {
-      if (event.target == editCoachesModalHistory) {
-          editCoachesModalHistory.style.display = "none";
-      }
-  }
-  // --- End Edit Coaches Modal Logic for History Page ---
-
-
-  // The bulkUpdateButton was for a generic idea, not used in this specific flow.
-  // if(bulkUpdateButton) {
-  //   bulkUpdateButton.disabled = true; // Initially disabled
-  // ... (rest of bulkUpdateButton logic if it were to be used)
-  // }
-
-
-  loadHistory();
-
-  if (enableHistoryEditingBtn) {
+  if(bulkUpdateButton) {
+    bulkUpdateButton.disabled = true; // Initially disabled
     bulkUpdateButton.addEventListener('click', async () => {
         const selectedIds = Array.from(document.querySelectorAll('.history-row-checkbox:checked')).map(cb => cb.dataset.id);
         if(selectedIds.length === 0) {
@@ -871,21 +526,14 @@ window.addEventListener('DOMContentLoaded', () => {
 
       document.querySelectorAll('.history-cell').forEach(td => {
         if (td.dataset.field === 'referral_source') {
-          td.contentEditable = false; // Referral source is always a select in edit mode
+          td.contentEditable = false;
           if (editing) {
-            // For grouped camps, referral source editing might be disabled or handled differently.
-            // This example assumes it's disabled for grouped rows by not making the cell editable.
-            // If td.dataset.isGrouped is true, this part might be skipped or adapted.
-            if (td.dataset.isGrouped === 'true') {
-                td.innerHTML = 'N/A'; // Or keep original display 'N/A'
-                return; // Skip making select for grouped
-            }
             const originalValue = td.dataset.originalValue === '—' ? '' : td.dataset.originalValue;
             td.innerHTML = '';
             const selectEl = document.createElement('select');
             selectEl.className = 'history-referral-select';
             const options = [
-                { value: '', text: 'None' }, 
+                { value: '', text: 'None' }, // "None" option with an empty string value
                 { value: 'Ricardo', text: 'Referred by Ricardo' },
                 { value: 'Jacob', text: 'Jacob - Own Booking' },
                 { value: 'Paula', text: 'Paula - Own Booking' },
@@ -900,23 +548,16 @@ window.addEventListener('DOMContentLoaded', () => {
               selectEl.appendChild(optionEl);
             });
             td.appendChild(selectEl);
-          } else { // When disabling editing
+          } else {
             const selectEl = td.querySelector('select.history-referral-select');
             if (selectEl) {
               const selectedText = selectEl.options[selectEl.selectedIndex]?.text || selectEl.value;
-              td.innerHTML = ''; // Clear the select
+              td.innerHTML = '';
               td.textContent = selectedText || '—';
-            } else if (td.dataset.isGrouped === 'true') {
-              td.textContent = 'N/A'; // Keep N/A for grouped if it was that
             }
-            // For other cells, their content is already their text, no change needed on disabling editing here.
           }
-        } else { // For other editable cells (not referral_source)
-            if (td.dataset.isGrouped === 'true' && (fieldName === 'coach' || fieldName === 'student' || fieldName === 'lesson_cost' || fieldName === 'paid')) {
-                 td.contentEditable = false; // These fields are not directly editable for grouped items
-            } else {
-                 td.contentEditable = editing;
-            }
+        } else { // For other editable cells
+          td.contentEditable = editing;
           if (!editing) td.blur();
         }
       });
@@ -931,53 +572,71 @@ window.addEventListener('DOMContentLoaded', () => {
 
       const updates = [];
       document.querySelectorAll('.history-cell[data-id]').forEach(td => {
-        const isGroupedCell = td.dataset.isGrouped === 'true';
-        // Skip direct editing for certain fields if it's a grouped representation
-        if (isGroupedCell && (td.dataset.field === 'coach' || td.dataset.field === 'student' || td.dataset.field === 'lesson_cost' || td.dataset.field === 'referral_source' || td.dataset.field === 'paid')) {
-            // These fields are not meant to be directly edited on the grouped row via contentEditable.
-            // Coach editing is via "Edit Coaches" button. Others are N/A or derived.
-            return; 
-        }
-
-        const bookingId = td.dataset.id; // This is firstBookingId for grouped, actual ID for others
+        console.log(`Processing cell for save: Booking ID ${td.dataset.id}, Field: ${td.dataset.field}, Original Value Attr: '${td.dataset.originalValue}'`);
+        const bookingId = td.dataset.id;
         const fieldName = td.dataset.field;
         const originalValue = td.dataset.originalValue;
         let newValue;
         let changed = false;
 
-        if (fieldName === 'referral_source' && !isGroupedCell) {
+        if (fieldName === 'referral_source') {
+          console.log(`Entering referral_source specific logic for Booking ID ${bookingId}. Cell content editable: ${td.contentEditable}`);
           const selectEl = td.querySelector('select.history-referral-select');
           if (selectEl) {
             newValue = selectEl.value;
+            // Normalize originalValue of '—' to empty string for comparison
             const normalizedOriginalValue = originalValue === '—' ? '' : originalValue;
+
+            console.log(`Referral Save Check: Booking ID ${bookingId}`);
+            console.log(`  Original Value (from dataset): '${originalValue}'`);
+            console.log(`  Normalized Original Value: '${normalizedOriginalValue}'`);
+            console.log(`  New Value (from select): '${newValue}'`);
+            console.log(`  Comparison: '${newValue}' !== '${normalizedOriginalValue}' is ${newValue !== normalizedOriginalValue}`);
+            
             if (newValue !== normalizedOriginalValue) changed = true;
           }
-        } else if (td.contentEditable === 'true') { // Standard contentEditable fields
+        } else if (td.contentEditable === 'true') {
           newValue = td.innerText.trim();
+          const bookingId = td.dataset.id; // Ensure bookingId is defined for console warn
+
+          // Specific handling for 'time' field
           if (fieldName === 'time') {
-            if (newValue === '' || newValue.toLowerCase() === 'n/a') newValue = null;
+            if (newValue === '' || newValue.toLowerCase() === 'n/a') { // Check for empty string or 'N/A'
+              newValue = null;
+            }
+            // If it's not empty or 'N/A', it will be passed as is (e.g., "10:00:00")
+            // The backend is expected to validate HH:MM or HH:MM:SS formats.
           } else if (fieldName === 'coach' || fieldName === 'program' || fieldName === 'student') {
-            if (newValue === '' || newValue.toLowerCase() === 'null') newValue = null;
+            if (newValue === '' || newValue.toLowerCase() === 'null') {
+              newValue = null;
+            }
           } else if (fieldName === 'date' && td.innerText.includes('/')) {
             const parts = newValue.split('/');
             if (parts.length === 3) newValue = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
           } else if (fieldName === 'lesson_cost') {
             newValue = newValue.replace('$', '').trim();
-            if (newValue === '' && originalValue !== '') newValue = null; 
-            else if (newValue !== '' && isNaN(Number(newValue))) {
-                console.warn(`ADMIN_HISTORY: Invalid cost for booking ${bookingId}: ${newValue}. Skipping.`);
-                return; 
+            if (newValue === '' && originalValue !== '') {
+                newValue = null; 
+            } else if (newValue !== '') {
+                if (isNaN(Number(newValue))) {
+                    console.warn(`Invalid cost for booking ${bookingId}: ${newValue}. Skipping update for this field.`);
+                    return; 
+                }
             }
           } else if (fieldName === 'paid') {
             const lowerNewValue = newValue.toLowerCase();
-            if (lowerNewValue === 'yes' || lowerNewValue === 'true') newValue = true;
-            else if (lowerNewValue === 'no' || lowerNewValue === 'false') newValue = false;
+            if (lowerNewValue === 'yes' || lowerNewValue === 'true') {
+              newValue = true; // ACTUAL BOOLEAN true
+            } else if (lowerNewValue === 'no' || lowerNewValue === 'false') {
+              newValue = false; // ACTUAL BOOLEAN false
+            }
           }
-          if (String(newValue) !== String(originalValue)) changed = true; // Compare as strings to handle type differences like boolean vs "true"
+          
+          if (newValue !== originalValue) changed = true;
         }
 
         if (changed) {
-          updates.push({ bookingId, fieldName, newValue });
+          updates.push({ bookingId, fieldName, newValue, originalValueForDebug: originalValue });
         }
       });
 

@@ -354,27 +354,11 @@ app.get('/api/financials', async (req, res) => {
       )
     ).rows;
 
-    // 6) Fetch payout rates from coach_rates.rate_numeric - This section can be removed or commented if not used by other program types
-    // const coachRateKeys = [
-    //   'ricardo_private_own', 'jacob_private_referral', 'paula_private_referral', 
-    //   'zach_private_referral_flat', 'jacob_private_own', 'paula_private_own', 
-    //   'zach_private_own_pct'
-    // ];
-    // const coachRatesResult = await pool.query(
-    //   `SELECT key, rate_numeric AS value FROM coach_rates WHERE key = ANY($1::text[])`,
-    //   [coachRateKeys]
-    // );
-    // const rates = {};
-    // coachRatesResult.rows.forEach(r => { rates[r.key] = parseFloat(r.value); });
-
-    // Provide defaults if any rate is missing
-    // rates['ricardo_private_own']    = rates['ricardo_private_own']    ?? 1.00;
-    // rates['jacob_private_referral'] = rates['jacob_private_referral'] ?? 20.00;
-    // rates['paula_private_referral'] = rates['paula_private_referral'] ?? 20.00;
-    // rates['zach_private_referral_flat'] = rates['zach_private_referral_flat'] ?? 20.00;
-    // rates['jacob_private_own']      = rates['jacob_private_own']      ?? 10.00;
-    // rates['paula_private_own']      = rates['paula_private_own']      ?? 10.00;
-    // rates['zach_private_own_pct']   = rates['zach_private_own_pct']   ?? 0.10;
+    // 6) coach_rates related logic removed.
+    // const coachRateKeys = ... (removed)
+    // const coachRatesResult = ... (removed)
+    // const rates = {}; (removed)
+    // rates[...] = ... (removed)
 
     // 7) Implement new Commission Calculation Logic for Private Lessons
     let totalPrivateRevenue = 0;
@@ -383,55 +367,49 @@ app.get('/api/financials', async (req, res) => {
 
     for (const booking of privateRows) {
       const lessonCost = parseFloat(booking.lesson_cost);
-      if (isNaN(lessonCost) || lessonCost < 0) { // Also check for negative, though UI might prevent
+      if (isNaN(lessonCost) || lessonCost < 0) { 
         console.warn(`Invalid or missing lesson_cost for booking ID ${booking.id || 'N/A'}: ${booking.lesson_cost}. Skipping this booking for commission.`);
         continue;
       }
       totalPrivateRevenue += lessonCost;
 
       const coachFullName = booking.coach || '';
-      const simpleCoachName = coachFullName.split(' ')[0];
-      const referral = booking.referral_source ? booking.referral_source.trim() : ''; // Ensure referral is a string
+      const coachFirstName = coachFullName.split(' ')[0]; // Use coachFirstName as per new logic
+      const referral = booking.referral_source ? booking.referral_source.trim() : '';
 
       let coachGetsThisLesson = 0;
-      let academyGetsThisLesson = 0;
+      let academyGetsThisLesson = 0; // This represents Ricardo's commission
 
-      // Rule 1: Ricardo teaches
-      if (simpleCoachName === 'Ricardo') {
-        academyGetsThisLesson = 0; // Ricardo keeps 100%
-        coachGetsThisLesson = lessonCost;
-      } else {
-        // Other coach teaches
-        // Rule 4: Ricardo refers (and coach is not Ricardo)
-        if (referral === 'Ricardo') {
-          academyGetsThisLesson = 20;
-          coachGetsThisLesson = Math.max(0, lessonCost - 20);
-        }
-        // Rule 2: Jacob's own
-        else if (simpleCoachName === 'Jacob' && (referral === 'Jacob' || referral === 'JacobOwn' || referral === null || referral === '')) {
-          academyGetsThisLesson = 10;
-          coachGetsThisLesson = Math.max(0, lessonCost - 10);
-        }
-        // Rule 3: Paula's/Zach's own
-        else if (
-          (simpleCoachName === 'Paula' && (referral === 'Paula' || referral === 'PaulaOwn' || referral === null || referral === '')) ||
-          (simpleCoachName === 'Zach' && (referral === 'Zach' || referral === 'ZachOwn' || referral === null || referral === ''))
-        ) {
-          academyGetsThisLesson = lessonCost * 0.10;
-          coachGetsThisLesson = lessonCost - academyGetsThisLesson;
-        }
-        // Fallback/Default for other coaches, non-Ricardo referral, not explicitly their "own"
-        else {
-          // This also covers if referral is 'RicardoOwn' but Ricardo is not the coach (which shouldn't happen based on admin UI)
-          // or if referral is any other non-empty string not matching above.
-          // Per prompt: "coachGetsThisLesson = booking.lesson_cost, academyGetsThisLesson = 0"
-          // This implies the coach gets the full amount if no other rule applies.
+      if (coachFirstName === 'Ricardo') {
+          // Rule: Ricardo gets 100% of any lesson he teaches himself.
           coachGetsThisLesson = lessonCost;
           academyGetsThisLesson = 0;
-          console.warn(`WARN: Payout fallback case for booking ID ${booking.id} by ${coachFullName}, referral: '${referral}', lesson cost: ${lessonCost}. Coach gets full lesson cost.`);
-        }
+      } else {
+          // Another coach is teaching
+          if (referral === 'Ricardo') {
+              // Rule: Ricardo gets $20 if any other coach (Paula, Jacob, Zach, etc.) teaches a private he referred.
+              academyGetsThisLesson = 20;
+              coachGetsThisLesson = Math.max(0, lessonCost - 20); // Coach gets remainder
+          } else if (coachFirstName === 'Jacob' && (referral === 'Jacob' || referral === 'JacobOwn' || referral === '')) {
+              // Rule: Ricardo gets $10 if Jacob books his own.
+              // '' (empty string) referral is treated as "own booking".
+              academyGetsThisLesson = 10;
+              coachGetsThisLesson = Math.max(0, lessonCost - 10);
+          } else if (coachFirstName === 'Paula' && (referral === 'Paula' || referral === 'PaulaOwn' || referral === '')) {
+              // Rule: Ricardo gets 10% if Paula books her own.
+              academyGetsThisLesson = lessonCost * 0.10;
+              coachGetsThisLesson = lessonCost - academyGetsThisLesson;
+          } else if (coachFirstName === 'Zach' && (referral === 'Zach' || referral === 'ZachOwn' || referral === '')) {
+              // Rule: Ricardo gets 10% if Zach books his own.
+              academyGetsThisLesson = lessonCost * 0.10;
+              coachGetsThisLesson = lessonCost - academyGetsThisLesson;
+          } else {
+              // Default case: If none of the above specific Ricardo-related commission rules apply.
+              coachGetsThisLesson = lessonCost;
+              academyGetsThisLesson = 0;
+          }
       }
-      
+      // Accumulate totals
       totalCoachPayrollForPrivates += coachGetsThisLesson;
       totalAcademyCommissionForPrivates += academyGetsThisLesson;
     }
@@ -1231,103 +1209,155 @@ app.delete('/api/admin/expenses/:id', async (req, res) => {
 
 // ---- Admin History Update Route ----
 app.put('/api/admin/history/:id', async (req, res) => {
-  console.log(`PUT /api/admin/history/:id - Received ID: ${req.params.id}`);
-  console.log(`PUT /api/admin/history/:id - Received body:`, req.body);
-  if(req.body){
-    console.log(`PUT /api/admin/history/:id - Field: ${req.body.field}, Value: ${req.body.value}`);
-  }
+  // 1. Add console.log at the beginning of the route handler for debugging purposes.
+  console.log('Original req.body:', req.body);
+  // console.log(`PUT /api/admin/history/:id - Received ID: ${req.params.id}`); // Kept for context
+  // console.log(`PUT /api/admin/history/:id - Received body:`, req.body); // Covered by above
+  // if(req.body){ // Covered by above
+  //   console.log(`PUT /api/admin/history/:id - Field: ${req.body.field}, Value: ${req.body.value}`);
+  // }
 
   if (!req.session?.user?.isAdmin) {
     return res.status(401).json({ message: 'Unauthorized: Admin only.' });
   }
 
   const bookingId = parseInt(req.params.id, 10);
-  const { field, value } = req.body;
+  const { field } = req.body; // Original value captured before modification
+  let value = req.body.value;   // Use 'let' as 'value' might be reassigned after trimming
 
   if (isNaN(bookingId) || bookingId <= 0) {
     return res.status(400).json({ message: 'Invalid booking ID.' });
   }
 
-  if (typeof field !== 'string' || field.trim() === '' || typeof value === 'undefined') { // Allow empty string for value
-    return res.status(400).json({ message: 'Field name and value are required.' });
+  if (typeof field !== 'string' || field.trim() === '') {
+    return res.status(400).json({ message: 'Field name is required and must be a string.' });
   }
+  // Value can be null or other types, so typeof value === 'undefined' might be too strict if null is a valid input.
+  // The validation below will handle specific types.
 
   const allowedFields = ['program', 'coach', 'date', 'time', 'student', 'lesson_cost', 'referral_source', 'paid', 'payout_type'];
   if (!allowedFields.includes(field)) {
     return res.status(400).json({ message: `Field '${field}' is not allowed for update.` });
   }
-
-  if (field === 'referral_source') {
-    const allowedReferralSources = [
-        '', // For "None" or empty selection
-        'Ricardo',
-        'Jacob',
-        'Paula',
-        'Zach',
-        'RicardoOwn'
-    ];
-    // Ensure 'value' is a string before checking inclusion, as it might be null from the client if "None" is selected.
-    // The client-side logic already maps "None" to "" for the value.
-    if (!allowedReferralSources.includes(String(value))) { 
-        return res.status(400).json({ message: `Invalid value for referral_source. Received: '${value}'. Allowed values are: None (empty string), Ricardo, Jacob, Paula, Zach, RicardoOwn.` });
-    }
-  }
   
-  let processedValue = value;
-  // Apply specific validation and processing based on the 'field'
-  if (field === 'lesson_cost') {
-    processedValue = parseFloat(value);
-    if (isNaN(processedValue)) {
-        return res.status(400).json({ message: 'Invalid lesson_cost format. Must be a number.' });
-    }
-  } else if (field === 'paid') {
-    if (typeof value !== 'boolean' && value !== 'true' && value !== 'false') {
-        return res.status(400).json({ message: 'Invalid paid status. Must be true or false.' });
-    }
-    processedValue = (value === 'true' || value === true);
-  } else if (field === 'date') {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-        return res.status(400).json({ message: 'Invalid date format. Use YYYY-MM-DD.'});
-    }
-    const dateObj = new Date(value);
-    if (isNaN(dateObj.getTime())) {
-        return res.status(400).json({ message: 'Invalid date value.'});
-    }
-    // processedValue = value; // Already assigned, string format is fine.
-  } else if (field === 'time') {
-    if (value === null || String(value).trim() === '' || String(value).toLowerCase() === 'null') {
-        processedValue = null;
-    } else if (!/^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/.test(String(value).trim())) {
-        console.error(`Invalid time format received for booking ID ${bookingId}, field '${field}': '${value}'`);
-        return res.status(400).json({ message: 'Invalid time format. Please use HH:MM or HH:MM:SS.' });
-    } else {
-        processedValue = String(value).trim();
-    }
-  } else if (field === 'referral_source') {
-    // Assuming allowedReferralSources is defined as in the previous validation step for this field
-    // The actual check against allowedReferralSources is done before this block.
-    // Here, we just process "" to null.
-    if (value === '' || value === null) {
-        processedValue = null;
-    } else {
-        processedValue = String(value).trim(); // Trim if not null/empty
-    }
-  } else if (field === 'payout_type') {
-    // Assuming payout_type can also be set to null if an empty string is provided.
-    // If payout_type has a specific list of allowed values, further validation similar to referral_source would be needed here.
-    if (value === '' || value === null) {
-        processedValue = null;
-    } else {
-        processedValue = String(value).trim(); // Trim if not null/empty
-    }
-  } else if (typeof value === 'string' && (field === 'program' || field === 'coach' || field === 'student')) {
-    // General string trim for other text fields
-    processedValue = value.trim();
-  }
-  // No specific validation for other fields in allowedFields means they are accepted as is (after potential general trim if string)
+  let processedValue = value; // Initialize with original value
 
-  // Sanitize field name for use in SQL query - already did by whitelisting.
-  // The column name is directly from allowedFields, which is safe.
+  // **Generic Trim for all string values initially**
+  if (typeof processedValue === 'string') {
+    processedValue = processedValue.trim();
+  }
+
+  // 2. Implement validation and sanitization
+  switch (field) {
+    case 'lesson_cost':
+      if (processedValue === '' || processedValue === null) {
+        processedValue = null;
+      } else {
+        const cost = Number(processedValue);
+        if (isNaN(cost)) {
+          return res.status(400).json({ message: 'Invalid lesson_cost format. Must be a number or null.' });
+        }
+        processedValue = cost;
+      }
+      break;
+    case 'paid':
+      if (typeof processedValue === 'boolean') {
+        processedValue = processedValue ? 'TRUE' : 'FALSE'; // Convert to SQL boolean text
+      } else if (typeof processedValue === 'string') {
+        const lowerVal = processedValue.toLowerCase();
+        if (lowerVal === 'true') {
+          processedValue = 'TRUE';
+        } else if (lowerVal === 'false') {
+          processedValue = 'FALSE';
+        } else {
+          return res.status(400).json({ message: 'Invalid paid status. Must be true/false (boolean or string).' });
+        }
+      } else {
+         return res.status(400).json({ message: 'Invalid paid status type.' });
+      }
+      break;
+    case 'date':
+      if (processedValue === null || processedValue === '') {
+        processedValue = null;
+      } else if (typeof processedValue === 'string' && !/^\d{4}-\d{2}-\d{2}$/.test(processedValue)) {
+        return res.status(400).json({ message: 'Invalid date format. Use YYYY-MM-DD or null.' });
+      } else if (typeof processedValue !== 'string' && processedValue !== null) {
+        return res.status(400).json({ message: 'Invalid date type. Must be a string or null.'});
+      }
+      // Further validation: check if the date is actually a valid date (e.g., not 2023-02-30)
+      if (processedValue !== null) {
+        const dateObj = new Date(processedValue);
+        // Check if dateObj is a valid date and if its string representation matches the input
+        // This helps catch invalid dates like '2023-02-30' which Date might parse leniently
+        if (isNaN(dateObj.getTime()) || dateObj.toISOString().slice(0,10) !== processedValue) {
+            return res.status(400).json({ message: 'Invalid date value (e.g., month or day out of range).' });
+        }
+      }
+      break;
+    case 'time':
+      if (processedValue === null || processedValue === '') {
+        processedValue = null;
+      } else if (typeof processedValue === 'string' && !/^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/.test(processedValue)) {
+        return res.status(400).json({ message: 'Invalid time format. Use HH:MM or HH:MM:SS or null.' });
+      } else if (typeof processedValue !== 'string' && processedValue !== null) {
+         return res.status(400).json({ message: 'Invalid time type. Must be a string or null.'});
+      }
+      break;
+    case 'referral_source':
+      // The new dropdown options are 'Google', 'Friend', 'Flyer', or '' (None)
+      const allowedReferrals = ['Google', 'Friend', 'Flyer', null, '']; // '' becomes null
+      if (processedValue === '' || processedValue === null) {
+        processedValue = null;
+      } else if (typeof processedValue === 'string' && !allowedReferrals.includes(processedValue)) {
+        // This check is more dynamic if options change often, but for now, specific list is fine.
+        // If client sends a value not in the new list, it's an error.
+        // The old list ('Ricardo', 'Jacob', etc.) is no longer valid unless explicitly handled or migrated.
+        console.warn(`Invalid referral_source value: '${processedValue}'. Expected one of ${allowedReferrals.join(', ')} or null.`);
+        // Depending on strictness, either error out or allow (if old values are still possible in DB)
+        // For now, let's be strict with the new list.
+        // return res.status(400).json({ message: `Invalid referral_source value. Expected 'Google', 'Friend', 'Flyer', or empty/null.` });
+        // Keeping old validation for now as per original code structure for other referral sources:
+        const oldAllowedReferralSources = ['Ricardo', 'Jacob', 'Paula', 'Zach', 'RicardoOwn'];
+        if (!oldAllowedReferralSources.includes(processedValue) && !allowedReferrals.includes(processedValue)){
+             return res.status(400).json({ message: `Invalid value for referral_source. Received: '${processedValue}'.` });
+        }
+
+      } else if (typeof processedValue !== 'string' && processedValue !== null) {
+        return res.status(400).json({ message: 'Invalid referral_source type.' });
+      }
+      break;
+    case 'program':
+    case 'coach':
+    case 'student':
+      if (processedValue === null) {
+        // Already null, do nothing
+      } else if (typeof processedValue === 'string') {
+        if (processedValue === '') { // Convert empty string to null for these fields
+          processedValue = null;
+        }
+      } else {
+        return res.status(400).json({ message: `Invalid type for ${field}. Must be a string or null.` });
+      }
+      break;
+    case 'payout_type': // Assuming payout_type can be nullified
+      if (processedValue === '' || processedValue === null) {
+        processedValue = null;
+      } else if (typeof processedValue !== 'string') {
+        return res.status(400).json({ message: 'Invalid payout_type. Must be a string or null.' });
+      }
+      // No specific value list validation for payout_type here, just type and nullification
+      break;
+    default:
+      // Should not happen due to allowedFields check, but as a safeguard
+      if (typeof processedValue === 'string') {
+        // Default trim already applied
+      }
+      break;
+  }
+
+  // 3. Ensure that the console.log includes the original req.body as well as the processedValue
+  console.log(`Processed value for DB (field: ${field}):`, processedValue);
+
   const sql = `UPDATE bookings SET "${field}" = $1 WHERE id = $2 RETURNING *`;
 
   try {
@@ -1341,11 +1371,11 @@ app.put('/api/admin/history/:id', async (req, res) => {
     console.error('DB Error Message:', dbError.message);
     console.error('DB Error Code:', dbError.code);
     console.error('DB Error Detail:', dbError.detail);
-    console.error('DB Error Table:', dbError.table);
-    console.error('DB Error Column:', dbError.column);
-    console.error('DB Error Constraint:', dbError.constraint);
-    console.error('DB Error Routine:', dbError.routine);
-    console.error('DB Error Stack:', dbError.stack);
+    // console.error('DB Error Table:', dbError.table); // Table might not always be present
+    // console.error('DB Error Column:', dbError.column); // Column might not always be present
+    // console.error('DB Error Constraint:', dbError.constraint); // Constraint might not always be present
+    // console.error('DB Error Routine:', dbError.routine); // Routine might not always be present
+    console.error('DB Error Stack:', dbError.stack); // Full stack trace
     res.status(500).json({ message: `Database error updating booking: ${dbError.message}` });
   }
 });

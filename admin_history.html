@@ -278,6 +278,7 @@ ul.nav-links-mobile li a {
     <!-- The bulk update button for costs is kept separate for now, can be integrated later if needed -->
     <div style="text-align: right; margin-bottom: 5px;">
         <button class="bulk-update-costs-btn" data-table-id="past-lessons-table-container" disabled>Update All Changed Prices</button>
+        <button id="bulkUpdateButton" style="margin-left: 10px;">Bulk Update Placeholder</button>
     </div>
     <div id="past-lessons-table-container" style="margin-top: 20px;">
         <!-- The single table of past lessons will be rendered here by JavaScript -->
@@ -699,11 +700,9 @@ ul.nav-links-mobile li a {
                         
                         const options = [
                             { value: '', text: 'None' },
-                            { value: 'Ricardo', text: 'Referred by Ricardo' },
-                            { value: 'Jacob', text: "Jacob's Own" },
-                            { value: 'Paula', text: "Paula's Own" },
-                            { value: 'Zach', text: "Zach's Own" },
-                            { value: 'RicardoOwn', text: "Ricardo's Own" }
+                            { value: 'Google', text: 'Google' },
+                            { value: 'Friend', text: 'Friend' },
+                            { value: 'Flyer', text: 'Flyer' }
                         ];
 
                         options.forEach(opt => {
@@ -743,47 +742,79 @@ ul.nav-links-mobile li a {
             saveHistoryBtn.disabled = true;
 
             const updates = [];
-            document.querySelectorAll('.history-cell').forEach(td => {
-                if (td.contentEditable === 'true') { // Ensure we only check editable cells
-                    const bookingId = td.dataset.id;
-                    const fieldName = td.dataset.field;
-                    const originalValue = td.dataset.originalValue;
-                    let newValue = td.innerText.trim();
+            document.querySelectorAll('.history-cell[data-id]').forEach(td => { // Iterate over all cells with a data-id
+                const bookingId = td.dataset.id;
+                const fieldName = td.dataset.field;
+                const originalValue = td.dataset.originalValue;
+                let newValue;
+                let changed = false;
 
-                    // Special handling for date display vs actual value if needed
-                    // Special handling for fields before comparison and for payload
+                if (fieldName === 'referral_source') {
+                    const selectEl = td.querySelector('select.history-referral-select');
+                    if (selectEl) { // If select exists, editing was active for this cell
+                        newValue = selectEl.value;
+                        if (newValue !== originalValue) {
+                            changed = true;
+                        }
+                    } else {
+                        // If select is not present, it means editing for this cell was not active or already reverted.
+                        // We could try to derive the value from td.textContent if needed,
+                        // but ideally, changes are captured from active edit elements (selects/contentEditable).
+                        // For simplicity, if no select, assume no change to be saved for referral_source from this cell.
+                        // Or, ensure originalValue reflects the actual state if text was manually changed.
+                        // The current display logic updates td.textContent with the *text* of the option.
+                        // To compare, we'd need to map this text back to a value.
+                        // It's safer to rely on the select being present if a change is intended.
+                        // The current logic: if 'Disable Editing' was clicked, the select is gone.
+                        // 'Save' button should ideally capture changes *before* 'Disable Editing' state is fully applied to data model.
+                        // However, the `editing` flag is global.
+                        // Let's stick to: if select is there, take its value. If not, no change from this cell for referral_source.
+                        // This means if user edits, then clicks "Disable Editing", then "Save", referral changes are NOT currently saved.
+                        // This needs to be fixed by ensuring the save button can always get the "intended" new value.
+
+                        // To fix this, when "Disable Editing" is clicked and referral_source is reverted to text,
+                        // we should also update a temporary data attribute on the TD if the value changed.
+                        // OR, the save function must be aware of the global `editing` flag and behave accordingly.
+
+                        // For now, this simpler logic: if select is there, it's an explicit change.
+                        // This means user must click "Save" *while* the select is visible for referral_source.
+                        // The `saveHistoryBtn.disabled = !editing` in `enableHistoryEditingBtn` listener helps here.
+                        // If `editing` is false, save button is disabled.
+                        // If `editing` is true, save button is enabled, and select should be present for referral_source.
+                        // So, the `selectEl` should generally be found if `editing` is true.
+                        // The issue might be if save is clicked AFTER "Disable Editing" has been clicked. But then saveBtn is disabled.
+                        // The crucial part is that `saveHistoryBtn.disabled = !editing;` is set.
+                        // This implies that when saveHistoryBtn is clickable, `editing` is true, so selects are present.
+                    }
+                } else if (td.contentEditable === 'true') { // For other fields that are directly editable
+                    newValue = td.innerText.trim();
                     if (fieldName === 'date' && td.innerText.includes('/')) {
-                        // Attempt to convert display MM/DD/YYYY to YYYY-MM-DD for consistency if user edits this way
-                        // This is a basic conversion and might need a more robust date parsing library for other formats
                         const parts = newValue.split('/');
-                        if (parts.length === 3) {
+                        if (parts.length === 3) { // MM/DD/YYYY
                             newValue = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
                         }
-                        // It's generally better to use originalValue for dates if display format is ambiguous
-                        // or use a proper date picker input when editing.
-                        // For this implementation, we'll assume originalValue is the reliable YYYY-MM-DD.
-                        // If user manually types a date, it should be YYYY-MM-DD or server validation will catch it.
                     } else if (fieldName === 'lesson_cost') {
                         newValue = newValue.replace('$', '').trim();
                     } else if (fieldName === 'paid') {
-                        // Normalize to "true" or "false" string for consistent comparison and sending
                         const lowerNewValue = newValue.toLowerCase();
                         if (lowerNewValue === 'yes' || lowerNewValue === 'true') {
                             newValue = 'true';
                         } else if (lowerNewValue === 'no' || lowerNewValue === 'false') {
                             newValue = 'false';
                         }
-                        // originalValue for 'paid' is already "true" or "false" string
                     }
-
                     if (newValue !== originalValue) {
-                        updates.push({
-                            bookingId: bookingId,
-                            fieldName: fieldName,
-                            newValue: newValue,
-                            originalValueForDebug: originalValue 
-                        });
+                        changed = true;
                     }
+                }
+
+                if (changed) {
+                    updates.push({
+                        bookingId: bookingId,
+                        fieldName: fieldName,
+                        newValue: newValue,
+                        originalValueForDebug: originalValue
+                    });
                 }
             });
 

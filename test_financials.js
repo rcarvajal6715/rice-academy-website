@@ -34,7 +34,7 @@ describe('POST /api/admin/expenses', () => {
     it('should add an expense successfully (as admin)', (done) => {
         agent // Use the agent
             .post('/api/admin/expenses')
-            .send({ description: 'Test Expense Normal', amount: 120.50, period: '2024-02' })
+            .send({ description: 'Test Expense Normal', amount: 120.50, period: '2024-02', expense_date: '2024-02-15' })
             .end((err, res) => {
                 if (res.status === 401) {
                     console.warn("WARN: Test 'should add an expense successfully (as admin)' received 401. This likely means the admin login in beforeAll failed.");
@@ -46,6 +46,7 @@ describe('POST /api/admin/expenses', () => {
                     expect(res.body.expense.description).to.equal('Test Expense Normal');
                     expect(String(res.body.expense.amount)).to.equal('120.50');
                     expect(res.body.expense.period).to.equal('2024-02-01');
+                    expect(res.body.expense.expense_date).to.equal('2024-02-15'); // New assertion
                 }
                 done(err);
             });
@@ -219,14 +220,51 @@ describe('POST /api/admin/expenses', () => {
             });
     });
 
-    it('should return 400 if period is missing', (done) => {
-        agent // Use the agent
+    it('should return 400 if expense_date is missing', (done) => {
+        agent
             .post('/api/admin/expenses')
-            .send({ description: 'Test Missing Period', amount: 100 }) // No period
+            .send({ description: 'Test Missing Expense Date', amount: 100, period: '2023-08' }) // No expense_date
             .expect(400)
             .end((err, res) => {
                 if (err) return done(err);
-                expect(res.body.message).to.equal('Bad Request: description (non-empty), amount, and period (YYYY-MM) are required.');
+                // This message comes from the updated combined check for required fields
+                expect(res.body.message).to.equal('Bad Request: expense_date, description (non-empty), amount, and period (YYYY-MM) are required.');
+                done();
+            });
+    });
+
+    it('should return 400 for invalid expense_date format (e.g., YYYY/MM/DD)', (done) => {
+        agent
+            .post('/api/admin/expenses')
+            .send({ description: 'Test Invalid Format ED', amount: 100, period: '2023-08', expense_date: '2023/08/15' })
+            .expect(400)
+            .end((err, res) => {
+                if (err) return done(err);
+                expect(res.body.message).to.equal('Invalid expense_date format. Use YYYY-MM-DD.');
+                done();
+            });
+    });
+
+    it('should return 400 for invalid expense_date value (e.g., 2023-02-30)', (done) => {
+        agent
+            .post('/api/admin/expenses')
+            .send({ description: 'Test Invalid Value ED', amount: 100, period: '2023-02', expense_date: '2023-02-30' })
+            .expect(400)
+            .end((err, res) => {
+                if (err) return done(err);
+                expect(res.body.message).to.equal('Invalid expense_date value (e.g., day out of range or not a real date).');
+                done();
+            });
+    });
+
+    it('should return 400 if period is missing', (done) => {
+        agent // Use the agent
+            .post('/api/admin/expenses')
+            .send({ description: 'Test Missing Period', amount: 100, expense_date: '2023-08-15' }) // No period, but has expense_date
+            .expect(400)
+            .end((err, res) => {
+                if (err) return done(err);
+                expect(res.body.message).to.equal('Bad Request: expense_date, description (non-empty), amount, and period (YYYY-MM) are required.');
                 done();
             });
     });

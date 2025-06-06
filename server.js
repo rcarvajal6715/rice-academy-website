@@ -75,10 +75,12 @@ ensureExpensesSchema().catch(err => {
   const createExpensesTableQuery = `
     CREATE TABLE IF NOT EXISTS expenses (
         id SERIAL PRIMARY KEY,
-        description TEXT NOT NULL,
+        expense_date DATE NOT NULL,
+        description TEXT,
         amount NUMERIC(10, 2) NOT NULL,
-        period DATE NOT NULL, -- To store the first day of the month (YYYY-MM-01) for the expense period
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        category TEXT DEFAULT 'Other',
+        created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        period DATE
     );
   `;
   try {
@@ -1192,10 +1194,10 @@ app.post('/api/admin/expenses', async (req, res) => {
     return res.status(401).json({ message: 'Unauthorized: Admin access required.' });
   }
 
-  const { description, amount, period } = req.body; // Expect period (YYYY-MM)
+  const { description, amount, period, expense_date } = req.body; // Expect period (YYYY-MM)
 
-  if (!period || !description || description.trim() === '' || amount === undefined || amount === null) {
-    return res.status(400).json({ message: 'Bad Request: description (non-empty), amount, and period (YYYY-MM) are required.' });
+  if (!expense_date || !period || !description || description.trim() === '' || amount === undefined || amount === null) {
+    return res.status(400).json({ message: 'Bad Request: expense_date, description (non-empty), amount, and period (YYYY-MM) are required.' });
   }
 
   if (!/^\d{4}-\d{2}$/.test(period)) {
@@ -1211,6 +1213,15 @@ app.post('/api/admin/expenses', async (req, res) => {
   const periodDate = safeDate.toISOString().slice(0, 10); // “YYYY-MM-01”
   // --- End of change ---
 
+  // Validation for expense_date (YYYY-MM-DD from req.body.expense_date)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(expense_date)) {
+    return res.status(400).json({ message: 'Invalid expense_date format. Use YYYY-MM-DD.' });
+  }
+  const parsedExpenseDate = new Date(expense_date);
+  if (isNaN(parsedExpenseDate.getTime()) || parsedExpenseDate.toISOString().slice(0,10) !== expense_date) {
+      return res.status(400).json({ message: 'Invalid expense_date value (e.g., day out of range or not a real date).' });
+  }
+
   const parsedAmount = parseFloat(amount);
   if (parsedAmount > 99999999.99) {
     return res.status(400).json({ message: 'Bad Request: amount exceeds the maximum allowed value (99999999.99).' });
@@ -1221,10 +1232,10 @@ app.post('/api/admin/expenses', async (req, res) => {
 
   try {
     const result = await pool.query(
-      `INSERT INTO expenses (description, amount, period)
-       VALUES ($1, $2, $3)
-       RETURNING id, description, amount, period`, // period will be the YYYY-MM-01 date
-      [description.trim(), parsedAmount, periodDate]
+      `INSERT INTO expenses (description, amount, period, expense_date)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, description, amount, period, expense_date`,
+      [description.trim(), parsedAmount, periodDate, expense_date]
     );
     res.status(201).json({ message: 'Expense added successfully.', expense: result.rows[0] });
   } catch (err) {

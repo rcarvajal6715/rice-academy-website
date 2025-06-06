@@ -538,14 +538,11 @@ window.addEventListener('DOMContentLoaded', () => {
             const selectEl = document.createElement('select');
             selectEl.className = 'history-referral-select';
             const options = [
-                { value: '', text: 'None' },
+                { value: '', text: 'None' }, // "None" option with an empty string value
                 { value: 'Ricardo', text: 'Referred by Ricardo' },
                 { value: 'Jacob', text: 'Jacob - Own Booking' },
                 { value: 'Paula', text: 'Paula - Own Booking' },
                 { value: 'Zach', text: 'Zach - Own Booking' },
-                { value: 'JacobOwn', text: 'Jacob - Own Booking (Legacy)' },
-                { value: 'PaulaOwn', text: 'Paula - Own Booking (Legacy)' },
-                { value: 'ZachOwn', text: 'Zach - Own Booking (Legacy)' },
                 { value: 'RicardoOwn', text: 'Ricardo - Teaches Himself' }
             ];
             options.forEach(opt => {

@@ -1313,27 +1313,28 @@ app.put('/api/admin/history/:id', async (req, res) => {
       }
       break;
     case 'referral_source':
-      // The new dropdown options are 'Google', 'Friend', 'Flyer', or '' (None)
-      const allowedReferrals = ['Google', 'Friend', 'Flyer', null, '']; // '' becomes null
-      if (processedValue === '' || processedValue === null) {
-        processedValue = null;
-      } else if (typeof processedValue === 'string' && !allowedReferrals.includes(processedValue)) {
-        // This check is more dynamic if options change often, but for now, specific list is fine.
-        // If client sends a value not in the new list, it's an error.
-        // The old list ('Ricardo', 'Jacob', etc.) is no longer valid unless explicitly handled or migrated.
-        console.warn(`Invalid referral_source value: '${processedValue}'. Expected one of ${allowedReferrals.join(', ')} or null.`);
-        // Depending on strictness, either error out or allow (if old values are still possible in DB)
-        // For now, let's be strict with the new list.
-        // return res.status(400).json({ message: `Invalid referral_source value. Expected 'Google', 'Friend', 'Flyer', or empty/null.` });
-        // Keeping old validation for now as per original code structure for other referral sources:
-        const oldAllowedReferralSources = ['Ricardo', 'Jacob', 'Paula', 'Zach', 'RicardoOwn'];
-        if (!oldAllowedReferralSources.includes(processedValue) && !allowedReferrals.includes(processedValue)){
-             return res.status(400).json({ message: `Invalid value for referral_source. Received: '${processedValue}'.` });
-        }
+      const allowedReferralSources = [
+        '',           // For 'None'
+        'Ricardo',
+        'Jacob',
+        'Paula',
+        'Zach',
+        'RicardoOwn'
+    ];
 
-      } else if (typeof processedValue !== 'string' && processedValue !== null) {
-        return res.status(400).json({ message: 'Invalid referral_source type.' });
+      if (processedValue === null) {
+        // processedValue is already null (due to initial trim of null value or explicit null)
+      } else if (processedValue === '') {
+        processedValue = null; // Convert empty string to null for DB
+      } else if (typeof processedValue === 'string' && !allowedReferralSources.includes(processedValue)) {
+        // If it's a non-empty string but not in the allowed list
+        console.error(`Invalid referral_source value: '${processedValue}'. Not in allowed list.`);
+        return res.status(400).json({ message: `Invalid value for referral_source. Received: '${processedValue}'.` });
+      } else if (typeof processedValue !== 'string') {
+        // If it's not a string and not null (e.g. a number sent by mistake)
+        return res.status(400).json({ message: 'Invalid referral_source type. Must be a string or null.' });
       }
+      // At this point, processedValue is either null or a valid (trimmed) string from the list.
       break;
     case 'program':
     case 'coach':

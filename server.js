@@ -1128,6 +1128,7 @@ app.post('/api/book-pay-later', async (req, res) => {
 
 // ---- Admin Expense Tracking Routes ----
 app.post('/api/admin/expenses', async (req, res) => {
+  console.log('Received expense data:', req.body);
   if (!req.session?.user?.isAdmin) {
     return res.status(401).json({ message: 'Unauthorized: Admin access required.' });
   }

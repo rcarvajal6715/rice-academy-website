@@ -599,6 +599,24 @@ legend {
   </script>
 
 <script>
+function updateElement(id, value, isCurrency = true, isPercentage = false) {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    let formattedValue = value;
+    if (typeof value === 'number') {
+        if (isCurrency) {
+            formattedValue = `$${value.toFixed(2)}`;
+        } else if (isPercentage) {
+            formattedValue = `${value.toFixed(2)}%`;
+        } else {
+            formattedValue = value.toFixed(2);
+        }
+    }
+
+    el.textContent = formattedValue;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const financialsForm = document.getElementById('financials-form');
     const loadingMessage = document.getElementById('loading-message');

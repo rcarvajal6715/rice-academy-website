@@ -1304,14 +1304,22 @@ app.put('/api/admin/history/:id', async (req, res) => {
       }
       break;
     case 'time':
-      if (processedValue === null || processedValue === '') {
-        processedValue = null;
-      } else if (typeof processedValue === 'string' && !/^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/.test(processedValue)) {
-        return res.status(400).json({ message: 'Invalid time format. Use HH:MM or HH:MM:SS or null.' });
-      } else if (typeof processedValue !== 'string' && processedValue !== null) {
-         return res.status(400).json({ message: 'Invalid time type. Must be a string or null.'});
-      }
-      break;
+  if (processedValue === null || processedValue === '') {
+    processedValue = null;
+  } else if (/^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/.test(processedValue)) {
+    // already HH:MM or HH:MM:SS → okay
+  } else if (/^\d{1,2}:\d{2}\s?(AM|PM)$/i.test(processedValue)) {
+    // parse “h:mm AM/PM” into “HH:MM” or “HH:MM:SS” here
+    // e.g. convert “2:00 PM” → “14:00”
+    const [_, timePart, ampm] = processedValue.match(/^(\d{1,2}:\d{2})\s?(AM|PM)$/i);
+    let [h, m] = timePart.split(':').map(Number);
+    if (ampm.toUpperCase() === 'PM' && h < 12) h += 12;
+    if (ampm.toUpperCase() === 'AM' && h === 12) h = 0;
+    processedValue = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  } else {
+    return res.status(400).json({ message: 'Invalid time format. Use HH:MM or HH:MM:SS or null.' });
+  }
+  break;
     case 'referral_source':
       const allowedReferralSources = [
         '',           // For 'None'

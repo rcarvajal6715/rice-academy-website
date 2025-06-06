@@ -182,6 +182,92 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+// ---- Admin Update Coaches for a Session Route ----
+app.post('/api/admin/lessons/update-coaches', async (req, res) => {
+  if (!req.session?.user?.isAdmin) {
+    return res.status(403).json({ message: 'Forbidden: Admin access required.' });
+  }
+
+  const { 
+    program, 
+    date, 
+    time, 
+    originalBookingIds, 
+    newCoaches, 
+    lesson_cost, 
+    student, 
+    email, 
+    phone 
+  } = req.body;
+
+  // Basic Validation
+  if (!program || !date || !time || !originalBookingIds || !Array.isArray(originalBookingIds) || !newCoaches || !Array.isArray(newCoaches) || lesson_cost === undefined) {
+    return res.status(400).json({ message: 'Missing required fields or invalid data format.' });
+  }
+  if (originalBookingIds.some(id => typeof id !== 'number' || id <= 0)) {
+    return res.status(400).json({ message: 'Invalid originalBookingIds. Must be an array of positive integers.' });
+  }
+   if (newCoaches.some(coach => typeof coach !== 'string' || coach.trim() === '')) {
+    // Allow empty newCoaches array, but if not empty, coaches must be valid strings.
+    if (newCoaches.length > 0) { // Only apply this validation if newCoaches is not empty
+        return res.status(400).json({ message: 'Invalid newCoaches. Must be an array of non-empty strings.' });
+    }
+  }
+  if (typeof lesson_cost !== 'number' || lesson_cost < 0) {
+    return res.status(400).json({ message: 'Invalid lesson_cost. Must be a non-negative number.' });
+  }
+  // Date and Time validation (basic)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({ message: 'Invalid date format. Use YYYY-MM-DD.' });
+  }
+  if (!/^\d{2}:\d{2}(:\d{2})?$/.test(time)) { // Allows HH:MM or HH:MM:SS
+    return res.status(400).json({ message: 'Invalid time format. Use HH:MM or HH:MM:SS.' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Delete existing bookings
+    for (const bookingId of originalBookingIds) {
+      const deleteResult = await client.query('DELETE FROM bookings WHERE id = $1', [bookingId]);
+      // Optional: check deleteResult.rowCount if needed
+    }
+
+    let newBookingsCount = 0;
+    if (newCoaches.length > 0) {
+      // Create new bookings for the new set of coaches
+      const studentForDb = student || ''; // Default to empty string if null/undefined
+      const emailForDb = email || '';
+      const phoneForDb = phone || '';
+      const referralSourceForDb = null; // Typically null for camps/group sessions
+
+      for (const coachName of newCoaches) {
+        await client.query(
+          'INSERT INTO bookings (program, coach, date, time, lesson_cost, student, email, phone, paid, session_id, referral_source) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
+          [program, coachName, date, time, lesson_cost, studentForDb, emailForDb, phoneForDb, false, null, referralSourceForDb]
+        );
+        newBookingsCount++;
+      }
+    }
+
+    await client.query('COMMIT');
+    
+    if (newCoaches.length === 0) {
+        res.status(200).json({ message: `Successfully removed ${originalBookingIds.length} original booking(s). No new coaches assigned (session effectively deleted).` });
+    } else {
+        res.status(200).json({ message: `Successfully updated coaches for session. ${originalBookingIds.length} original booking(s) removed, ${newBookingsCount} new booking(s) created.` });
+    }
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error updating coaches for session:', err);
+    res.status(500).json({ message: 'Failed to update coaches for session due to a server error.' });
+  } finally {
+    client.release();
+  }
+});
+
 // ─── Route Handlers ───────────────────────────────────────────────────
 
 // ---- Admin Update Enrollments Summary Route ----
@@ -914,24 +1000,61 @@ app.post('/api/admin/lessons', async (req, res) => {
   if (!req.session?.user?.isAdmin) {
     return res.status(403).json({ message: 'Forbidden' });
   }
-  // Add referral_source to destructuring
-  let { program, coachName, date, time, student, referral_source } = req.body; 
+  // Destructure all three potential coach names
+  let { program, coachName, coachName2, coachName3, date, time, student, referral_source } = req.body;
+
   if (program === 'Tennis Private') {
     program = 'Private Lesson'; // Normalize program name
   }
-  console.log('🎾 Adding lesson via admin for coach:', coachName, 'Referral:', referral_source);
-  try {
-    // Add referral_source to the INSERT query and parameters
-    // Ensure referral_source is null if empty string, otherwise use its value.
-    const referralSourceForDb = referral_source && referral_source.trim() !== '' ? referral_source.trim() : null;
-    await pool.query(
-      'INSERT INTO bookings (email, program, coach, date, time, student, paid, session_id, referral_source) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
-      ['', program, coachName, date, time, student, false, null, referralSourceForDb]
-    );
-    res.status(200).send('Lesson added successfully');
-  } catch (err) {
-    console.error('Error adding admin lesson:', err);
-    res.status(500).send('Error adding lesson');
+
+  const campLikePrograms = ["Summer Camp / Group Lessons", "High Performance Training", "Adult Clinics"];
+  const isCampLikeProgram = campLikePrograms.includes(program);
+
+  // Ensure referral_source is null if empty string, otherwise use its value.
+  const referralSourceForDb = referral_source && referral_source.trim() !== '' ? referral_source.trim() : null;
+  // Student name is usually empty for camps, but pass it through if provided.
+  const studentForDb = student || ''; 
+
+  if (isCampLikeProgram) {
+    const coachesToProcess = [];
+    if (coachName && coachName.trim() !== '') coachesToProcess.push(coachName.trim());
+    if (coachName2 && coachName2.trim() !== '') coachesToProcess.push(coachName2.trim());
+    if (coachName3 && coachName3.trim() !== '') coachesToProcess.push(coachName3.trim());
+
+    if (coachesToProcess.length === 0) {
+      return res.status(400).json({ message: 'At least one coach is required for camp-like programs.' });
+    }
+
+    console.log('🎾 Adding camp-like lesson via admin for program:', program, 'Coaches:', coachesToProcess.join(', '));
+    try {
+      let lessonsAddedCount = 0;
+      for (const currentCoach of coachesToProcess) {
+        await pool.query(
+          'INSERT INTO bookings (email, program, coach, date, time, student, paid, session_id, referral_source) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+          ['', program, currentCoach, date, time, studentForDb, false, null, referralSourceForDb] // studentForDb and referralSourceForDb are same for all coaches in a camp
+        );
+        lessonsAddedCount++;
+      }
+      res.status(200).send(`${lessonsAddedCount} lesson(s) added successfully for program: ${program}`);
+    } catch (err) {
+      console.error('Error adding admin camp-like lesson:', err);
+      res.status(500).send('Error adding camp-like lesson(s)');
+    }
+  } else { // Not a camp-like program (e.g., Private Lesson)
+    if (!coachName || coachName.trim() === '') {
+      return res.status(400).json({ message: 'Coach name is required for this program type.' });
+    }
+    console.log('🎾 Adding non-camp lesson via admin for coach:', coachName, 'Program:', program, 'Referral:', referral_source);
+    try {
+      await pool.query(
+        'INSERT INTO bookings (email, program, coach, date, time, student, paid, session_id, referral_source) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+        ['', program, coachName, date, time, studentForDb, false, null, referralSourceForDb]
+      );
+      res.status(200).send('Lesson added successfully');
+    } catch (err) {
+      console.error('Error adding admin non-camp lesson:', err);
+      res.status(500).send('Error adding lesson');
+    }
   }
 });
 

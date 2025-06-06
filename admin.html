@@ -23,6 +23,83 @@
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { padding: 8px; border:1px solid #ddd; }
     thead th { background: #0c3c78; color: white; }
+    .edit-coaches-btn { 
+        background-color: #ffc107; /* Amber */
+        color: black; 
+        padding: 5px 10px; 
+        border-radius: 4px; 
+        border: 1px solid #e0a800; /* Darker amber */
+        cursor: pointer; 
+        font-size: 0.9em;
+        margin-left: 5px; /* Space from delete button */
+    }
+    .edit-coaches-btn:hover { background-color: #e0a800; }
+
+    /* Modal Styles */
+    .modal {
+      display: none; 
+      position: fixed; 
+      z-index: 1001; /* Sit on top */
+      left: 0;
+      top: 0;
+      width: 100%; 
+      height: 100%; 
+      overflow: auto; 
+      background-color: rgba(0,0,0,0.4); 
+    }
+    .modal-content {
+      background-color: #fefefe;
+      margin: 10% auto; 
+      padding: 20px;
+      border: 1px solid #888;
+      width: 80%;
+      max-width: 500px;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
+    }
+    .modal-header {
+      padding: 10px 16px;
+      background-color: #0c3c78;
+      color: white;
+      border-top-left-radius: 8px;
+      border-top-right-radius: 8px;
+    }
+    .modal-header h2 {
+      margin: 0;
+      color: white;
+    }
+    .modal-body { padding: 15px; }
+    .modal-footer {
+      padding: 10px 16px;
+      text-align: right;
+    }
+    .modal-footer button {
+      width: auto; /* Override default full-width for buttons in modal */
+      padding: 8px 15px;
+      margin-left: 10px;
+    }
+    .modal-footer button.cancel-btn {
+      background-color: #ccc;
+      color: black;
+    }
+    .modal-footer button.cancel-btn:hover {
+      background-color: #bbb;
+    }
+    #coach-checkboxes-container label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: normal; /* Normal weight for checkbox labels */
+        color: #333; /* Darker text for readability */
+    }
+    #coach-checkboxes-container input[type="checkbox"] {
+        width: auto; /* Let checkbox size normally */
+        margin-right: 8px;
+        vertical-align: middle;
+    }
+    .session-info p { margin: 5px 0; }
+    .session-info strong { color: #0c3c78; }
+
+
 /* === Global Header & Navigation Styles (Finalized Version) === */
      header {
        background-color: #0c3c78; 
@@ -423,6 +500,36 @@ ul.nav-links-mobile li a {
     <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
   </footer>
 
+  <!-- Edit Coaches Modal -->
+  <div id="editCoachesModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Edit Coaches for Session</h2>
+      </div>
+      <div class="modal-body">
+        <div class="session-info">
+          <p><strong>Program:</strong> <span id="modalSessionProgram"></span></p>
+          <p><strong>Date:</strong> <span id="modalSessionDate"></span></p>
+          <p><strong>Time:</strong> <span id="modalSessionTime"></span></p>
+        </div>
+        <hr>
+        <p><strong>Assign Coaches:</strong></p>
+        <div id="coach-checkboxes-container">
+          <!-- Coach checkboxes will be populated here by JavaScript -->
+        </div>
+        <input type="hidden" id="modalOriginalBookingIds">
+        <input type="hidden" id="modalLessonCost">
+        <input type="hidden" id="modalStudentName">
+        <input type="hidden" id="modalStudentEmail">
+        <input type="hidden" id="modalStudentPhone">
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="cancelEditCoachesBtn" class="cancel-btn">Cancel</button>
+        <button type="button" id="saveCoachesChangesBtn">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Toggle student field
     const programEl = document.getElementById('program');
@@ -640,7 +747,7 @@ ul.nav-links-mobile li a {
 
   // Helper function to render a table for a specific set of lessons
   function renderLessonsTable(lessonsArray, containerId, placeholderMessage) {
-    console.log('ADMIN.HTML: renderLessonsTable START for container:', containerId, 'with lessons:', lessonsArray.length);
+    console.log('ADMIN.HTML: renderLessonsTable START for container:', containerId, 'with lessons:', lessonsArray.length, 'First lesson if exists:', lessonsArray[0]);
     const coachColors = {
         'Ricardo Carvajalino': '#e0f7fa', // Light cyan/blue
         'Jacob Capone': '#fff9c4',      // Light yellow
@@ -687,20 +794,33 @@ ul.nav-links-mobile li a {
       const refVal = les.referral_source || ''; // Defined for use in referral select
       
       let rowStyle = '';
-      if (containerId === 'private-lessons-table-container' && les.coach && coachColors[les.coach]) {
-          rowStyle = `background-color: ${coachColors[les.coach]};`;
-      } 
+      const isCampTable = containerId === 'camp-lessons-table-container';
+
+      // For camp table, coach display and data-id will be different.
+      let coachDisplay = '';
+      let currentLessonIdOrIds = les.id; // Default for non-camp or non-grouped lessons
+
+      if (isCampTable && les.coaches && Array.isArray(les.coaches)) {
+        coachDisplay = les.coaches.join(', ');
+        currentLessonIdOrIds = les.booking_ids ? les.booking_ids.join(',') : les.id; // Use booking_ids for grouped
+         // For grouped camps, background color could be based on the program or be neutral
+      } else if (containerId === 'private-lessons-table-container' && les.coach && coachColors[les.coach]) {
+        rowStyle = `background-color: ${coachColors[les.coach]};`;
+        coachDisplay = les.coach;
+      } else {
+        coachDisplay = les.coach || 'N/A';
+      }
 
       html += `
-        <tr data-id="${les.id}" ${rowStyle ? `style="${rowStyle}"` : ''}>
+        <tr data-id="${currentLessonIdOrIds}" ${rowStyle ? `style="${rowStyle}"` : ''}>
           <td style="padding:8px; border:1px solid #ddd;">${les.program}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${les.coach}</td>
+          <td style="padding:8px; border:1px solid #ddd;">${coachDisplay}</td>
           <td style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
           <td style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td>
-          <td style="padding:8px; border:1px solid #ddd;">$<input type="number" class="lesson-cost-input" data-booking-id="${les.id}" value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" data-original-cost="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" placeholder="N/A" style="width: 70px;" disabled></td>`;
+          <td style="padding:8px; border:1px solid #ddd;">${ isCampTable ? 'N/A' : (les.student || '—')}</td>
+          <td style="padding:8px; border:1px solid #ddd;">${ isCampTable ? 'N/A' : (les.email || '—')}</td>
+          <td style="padding:8px; border:1px solid #ddd;">${ isCampTable ? 'N/A' : (les.phone || '—')}</td>
+          <td style="padding:8px; border:1px solid #ddd;">$<input type="number" class="lesson-cost-input" data-booking-id="${isCampTable && les.booking_ids ? les.booking_ids[0] : les.id}" value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" data-original-cost="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" placeholder="N/A" style="width: 70px;" disabled></td>`;
           
       if (containerId === 'private-lessons-table-container') {
         html += `
@@ -720,24 +840,28 @@ ul.nav-links-mobile li a {
         `;
       }
           
-      html += `
-          <td style="padding:8px; border:1px solid #ddd;">
-            <button onclick="deleteAdminLesson(${les.id})">Delete</button>
-          </td>
-      `;
+      html += `<td style="padding:8px; border:1px solid #ddd;">`;
+      if (isCampTable && les.booking_ids && Array.isArray(les.booking_ids)) {
+        html += `<button onclick="deleteGroupedCampLesson('${les.booking_ids.join(',')}')">Delete Session</button>`;
+        html += `<button class="edit-coaches-btn" 
+                         data-program="${les.program}" 
+                         data-date="${les.date}" 
+                         data-time="${les.time}" 
+                         data-booking-ids="${les.booking_ids.join(',')}" 
+                         data-coaches="${les.coaches.join(',')}">Edit Coaches</button>`;
+      } else {
+        html += `<button onclick="deleteAdminLesson(${les.id})">Delete</button>`;
+      }
+      html += `</td>`;
+
       if (containerId === 'camp-lessons-table-container') {
         const programName = les.program ? les.program.toLowerCase() : '';
         let isPassType = false;
         let totalPassDays = 0;
+        // For grouped lessons, attendance might be tracked per original booking ID.
+        // This example uses the first booking ID for simplicity if one ID is needed.
+        const attendanceBookingId = (les.booking_ids && les.booking_ids.length > 0) ? les.booking_ids[0] : les.id;
 
-        // TODO: BACKEND REQUIREMENT for full attendance tracking functionality:
-        // - 'totalPassDays' is currently mocked based on program name (e.g., 5 for "Week Pass").
-        //   Ideally, the backend (/api/admin/lessons) should return 'total_pass_days' for each pass-type booking.
-        // - The 'days-used' span currently defaults to 0.
-        //   Ideally, the backend (/api/admin/lessons) should return 'days_used' (from DB) for each pass-type booking.
-        // - Checkbox 'checked' states are currently default (unchecked).
-        //   Ideally, these should be pre-set based on actual attendance data from the backend for each day of the pass,
-        //   e.g., if /api/admin/lessons returned an array like 'les.attendance_details = [true, false, true, ...]'
         if (programName.includes('week pass')) {
             isPassType = true;
             totalPassDays = 5; 
@@ -749,25 +873,27 @@ ul.nav-links-mobile li a {
         if (isPassType) {
             if (totalPassDays > 1) { // Week pass
                 html += '<td>';
-                html += `<div>Days: <span class="days-used" data-booking-id="${les.id}">0</span> / <span class="total-days">${totalPassDays}</span> used</div>`;
+                html += `<div>Days: <span class="days-used" data-booking-id="${attendanceBookingId}">0</span> / <span class="total-days">${totalPassDays}</span> used</div>`;
                 html += `<div class="attendance-markers" style="margin-top: 5px; display: flex; flex-wrap: wrap;">`;
                 for (let i = 0; i < totalPassDays; i++) {
                     html += `<label style="display: inline-block; margin-right: 8px; font-size: 0.9em;">
-                               <input type="checkbox" class="attendance-checkbox" data-booking-id="${les.id}" data-day-index="${i}"> D${i + 1}
+                               <input type="checkbox" class="attendance-checkbox" data-booking-id="${attendanceBookingId}" data-day-index="${i}"> D${i + 1}
                              </label>`;
                 }
                 html += `</div></td>`;
             } else { // Day pass (totalPassDays === 1)
                 html += '<td>';
-                html += `<div>Status: <span class="attendance-status" data-booking-id="${les.id}">Not Attended</span></div>`;
+                html += `<div>Status: <span class="attendance-status" data-booking-id="${attendanceBookingId}">Not Attended</span></div>`;
                 html += `<div class="attendance-markers" style="margin-top: 5px;">
                            <label style="display: inline-block; font-size: 0.9em;">
-                             <input type="checkbox" class="attendance-checkbox" data-booking-id="${les.id}" data-day-index="0"> Mark Attended
+                             <input type="checkbox" class="attendance-checkbox" data-booking-id="${attendanceBookingId}" data-day-index="0"> Mark Attended
                            </label>
                          </div></td>`;
             }
-        } else {
-            html += '<td>N/A</td>'; // Not a pass type, but in camp container
+        } else { // Not a pass type, but could be a non-pass camp/clinic displayed in this table.
+             // If it's a grouped camp session (not a pass), show 'N/A' or specific group attendance UI if developed.
+             // For now, 'N/A' for simplicity if not a pass type.
+            html += `<td>N/A</td>`;
         }
       }
       html += `</tr>`;
@@ -820,21 +946,27 @@ ul.nav-links-mobile li a {
       return;
     }
     const lessons = await res.json();
-    console.log('ADMIN.HTML: Fetched total lessons:', lessons.length, lessons.slice(0,2));
+    console.log('ADMIN.HTML: Fetched total lessons:', lessons.length, 'First two:', lessons.slice(0,2));
 
+    const campLikePrograms = ["Summer Camp / Group Lessons", "High Performance Training", "Adult Clinics"];
     const now = new Date();
     const upcomingLessons = lessons.filter(les => {
         if (!les.date) return false; // Skip if no date
-        const dateStr = les.date.substring(0, 10); // Take YYYY-MM-DD part
+        // Ensure date is in YYYY-MM-DD format before splitting
+        const dateStr = typeof les.date === 'string' && les.date.length >= 10 ? les.date.substring(0, 10) : null;
+        if (!dateStr) {
+            console.warn('ADMIN.HTML: Invalid or missing date string for lesson:', les);
+            return false;
+        }
         const dateParts = dateStr.split('-');
-        if (dateParts.length !== 3) return false; // Invalid date format
+        if (dateParts.length !== 3) return false;
 
         const year = parseInt(dateParts[0]);
         const month = parseInt(dateParts[1]) - 1; // JS months are 0-indexed
         const day = parseInt(dateParts[2]);
 
-        let hours = 0, minutes = 0, seconds = 0; // Default to start of day for upcoming
-        if (les.time) {
+        let hours = 0, minutes = 0, seconds = 0; 
+        if (les.time) { // HH:MM or HH:MM:SS
             const timeParts = les.time.split(':');
             if (timeParts.length >= 2) {
                 hours = parseInt(timeParts[0]);
@@ -845,6 +977,10 @@ ul.nav-links-mobile li a {
         
         try {
             const lessonDate = new Date(year, month, day, hours, minutes, seconds);
+            if (isNaN(lessonDate.getTime())) { // Check if the constructed date is valid
+                 console.warn('ADMIN.HTML: Constructed invalid date for lesson:', les, 'using Y/M/D H:M:S', year, month, day, hours, minutes, seconds);
+                 return false;
+            }
             const nowDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             if (lessonDate >= nowDateOnly) { 
                  if (lessonDate.toDateString() === now.toDateString()) { 
@@ -853,40 +989,105 @@ ul.nav-links-mobile li a {
                  return true; 
             }
             return false;
-
         } catch (e) {
-            console.error(`ADMIN.HTML: Invalid date components for lesson: Y:${year} M:${month} D:${day} H:${hours} M:${minutes}`, les, e);
+            console.error(`ADMIN.HTML: Error processing date for lesson:`, les, e);
             return false;
         }
     });
-    console.log('ADMIN.HTML: Filtered upcoming lessons count:', upcomingLessons.length, upcomingLessons.slice(0,2));
+    console.log('ADMIN.HTML: Filtered upcoming lessons count:', upcomingLessons.length, 'First two:', upcomingLessons.slice(0,2));
 
     const privateLessons = [];
-    const campLessons = [];
-    const clinicLessons = [];
+    const clinicLessons = []; // For 'Adult Clinics', 'High Performance Training' (if not grouped with camps)
     const otherBookings = [];
-
+    
+    // Grouping logic for camp-like lessons
+    const groupedCampLessons = {};
     upcomingLessons.forEach(les => {
-        // const refVal = les.referral_source || ''; // This is now defined inside renderLessonsTable for each lesson
-        const programName = les.program ? les.program.toLowerCase() : '';
-        if (programName.includes('private') || programName.includes('tennis private')) {
+        const programName = les.program; // Use original program name for matching
+        if (campLikePrograms.includes(programName)) {
+            // Use raw date (YYYY-MM-DD) and time (HH:MM:SS) for grouping key to avoid timezone/format issues.
+            const groupKey = `${programName}-${les.date}-${les.time}`;
+            if (!groupedCampLessons[groupKey]) {
+                groupedCampLessons[groupKey] = {
+                    ...les, // Spread the first lesson's details
+                    coaches: [les.coach],
+                    booking_ids: [les.id],
+                    // Ensure student, email, phone, referral_source are handled if they vary (they shouldn't for same session)
+                    // For display, these will likely be 'N/A' or taken from the first lesson.
+                    student: les.student || '', // Keep original student if any, or empty
+                    email: les.email || '',
+                    phone: les.phone || '',
+                    referral_source: les.referral_source || null
+                };
+            } else {
+                if (les.coach && !groupedCampLessons[groupKey].coaches.includes(les.coach)) {
+                    groupedCampLessons[groupKey].coaches.push(les.coach);
+                }
+                groupedCampLessons[groupKey].booking_ids.push(les.id);
+                // Potentially update lesson_cost if it varies, though it should be consistent for a session.
+                // For simplicity, the first lesson's cost is used.
+            }
+        } else if (programName && (programName.toLowerCase().includes('private') || programName.toLowerCase().includes('tennis private'))) {
             privateLessons.push(les);
-        } else if (programName.includes('camp') || programName.includes('pass')) {
-            campLessons.push(les);
-        } else if (programName.includes('clinic') || programName.includes('high performance')) {
+        } else if (programName && (programName.toLowerCase().includes('clinic') || programName.toLowerCase().includes('high performance'))) {
+            // This is a fallback if some clinics are not caught by campLikePrograms or have distinct handling.
+            // If 'High Performance Training' and 'Adult Clinics' are ALWAYS grouped like camps, they won't reach here.
             clinicLessons.push(les);
         } else {
             otherBookings.push(les);
         }
     });
-    console.log('ADMIN.HTML: Categorized - Private:', privateLessons.length, 'Camps:', campLessons.length, 'Clinics:', clinicLessons.length, 'Other:', otherBookings.length);
+
+    const processedCampLessons = Object.values(groupedCampLessons);
+    console.log('ADMIN.HTML: Processed Grouped Camp Lessons:', processedCampLessons.length, 'First entry:', processedCampLessons[0]);
+    
+    // Now categorize remaining non-camp lessons (if any clinics were not grouped)
+    // This part might need adjustment based on whether 'Adult Clinics' and 'High Performance' are exclusively in campLikePrograms
+    // For now, assuming campLikePrograms handles them, so clinicLessons might be empty or for other types.
+
+    console.log('ADMIN.HTML: Categorized - Private:', privateLessons.length, 'Clinics (non-grouped):', clinicLessons.length, 'Other:', otherBookings.length);
 
     renderLessonsTable(privateLessons, 'private-lessons-table-container', 'No private lessons scheduled.');
-    renderLessonsTable(campLessons, 'camp-lessons-table-container', 'No camp or pass lessons scheduled.');
-    renderLessonsTable(clinicLessons, 'clinic-lessons-table-container', 'No clinic or other group lessons scheduled.');
+    renderLessonsTable(processedCampLessons, 'camp-lessons-table-container', 'No camp or pass lessons scheduled.');
+    renderLessonsTable(clinicLessons, 'clinic-lessons-table-container', 'No clinic or other group lessons scheduled.'); // Shows non-grouped clinics
     renderLessonsTable(otherBookings, 'other-bookings-table-container', 'No other bookings.');
-    checkGlobalInputChanges(); // Add this line
+    checkGlobalInputChanges();
   }
+
+  // Placeholder for the new function
+  async function deleteGroupedCampLesson(bookingIdsString) {
+    console.log("Attempting to delete grouped camp session with Booking IDs:", bookingIdsString);
+    const bookingIds = bookingIdsString.split(',');
+    if (!confirm(`Are you sure you want to delete this entire camp session? This will delete ${bookingIds.length} booking(s). This action cannot be undone.`)) {
+        return;
+    }
+    // Actual deletion logic will involve iterating IDs and calling deleteAdminLesson or a new batch delete API endpoint.
+    // For now, just logging and potentially refreshing.
+    try {
+        let allSucceeded = true;
+        for (const id of bookingIds) {
+            const res = await fetch(`/api/admin/lessons/${id}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            if (!res.ok) {
+                allSucceeded = false;
+                console.error(`Failed to delete booking ID ${id}: ${await res.text()}`);
+                // Decide if to stop or continue on error
+            }
+        }
+        if (allSucceeded) {
+            alert('Entire camp session deleted successfully.');
+        } else {
+            alert('Some bookings in the camp session could not be deleted. Please check the console and refresh.');
+        }
+    } catch (err) {
+        alert('An error occurred while trying to delete the camp session. Check console.');
+        console.error('Error in deleteGroupedCampLesson:', err);
+    }
+    loadAllLessons(); // Refresh
+  }
+
 
   async function deleteAdminLesson(id) {
     if (!confirm('Are you sure you want to delete this lesson?')) return;
@@ -1073,6 +1274,137 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
               handleSaveChanges(); // Call without arguments
           });
       }
+
+      // --- Edit Coaches Modal Logic ---
+      const editCoachesModal = document.getElementById('editCoachesModal');
+      const cancelEditCoachesBtn = document.getElementById('cancelEditCoachesBtn');
+      const saveCoachesChangesBtn = document.getElementById('saveCoachesChangesBtn');
+      const coachCheckboxesContainer = document.getElementById('coach-checkboxes-container');
+      
+      // Define available coaches (can be dynamic later if needed)
+      const availableCoaches = [
+          "Ricardo Carvajalino", 
+          "Jacob Capone", 
+          "Zach Capone", 
+          "Matthew Abbey",
+          "Paula Carvajalino" 
+      ];
+
+      // Populate coach checkboxes
+      availableCoaches.forEach(coachName => {
+          const label = document.createElement('label');
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.name = 'modalCoach';
+          checkbox.value = coachName;
+          label.appendChild(checkbox);
+          label.appendChild(document.createTextNode(` ${coachName}`));
+          coachCheckboxesContainer.appendChild(label);
+      });
+
+      // Event listener for opening the modal (delegated to table container)
+      const campLessonsTableContainer = document.getElementById('camp-lessons-table-container');
+      if (campLessonsTableContainer) {
+        campLessonsTableContainer.addEventListener('click', async (event) => {
+            if (event.target.classList.contains('edit-coaches-btn')) {
+                const button = event.target;
+                const program = button.dataset.program;
+                const date = button.dataset.date; // This is YYYY-MM-DDTHH:MM:SS.sssZ from DB
+                const time = button.dataset.time; // This is HH:MM:SS from DB
+                const originalBookingIds = button.dataset.bookingIds.split(',').map(Number);
+                const currentCoaches = button.dataset.coaches.split(',');
+
+                // Fetch student, email, phone from the first booking ID if needed (they are N/A in table)
+                // For simplicity, assume they might be empty or not critical for camps.
+                // We'll pass empty strings for now, as server.js handles defaults.
+                document.getElementById('modalStudentName').value = ''; 
+                document.getElementById('modalStudentEmail').value = '';
+                document.getElementById('modalStudentPhone').value = '';
+
+
+                // Find the lesson_cost from the input field in the same row
+                const row = button.closest('tr');
+                const costInput = row.querySelector('.lesson-cost-input');
+                const lessonCost = costInput ? parseFloat(costInput.value) : 0; // Default to 0 if not found
+
+                document.getElementById('modalSessionProgram').textContent = program;
+                document.getElementById('modalSessionDate').textContent = new Date(date).toLocaleDateString(); // Format for display
+                document.getElementById('modalSessionTime').textContent = formatTime_12hr(time); // Format for display
+
+                // Store data needed for save operation
+                editCoachesModal.dataset.program = program;
+                editCoachesModal.dataset.date = date.substring(0,10); // Store YYYY-MM-DD
+                editCoachesModal.dataset.time = time; // Store HH:MM:SS
+                document.getElementById('modalOriginalBookingIds').value = JSON.stringify(originalBookingIds);
+                document.getElementById('modalLessonCost').value = lessonCost;
+
+
+                // Set checkboxes
+                coachCheckboxesContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    cb.checked = currentCoaches.includes(cb.value);
+                });
+                editCoachesModal.style.display = 'block';
+            }
+        });
+      } else {
+          console.warn("camp-lessons-table-container not found for modal delegation.");
+      }
+
+
+      if(cancelEditCoachesBtn) {
+        cancelEditCoachesBtn.onclick = () => {
+            editCoachesModal.style.display = 'none';
+        }
+      }
+
+      if(saveCoachesChangesBtn) {
+        saveCoachesChangesBtn.onclick = async () => {
+            const newSelectedCoaches = [];
+            coachCheckboxesContainer.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+                newSelectedCoaches.push(cb.value);
+            });
+
+            const payload = {
+                program: editCoachesModal.dataset.program,
+                date: editCoachesModal.dataset.date, // YYYY-MM-DD
+                time: editCoachesModal.dataset.time, // HH:MM:SS
+                originalBookingIds: JSON.parse(document.getElementById('modalOriginalBookingIds').value),
+                newCoaches: newSelectedCoaches,
+                lesson_cost: parseFloat(document.getElementById('modalLessonCost').value),
+                student: document.getElementById('modalStudentName').value,
+                email: document.getElementById('modalStudentEmail').value,
+                phone: document.getElementById('modalStudentPhone').value
+            };
+
+            try {
+                const res = await fetch('/api/admin/lessons/update-coaches', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
+                    body: JSON.stringify(payload)
+                });
+                const responseData = await res.json();
+                if (res.ok) {
+                    alert(responseData.message || 'Coaches updated successfully!');
+                    editCoachesModal.style.display = 'none';
+                    loadAllLessons();
+                } else {
+                    alert('Failed to update coaches: ' + (responseData.message || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Error saving coach changes:', err);
+                alert('An error occurred while saving changes. See console for details.');
+            }
+        }
+      }
+      
+      // Close modal if user clicks outside of it
+      window.onclick = (event) => {
+          if (event.target == editCoachesModal) {
+              editCoachesModal.style.display = "none";
+          }
+      }
+      // --- End Edit Coaches Modal Logic ---
+
 
       // --- Mobile Menu Toggle Script --- 
       const menuToggle = document.querySelector('.mobile-menu-toggle');

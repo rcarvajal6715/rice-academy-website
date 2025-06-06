@@ -589,6 +589,13 @@ window.addEventListener('DOMContentLoaded', () => {
             newValue = selectEl.value;
             // Normalize originalValue of '—' to empty string for comparison
             const normalizedOriginalValue = originalValue === '—' ? '' : originalValue;
+
+            console.log(`Referral Save Check: Booking ID ${bookingId}`);
+            console.log(`  Original Value (from dataset): '${originalValue}'`);
+            console.log(`  Normalized Original Value: '${normalizedOriginalValue}'`);
+            console.log(`  New Value (from select): '${newValue}'`);
+            console.log(`  Comparison: '${newValue}' !== '${normalizedOriginalValue}' is ${newValue !== normalizedOriginalValue}`);
+            
             if (newValue !== normalizedOriginalValue) changed = true;
           }
         } else if (td.contentEditable === 'true') {

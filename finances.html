@@ -1081,9 +1081,17 @@ document.addEventListener('DOMContentLoaded', () => {
               alert('Invalid amount format.');
               return;
             }
+
+            // Console logs for debugging
+            console.log("Expense Date:", expenseDate);
+            console.log("Description:", description);
+            console.log("Amount:", amount);
+            console.log("Current Period:", currentPeriod);
+
+            // New check for currentPeriod, placed after console.logs
             if (!currentPeriod) {
-              alert('Please load a period before adding expenses.');
-              return;
+              alert('Please select or load a financial period before adding an expense.');
+              return; // Prevent further execution
             }
 
             setLoadingState(true);

@@ -360,16 +360,16 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
     tableHTML += `
       <tr data-id="${les.id}">
         <td style="padding:8px; border:1px solid #ddd;"><input type="checkbox" class="history-row-checkbox" data-id="${les.id}"></td>
-        <td class="history-cell" data-field="program" data-original-value="${les.program || ''}" style="padding:8px; border:1px solid #ddd;">${les.program || '—'}</td>
-        <td class="history-cell" data-field="coach" data-original-value="${les.coach || ''}" style="padding:8px; border:1px solid #ddd;">${les.coach || '—'}</td>
-        <td class="history-cell" data-field="date" data-original-value="${originalDate}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
-        <td class="history-cell" data-field="time" data-original-value="${les.time || ''}" style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
-        <td class="history-cell" data-field="student" data-original-value="${les.student || ''}" style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
+        <td class="history-cell" data-id="${les.id}" data-field="program" data-original-value="${les.program || ''}" style="padding:8px; border:1px solid #ddd;">${les.program || '—'}</td>
+        <td class="history-cell" data-id="${les.id}" data-field="coach" data-original-value="${les.coach || ''}" style="padding:8px; border:1px solid #ddd;">${les.coach || '—'}</td>
+        <td class="history-cell" data-id="${les.id}" data-field="date" data-original-value="${originalDate}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
+        <td class="history-cell" data-id="${les.id}" data-field="time" data-original-value="${les.time || ''}" style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
+        <td class="history-cell" data-id="${les.id}" data-field="student" data-original-value="${les.student || ''}" style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
         <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td>
         <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td>
-        <td class="history-cell" data-field="lesson_cost" data-original-value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}</td>
-        <td class="history-cell" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
-        <td class="history-cell" data-field="paid" data-original-value="${String(isPaid)}" style="padding:8px; border:1px solid #ddd;">${isPaid ? 'Yes' : 'No'}</td>
+        <td class="history-cell" data-id="${les.id}" data-field="lesson_cost" data-original-value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}</td>
+        <td class="history-cell" data-id="${les.id}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
+        <td class="history-cell" data-id="${les.id}" data-field="paid" data-original-value="${String(isPaid)}" style="padding:8px; border:1px solid #ddd;">${isPaid ? 'Yes' : 'No'}</td>
         <td style="padding:8px; border:1px solid #ddd;">
           <button onclick="deleteAdminLesson(${les.id})">Delete</button>
         </td>

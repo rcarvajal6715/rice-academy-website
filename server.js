@@ -1330,7 +1330,7 @@ app.put('/api/admin/history/:id', async (req, res) => {
         // If it's a non-empty string but not in the allowed list
         console.error(`Invalid referral_source value: '${processedValue}'. Not in allowed list.`);
         return res.status(400).json({ message: `Invalid value for referral_source. Received: '${processedValue}'.` });
-      } else if (typeof processedValue !== 'string') {
+      } else if (typeof processedValue !== 'string' && processedValue !== null) {
         // If it's not a string and not null (e.g. a number sent by mistake)
         return res.status(400).json({ message: 'Invalid referral_source type. Must be a string or null.' });
       }

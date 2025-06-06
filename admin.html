@@ -338,10 +338,34 @@ ul.nav-links-mobile li a {
       </div>
 
       <!-- Coach -->
-      <div>
-        <label for="coach">Coach</label>
+      <div id="coach-container">
+        <label for="coach">Coach #1</label>
         <select id="coach" required>
           <option value="" disabled selected>Choose a coach</option>
+          <option>Ricardo Carvajalino</option>
+          <option>Jacob Capone</option>
+          <option>Zach Capone</option>
+          <option>Matthew Abbey</option>
+        </select>
+      </div>
+
+      <!-- Coach #2 -->
+      <div id="coach2-container" style="display: none;">
+        <label for="coach2">Coach #2</label>
+        <select id="coach2">
+          <option value="" selected>None</option>
+          <option>Ricardo Carvajalino</option>
+          <option>Jacob Capone</option>
+          <option>Zach Capone</option>
+          <option>Matthew Abbey</option>
+        </select>
+      </div>
+
+      <!-- Coach #3 -->
+      <div id="coach3-container" style="display: none;">
+        <label for="coach3">Coach #3</label>
+        <select id="coach3">
+          <option value="" selected>None</option>
           <option>Ricardo Carvajalino</option>
           <option>Jacob Capone</option>
           <option>Zach Capone</option>
@@ -406,7 +430,15 @@ ul.nav-links-mobile li a {
     const referralSourceDiv = document.getElementById('referral-source-container');
     const referralSourceSelect = document.getElementById('referral_source');
 
-    programEl.addEventListener('change', () => {
+    // Coach selection elements
+    const coach1Container = document.getElementById('coach-container');
+    const coach1Select = document.getElementById('coach');
+    const coach2Container = document.getElementById('coach2-container');
+    const coach2Select = document.getElementById('coach2');
+    const coach3Container = document.getElementById('coach3-container');
+    const coach3Select = document.getElementById('coach3');
+
+    const handleProgramChange = () => {
       const selectedProgram = programEl.value;
       // Valid private lesson program names that require referral source
       const privateLessonPrograms = ['Private Lessons', 'Tennis Private'];
@@ -421,7 +453,42 @@ ul.nav-links-mobile li a {
       if (!isPrivateLesson) {
         referralSourceSelect.value = ''; // Reset value if not a private lesson
       }
-    });
+
+      // Coach visibility and requirement logic
+      const campOrGroupPrograms = ["Summer Camp / Group Lessons", "High Performance Training", "Adult Clinics"];
+
+      if (selectedProgram === "Private Lessons") {
+        coach1Container.style.display = 'block';
+        coach1Select.required = true;
+        coach2Container.style.display = 'none';
+        coach2Select.required = false;
+        coach2Select.value = "";
+        coach3Container.style.display = 'none';
+        coach3Select.required = false;
+        coach3Select.value = "";
+      } else if (campOrGroupPrograms.includes(selectedProgram)) {
+        coach1Container.style.display = 'block';
+        coach1Select.required = true;
+        coach2Container.style.display = 'block';
+        coach2Select.required = false; // Optional
+        coach3Container.style.display = 'block';
+        coach3Select.required = false; // Optional
+      } else { // Default for other programs or if no program is selected
+        coach1Container.style.display = 'block';
+        coach1Select.required = true;
+        coach2Container.style.display = 'none';
+        coach2Select.required = false;
+        coach2Select.value = "";
+        coach3Container.style.display = 'none';
+        coach3Select.required = false;
+        coach3Select.value = "";
+      }
+    };
+
+    programEl.addEventListener('change', handleProgramChange);
+
+    // Initial call to set coach fields based on default or pre-selected program
+    handleProgramChange(); 
 
     // Submit new lesson
     document.getElementById('lesson-form').addEventListener('submit', async e => {
@@ -445,6 +512,8 @@ ul.nav-links-mobile li a {
       const payload = {
         program: selectedProgram,
         coachName: document.getElementById('coach').value,
+        coachName2: document.getElementById('coach2').value,
+        coachName3: document.getElementById('coach3').value,
         date: document.getElementById('date').value,
         time: document.getElementById('time').value,
         student: document.getElementById('student-name').value || '',
@@ -478,6 +547,8 @@ ul.nav-links-mobile li a {
         if(programEl.options.length > 0 && programEl.options[0].value === "" && programEl.options[0].disabled){
             programEl.value = "";
         }
+        // Also reset coach fields on form reset
+        handleProgramChange();
     });
   </script>
 

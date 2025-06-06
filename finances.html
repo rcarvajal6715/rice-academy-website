@@ -446,10 +446,20 @@ legend {
   <!-- New Expenses Section HTML -->
   <fieldset style="margin-top: 20px;">
     <legend>Expenses for Selected Period</legend>
-    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-        <input type="text" id="new_expense_description" placeholder="Expense description" style="flex-grow: 1;">
-        <input type="number" id="new_expense_amount" placeholder="Amount" style="width: 100px;">
-        <button type="button" id="add_expense_button" style="background-color:#4CAF50; color:white; width: auto; padding: 10px 15px; margin-top:0;">Add Expense</button>
+    <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-end;">
+        <div>
+            <label for="new_expense_date" style="display: block; font-weight: bold; color: #0c3c78; margin-bottom: 5px;">Expense Date:</label>
+            <input type="date" id="new_expense_date" style="width: 150px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box;">
+        </div>
+        <div style="flex-grow: 1;">
+            <label for="new_expense_description" style="display: block; font-weight: bold; color: #0c3c78; margin-bottom: 5px;">Description:</label>
+            <input type="text" id="new_expense_description" placeholder="Expense description" style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box;">
+        </div>
+        <div>
+            <label for="new_expense_amount" style="display: block; font-weight: bold; color: #0c3c78; margin-bottom: 5px;">Amount:</label>
+            <input type="number" id="new_expense_amount" placeholder="Amount" style="width: 100px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box;">
+        </div>
+        <button type="button" id="add_expense_button" style="background-color:#4CAF50; color:white; width: auto; padding: 10px 15px; margin-bottom:0px; height: 40px; box-sizing: border-box;">Add Expense</button>
     </div>
     <div id="expenses-table-container">
         <table id="expenses-table" style="width:100%; border-collapse:collapse;">

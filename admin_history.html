@@ -685,34 +685,60 @@ window.addEventListener('DOMContentLoaded', () => {
             }
         } else { // Logic for non-grouped rows
             if (fieldName === 'coach') {
+                const isPrivate = tr.dataset.program.toLowerCase().includes('private');
                 if (editing) {
                     const currentCoachValue = td.dataset.originalValue || td.innerText.trim();
                     td.innerHTML = ''; // Clear the cell
-                    const selectEl = document.createElement('select');
-                    selectEl.className = 'history-coach-select';
-                    validCoaches.forEach(coachName => {
-                        const optionEl = document.createElement('option');
-                        optionEl.value = coachName;
-                        optionEl.textContent = coachName;
-                        if (coachName === currentCoachValue) {
-                            optionEl.selected = true;
+
+                    if (isPrivate) {
+                        const selectEl = document.createElement('select');
+                        selectEl.className = 'history-coach-select';
+                        validCoaches.forEach(coachName => {
+                            const optionEl = document.createElement('option');
+                            optionEl.value = coachName;
+                            optionEl.textContent = coachName;
+                            if (coachName === currentCoachValue) {
+                                optionEl.selected = true;
+                            }
+                            selectEl.appendChild(optionEl);
+                        });
+                        if (!selectEl.value && validCoaches.length > 0 && !validCoaches.includes(currentCoachValue)) {
+                            // Default selection for private lessons if currentCoachValue is not in validCoaches
                         }
-                        selectEl.appendChild(optionEl);
-                    });
-                     // Default selection if currentCoachValue is not in validCoaches
-                    if (!selectEl.value && validCoaches.length > 0 && !validCoaches.includes(currentCoachValue)) {
-                        // If the original coach value is not in the list,
-                        // the select will show the first option by default.
+                        td.appendChild(selectEl);
+                    } else { // Not private, use multi-select
+                        const selectEl = document.createElement('select');
+                        selectEl.multiple = true;
+                        selectEl.className = 'history-coach-multiselect';
+                        validCoaches.forEach(coachName => {
+                            const optionEl = document.createElement('option');
+                            optionEl.value = coachName;
+                            optionEl.textContent = coachName;
+                            // Pre-select if the current coach value (assumed single for now) matches
+                            if (coachName === currentCoachValue) {
+                                optionEl.selected = true;
+                            }
+                            selectEl.appendChild(optionEl);
+                        });
+                        td.appendChild(selectEl);
                     }
-                    td.appendChild(selectEl);
                     td.contentEditable = false; // Ensure contentEditable is off when select is present
                 } else {
                     // When disabling editing for a non-grouped coach cell
-                    const selectEl = td.querySelector('select.history-coach-select');
-                    if (selectEl) {
-                        const selectedCoach = selectEl.value;
-                        td.innerHTML = ''; // Clear the select
-                        td.textContent = selectedCoach || '—'; // Display selected or placeholder
+                    if (isPrivate) {
+                        const selectEl = td.querySelector('select.history-coach-select');
+                        if (selectEl) {
+                            const selectedCoach = selectEl.value;
+                            td.innerHTML = ''; // Clear the select
+                            td.textContent = selectedCoach || '—'; // Display selected or placeholder
+                        }
+                    } else { // Not private, was multi-select
+                        const multiSelectEl = td.querySelector('select.history-coach-multiselect');
+                        if (multiSelectEl) {
+                            const selectedCoaches = Array.from(multiSelectEl.selectedOptions).map(opt => opt.value);
+                            td.innerHTML = ''; // Clear the multi-select
+                            td.textContent = selectedCoaches.length > 0 ? selectedCoaches.join(', ') : '—';
+                        }
                     }
                 }
             } else if (fieldName === 'referral_source') {
@@ -763,6 +789,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
       const updates = [];
       const groupedUpdates = [];
+      const multiCoachIndividualUpdates = []; // Initialize new array
 
       document.querySelectorAll('.history-cell[data-id]').forEach(td => {
         const tr = td.closest('tr');
@@ -772,24 +799,19 @@ window.addEventListener('DOMContentLoaded', () => {
         const originalValue = td.dataset.originalValue;
         let newValue;
         let changed = false;
+        // Determine if the lesson is private, check tr.dataset.program first
+        const isPrivate = tr && tr.dataset.program && tr.dataset.program.toLowerCase().includes('private');
 
         if (isGroupedRow) {
-          // Updated handling for grouped rows coach saving
+          // Updated handling for grouped rows coach saving (remains unchanged by this specific subtask)
           if (fieldName === 'coach') {
             const selectEl = td.querySelector('select.history-coach-select');
-            if (selectEl) { // If dropdown is present (meaning editing was enabled for this cell)
-              newValue = selectEl.value; // This is the single selected coach
+            if (selectEl) { 
+              newValue = selectEl.value; 
               const originalCoachesArray = originalValue.split(',').map(name => name.trim()).filter(name => name);
-              
-              // A change is detected if:
-              // 1. The new single coach is different from the first original coach (if one existed).
-              // 2. OR the original list had more than one coach (implying a change from multiple to single).
-              // 3. OR the original list was empty and now we have a coach selected (and it's not an empty string value from select).
-              // 4. OR the original list had one coach, and the new selection is different.
               const firstOriginalCoach = originalCoachesArray[0] || '';
               if (newValue !== firstOriginalCoach || originalCoachesArray.length > 1 || (originalCoachesArray.length === 0 && newValue !== '') || (originalCoachesArray.length === 1 && newValue !== firstOriginalCoach) ) {
                 changed = true; 
-                // Only push to groupedUpdates if changed is true
               }
 
               if (changed) {
@@ -800,8 +822,8 @@ window.addEventListener('DOMContentLoaded', () => {
                       date: tr.dataset.date,
                       time: tr.dataset.time,
                       originalBookingIds: originalBookingIds,
-                      newCoaches: [newValue], // newCoaches is an array with the single selected coach
-                      lesson_cost: parseFloat(tr.dataset.lessonCost) || 0, // Ensure lesson_cost is a number
+                      newCoaches: [newValue], 
+                      lesson_cost: parseFloat(tr.dataset.lessonCost) || 0, 
                       student: tr.dataset.student,
                       email: tr.dataset.email,
                       phone: tr.dataset.phone,
@@ -810,29 +832,78 @@ window.addEventListener('DOMContentLoaded', () => {
                     });
                 } catch (e) {
                     console.error("Error processing grouped update for coach:", e, tr.dataset.originalIds);
-                    changed = false; // Revert changed status if error occurs during push preparation
+                    changed = false; 
                 }
               }
             } 
-            // No 'else if (td.contentEditable === 'true')' fallback here for grouped coach,
-            // as the select element is the definitive source during editing.
-            // If selectEl is not present, it implies editing was not enabled for this cell or it was reverted to text.
           }
           // Other fields in grouped rows are not processed for saving as they are not editable
         } else { // Logic for non-grouped rows
           if (fieldName === 'coach') {
-            const selectEl = td.querySelector('select.history-coach-select');
-            if (selectEl) { // If dropdown is present (meaning editing was enabled)
-              newValue = selectEl.value;
-              if (newValue !== originalValue) {
-                changed = true;
-              }
-            } else {
-              // If no select element, it means editing was not enabled for this coach cell,
-              // or it has been reverted to text. In this state, its value should not be processed as an update.
-              // No change is possible from the UI if no select is present.
-              // Ensure 'changed' remains false.
+            if (isPrivate) { // Non-grouped, Private lesson
+                const singleSelectEl = td.querySelector('select.history-coach-select');
+                if (singleSelectEl) {
+                    newValue = singleSelectEl.value;
+                    if (newValue !== originalValue) {
+                        changed = true; // This change will go to the 'updates' array
+                    }
+                }
+            } else { // Non-grouped, Non-Private lesson (potential multi-coach)
+                const multiSelectEl = td.querySelector('select.history-coach-multiselect');
+                if (multiSelectEl) {
+                    const selectedCoaches = Array.from(multiSelectEl.selectedOptions).map(opt => opt.value);
+                    const originalCoachValue = td.dataset.originalValue;
+                    
+                    // Determine if changed for multi-select
+                    // A change if the comma-separated string of new coaches is different from original.
+                    // This handles cases: single->multiple, multiple->single, multiple->different multiple, single->different single (if it was single before)
+                    const newCoachesString = selectedCoaches.join(', ');
+                    if (newCoachesString !== originalCoachValue) {
+                        // This change goes to multiCoachIndividualUpdates, NOT 'updates'
+                        
+                        // Helper to get data from a cell in the current row
+                        const getDataFromCell = (field) => {
+                            const cell = tr.querySelector(`.history-cell[data-field="${field}"]`);
+                            return cell ? cell.dataset.originalValue : null;
+                        };
+
+                        const programValue = getDataFromCell('program');
+                        const dateValue = getDataFromCell('date'); 
+                        const timeValue = getDataFromCell('time'); 
+                        const studentValue = getDataFromCell('student');
+                        const lessonCostString = getDataFromCell('lesson_cost');
+                        const lessonCostValue = lessonCostString !== null && lessonCostString !== '' ? parseFloat(lessonCostString) : 0;
+                        
+                        // Email and Phone are not in data-attributes on TR for individual rows, 
+                        // nor on history-cells with data-original-value.
+                        // They are in plain <td>s. We need to query them specifically.
+                        // Assuming email is the 7th child (index 6) and phone is the 8th (index 7) of tr's td children.
+                        // This is brittle; adding data-field attributes to these <td>s during rendering would be more robust.
+                        const emailTd = tr.cells[6]; // 7th column
+                        const phoneTd = tr.cells[7]; // 8th column
+                        const emailValue = emailTd ? emailTd.innerText.trim() : null;
+                        const phoneValue = phoneTd ? phoneTd.innerText.trim() : null;
+
+                        multiCoachIndividualUpdates.push({
+                            originalBookingId: bookingId, // td.dataset.id
+                            program: programValue,
+                            date: dateValue, 
+                            time: timeValue, 
+                            newCoaches: selectedCoaches, // Array of coach names
+                            lesson_cost: lessonCostValue,
+                            student: studentValue,
+                            email: emailValue === '—' ? null : emailValue, 
+                            phone: phoneValue === '—' ? null : phoneValue,
+                            originalCoachValueForDebug: originalCoachValue 
+                        });
+                        // IMPORTANT: Do NOT set 'changed = true' here if we want to prevent it from going to the generic 'updates' array.
+                        // The 'changed' variable is used later to push to 'updates'.
+                        // By not setting 'changed = true', we skip adding it to 'updates'.
+                    }
+                    // 'newValue' is not set here for multi-select because it's handled by multiCoachIndividualUpdates
+                }
             }
+            // If neither select element is present (e.g. editing not enabled for this cell), 'changed' remains false.
           } else if (fieldName === 'referral_source') {
             const selectEl = td.querySelector('select.history-referral-select');
             if (selectEl) {

@@ -293,7 +293,14 @@ ul.nav-links-mobile li a {
 // Corrected JavaScript logic provided by the user starts here
 let allFetchedPastLessons = []; 
 let activeCategoryFilter = 'All'; 
-let editing = false; 
+let editing = false;
+
+const validCoaches = [
+    "Ricardo Carvajalino",
+    "Zach Capone",
+    "Jacob Capone",
+    "Paula Carvajalino"
+];
 
 let enableHistoryEditingBtn;
 let saveHistoryBtn;
@@ -635,14 +642,80 @@ window.addEventListener('DOMContentLoaded', () => {
         const fieldName = td.dataset.field;
 
         if (isGroupedRow) {
-          if (fieldName === 'coach') { // Only coach field is editable for grouped rows
-            td.contentEditable = editing;
-            if (!editing) td.blur();
-          } else {
-            td.contentEditable = false; // Other fields are not editable for grouped rows
-          }
+            if (fieldName === 'coach') { // Only coach field is editable for grouped rows
+                // For grouped rows, if editing is enabled, create the dropdown.
+                // If editing is disabled, revert to text.
+                if (editing) {
+                    const currentCoachValue = td.innerText.trim(); // Or from data-original-value if more reliable
+                    td.innerHTML = ''; // Clear the cell
+                    const selectEl = document.createElement('select');
+                    selectEl.className = 'history-coach-select';
+                    validCoaches.forEach(coachName => {
+                        const optionEl = document.createElement('option');
+                        optionEl.value = coachName;
+                        optionEl.textContent = coachName;
+                        // For grouped rows, the currentCoachValue might be a comma-separated list.
+                        // We'll select the first coach in the list if it matches, or default to the first valid coach,
+                        // as a single select for multiple coaches in a group is a simplification.
+                        if (coachName === currentCoachValue.split(',')[0].trim()) {
+                            optionEl.selected = true;
+                        }
+                        selectEl.appendChild(optionEl);
+                    });
+                    // Default selection if no match (e.g. currentCoachValue was empty or not in list)
+                    if (!selectEl.value && validCoaches.length > 0) {
+                         // If currentCoachValue was like "Unknown Coach, Another Coach", it won't match.
+                         // Default to first valid coach or handle as per requirements.
+                         // For now, if no valid coach is matched from the existing text, the select will show the first option.
+                    }
+                    td.appendChild(selectEl);
+                    td.contentEditable = false; // Ensure contentEditable is off when select is present
+                } else {
+                    // When disabling editing for a grouped coach cell
+                    const selectEl = td.querySelector('select.history-coach-select');
+                    if (selectEl) {
+                        const selectedCoach = selectEl.value;
+                        td.innerHTML = ''; // Clear the select
+                        td.textContent = selectedCoach || '—'; // Display selected or placeholder
+                    }
+                    // td.contentEditable is already false, no need to set it again.
+                }
+            } else {
+                td.contentEditable = false; // Other fields are not editable for grouped rows
+            }
         } else { // Logic for non-grouped rows
-          if (fieldName === 'referral_source') {
+            if (fieldName === 'coach') {
+                if (editing) {
+                    const currentCoachValue = td.dataset.originalValue || td.innerText.trim();
+                    td.innerHTML = ''; // Clear the cell
+                    const selectEl = document.createElement('select');
+                    selectEl.className = 'history-coach-select';
+                    validCoaches.forEach(coachName => {
+                        const optionEl = document.createElement('option');
+                        optionEl.value = coachName;
+                        optionEl.textContent = coachName;
+                        if (coachName === currentCoachValue) {
+                            optionEl.selected = true;
+                        }
+                        selectEl.appendChild(optionEl);
+                    });
+                     // Default selection if currentCoachValue is not in validCoaches
+                    if (!selectEl.value && validCoaches.length > 0 && !validCoaches.includes(currentCoachValue)) {
+                        // If the original coach value is not in the list,
+                        // the select will show the first option by default.
+                    }
+                    td.appendChild(selectEl);
+                    td.contentEditable = false; // Ensure contentEditable is off when select is present
+                } else {
+                    // When disabling editing for a non-grouped coach cell
+                    const selectEl = td.querySelector('select.history-coach-select');
+                    if (selectEl) {
+                        const selectedCoach = selectEl.value;
+                        td.innerHTML = ''; // Clear the select
+                        td.textContent = selectedCoach || '—'; // Display selected or placeholder
+                    }
+                }
+            } else if (fieldName === 'referral_source') {
             td.contentEditable = false;
             if (editing) {
               const originalValue = td.dataset.originalValue === '—' ? '' : td.dataset.originalValue;
@@ -701,41 +774,73 @@ window.addEventListener('DOMContentLoaded', () => {
         let changed = false;
 
         if (isGroupedRow) {
-          if (fieldName === 'coach' && td.contentEditable === 'true') {
-            newValue = td.innerText.trim();
-            if (newValue !== originalValue) {
-              const newCoaches = newValue.split(',').map(name => name.trim()).filter(name => name !== '');
-              try {
-                  const originalBookingIds = JSON.parse(tr.dataset.originalIds);
-                  groupedUpdates.push({
-                    program: tr.dataset.program,
-                    date: tr.dataset.date, // Ensure YYYY-MM-DD
-                    time: tr.dataset.time, // Ensure HH:MM or HH:MM:SS
-                    originalBookingIds: originalBookingIds,
-                    newCoaches: newCoaches,
-                    lesson_cost: parseFloat(tr.dataset.lessonCost),
-                    student: tr.dataset.student,
-                    email: tr.dataset.email,
-                    phone: tr.dataset.phone,
-                    // For debugging or context:
-                    originalCoachValueForDebug: originalValue, 
-                    newCoachValueForDebug: newValue
-                  });
-              } catch (e) {
-                  console.error("Error parsing originalBookingIds for grouped update:", e, tr.dataset.originalIds);
+          // Updated handling for grouped rows coach saving
+          if (fieldName === 'coach') {
+            const selectEl = td.querySelector('select.history-coach-select');
+            if (selectEl) { // If dropdown is present (meaning editing was enabled for this cell)
+              newValue = selectEl.value; // This is the single selected coach
+              const originalCoachesArray = originalValue.split(',').map(name => name.trim()).filter(name => name);
+              
+              // A change is detected if:
+              // 1. The new single coach is different from the first original coach (if one existed).
+              // 2. OR the original list had more than one coach (implying a change from multiple to single).
+              // 3. OR the original list was empty and now we have a coach selected (and it's not an empty string value from select).
+              // 4. OR the original list had one coach, and the new selection is different.
+              const firstOriginalCoach = originalCoachesArray[0] || '';
+              if (newValue !== firstOriginalCoach || originalCoachesArray.length > 1 || (originalCoachesArray.length === 0 && newValue !== '') || (originalCoachesArray.length === 1 && newValue !== firstOriginalCoach) ) {
+                changed = true; 
+                // Only push to groupedUpdates if changed is true
               }
-            }
+
+              if (changed) {
+                try {
+                    const originalBookingIds = JSON.parse(tr.dataset.originalIds);
+                    groupedUpdates.push({
+                      program: tr.dataset.program,
+                      date: tr.dataset.date,
+                      time: tr.dataset.time,
+                      originalBookingIds: originalBookingIds,
+                      newCoaches: [newValue], // newCoaches is an array with the single selected coach
+                      lesson_cost: parseFloat(tr.dataset.lessonCost) || 0, // Ensure lesson_cost is a number
+                      student: tr.dataset.student,
+                      email: tr.dataset.email,
+                      phone: tr.dataset.phone,
+                      originalCoachValueForDebug: originalValue,
+                      newCoachValueForDebug: newValue 
+                    });
+                } catch (e) {
+                    console.error("Error processing grouped update for coach:", e, tr.dataset.originalIds);
+                    changed = false; // Revert changed status if error occurs during push preparation
+                }
+              }
+            } 
+            // No 'else if (td.contentEditable === 'true')' fallback here for grouped coach,
+            // as the select element is the definitive source during editing.
+            // If selectEl is not present, it implies editing was not enabled for this cell or it was reverted to text.
           }
           // Other fields in grouped rows are not processed for saving as they are not editable
         } else { // Logic for non-grouped rows
-          if (fieldName === 'referral_source') {
+          if (fieldName === 'coach') {
+            const selectEl = td.querySelector('select.history-coach-select');
+            if (selectEl) { // If dropdown is present (meaning editing was enabled)
+              newValue = selectEl.value;
+              if (newValue !== originalValue) {
+                changed = true;
+              }
+            } else {
+              // If no select element, it means editing was not enabled for this coach cell,
+              // or it has been reverted to text. In this state, its value should not be processed as an update.
+              // No change is possible from the UI if no select is present.
+              // Ensure 'changed' remains false.
+            }
+          } else if (fieldName === 'referral_source') {
             const selectEl = td.querySelector('select.history-referral-select');
             if (selectEl) {
               newValue = selectEl.value;
               const normalizedOriginalValue = originalValue === '—' ? '' : originalValue;
               if (newValue !== normalizedOriginalValue) changed = true;
             }
-          } else if (td.contentEditable === 'true') {
+          } else if (td.contentEditable === 'true') { // For other editable fields
             newValue = td.innerText.trim();
             if (fieldName === 'time') {
               if (newValue === '' || newValue.toLowerCase() === 'n/a') newValue = null;

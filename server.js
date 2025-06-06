@@ -1092,7 +1092,7 @@ const PRODUCTS = {
 };
 
 app.post('/api/create-payment', async (req, res) => {
-  const { student, program, coach, date, time } = req.body;
+  const { student, program, coach: singleCoachInput, coach1, coach2, coach3, date, time } = req.body;
   let email = req.body.email || (req.session.user && req.session.user.email);
   if (!email) {
     return res.status(400).send('Missing email address.');
@@ -1110,13 +1110,46 @@ app.post('/api/create-payment', async (req, res) => {
   const entry = PRODUCTS[program];
   if (!entry) return res.status(400).send('Invalid program.');
 
+  const coachesToProcess = [];
+  const isPrivateLesson = program === 'Private Lesson' || program === 'Tennis Private';
+
+  if (isPrivateLesson) {
+      let foundCoach = null;
+      if (coach1 && typeof coach1 === 'string' && coach1.trim() !== '') foundCoach = coach1.trim();
+      else if (singleCoachInput && typeof singleCoachInput === 'string' && singleCoachInput.trim() !== '') foundCoach = singleCoachInput.trim();
+      else if (coach2 && typeof coach2 === 'string' && coach2.trim() !== '') foundCoach = coach2.trim();
+      else if (coach3 && typeof coach3 === 'string' && coach3.trim() !== '') foundCoach = coach3.trim();
+      coachesToProcess.push(foundCoach); 
+  } else {
+      const potentialCoaches = [singleCoachInput, coach1, coach2, coach3];
+      const uniqueCoaches = new Set();
+      potentialCoaches.forEach(c => {
+          if (c && typeof c === 'string' && c.trim() !== '') {
+              uniqueCoaches.add(c.trim());
+          }
+      });
+      if (uniqueCoaches.size > 0) {
+          coachesToProcess.push(...uniqueCoaches);
+      } else {
+          coachesToProcess.push(null); 
+      }
+  }
+  if (coachesToProcess.length === 0) {
+      coachesToProcess.push(null);
+  }
+
   try {
     if (entry.unit_amount === 0) { 
-      await pool.query(
-        `INSERT INTO bookings (email, phone, program, coach, date, time, session_id, paid, student, lesson_cost)
-         VALUES ($1, $2, $3, $4, $5, $6, NULL, TRUE, $7, $8)`,
-        [email, phone || '', program, coach, date, time, student, 0]
-      );
+      let freeBookingsMadeCount = 0;
+      for (const currentCoach of coachesToProcess) {
+        await pool.query(
+          `INSERT INTO bookings (email, phone, program, coach, date, time, session_id, paid, student, lesson_cost)
+           VALUES ($1, $2, $3, $4, $5, $6, NULL, TRUE, $7, $8)`,
+          [email, phone || '', program, currentCoach, date, time, student, 0]
+        );
+        freeBookingsMadeCount++;
+      }
+      console.log(`${freeBookingsMadeCount} free booking(s) recorded.`);
       return res.json({ url: '/success.html' });
     }
 
@@ -1128,16 +1161,22 @@ app.post('/api/create-payment', async (req, res) => {
         quantity: 1
       }],
       mode: 'payment',
-      metadata: { student, program, coach, date, time },
+      metadata: { student, program, coach: coachesToProcess[0] || '', date, time },
       success_url: `${req.protocol}://${req.get('host')}/success.html`,
       cancel_url: `${req.protocol}://${req.get('host')}/cancel.html`
     });
+
     const lessonCost = entry.unit_amount / 100;
-    await pool.query(
-      `INSERT INTO bookings (email, phone, program, coach, date, time, session_id, paid, student, lesson_cost)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8, $9)`,
-      [email, phone || '', program, coach, date, time, sessionObj.id, student, lessonCost]
-    );
+    let bookingsMadeCount = 0;
+    for (const currentCoach of coachesToProcess) {
+      await pool.query(
+        `INSERT INTO bookings (email, phone, program, coach, date, time, session_id, paid, student, lesson_cost)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8, $9)`,
+        [email, phone || '', program, currentCoach, date, time, sessionObj.id, student, lessonCost]
+      );
+      bookingsMadeCount++;
+    }
+    console.log(`Stripe session ${sessionObj.id} created, ${bookingsMadeCount} booking(s) recorded.`);
     res.json({ url: sessionObj.url });
   } catch (err) {
     console.error('Payment creation failed.', err);
@@ -1146,7 +1185,7 @@ app.post('/api/create-payment', async (req, res) => {
 });
 
 app.post('/api/book-pay-later', async (req, res) => {
-  const { student, program, coach, date, time } = req.body;
+  const { student, program, coach: singleCoachInput, coach1, coach2, coach3, date, time } = req.body;
   let email = req.body.email || (req.session.user && req.session.user.email);
   if (!email) return res.status(400).json({ message: 'Missing email address.' });
 
@@ -1166,21 +1205,49 @@ app.post('/api/book-pay-later', async (req, res) => {
       lessonCost = productInfo.unit_amount / 100;
   }
 
-  try {
-    await pool.query(
-      `INSERT INTO bookings (email, phone, program, coach, date, time, session_id, paid, student, lesson_cost)
-       VALUES ($1, $2, $3, $4, $5, $6, NULL, FALSE, $7, $8)`,
-      [email, phone || '', program, coach || null, date, time || null, student, lessonCost]
-    );
-    if (coach) {
-      const coachDetailsQuery = await pool.query(
-        `SELECT phone, carrier_gateway FROM coaches WHERE full_name = $1`, [coach]
-      );
-      if (coachDetailsQuery.rows.length > 0 && coachDetailsQuery.rows[0].phone && coachDetailsQuery.rows[0].carrier_gateway) {
-        // Sending SMS logic here
+  const coachesToProcess = [];
+  const isPrivateLesson = program === 'Private Lesson' || program === 'Tennis Private';
+
+  if (isPrivateLesson) {
+      let foundCoach = null;
+      if (coach1 && typeof coach1 === 'string' && coach1.trim() !== '') foundCoach = coach1.trim();
+      else if (singleCoachInput && typeof singleCoachInput === 'string' && singleCoachInput.trim() !== '') foundCoach = singleCoachInput.trim();
+      else if (coach2 && typeof coach2 === 'string' && coach2.trim() !== '') foundCoach = coach2.trim();
+      else if (coach3 && typeof coach3 === 'string' && coach3.trim() !== '') foundCoach = coach3.trim();
+      coachesToProcess.push(foundCoach); 
+  } else {
+      const potentialCoaches = [singleCoachInput, coach1, coach2, coach3];
+      const uniqueCoaches = new Set();
+      potentialCoaches.forEach(c => {
+          if (c && typeof c === 'string' && c.trim() !== '') {
+              uniqueCoaches.add(c.trim());
+          }
+      });
+      if (uniqueCoaches.size > 0) {
+          coachesToProcess.push(...uniqueCoaches);
+      } else {
+          coachesToProcess.push(null); 
       }
+  }
+
+  try {
+    let bookingsMadeCount = 0;
+    for (const currentCoach of coachesToProcess) {
+        await pool.query(
+          `INSERT INTO bookings (email, phone, program, coach, date, time, session_id, paid, student, lesson_cost)
+           VALUES ($1, $2, $3, $4, $5, $6, NULL, FALSE, $7, $8)`,
+          [email, phone || '', program, currentCoach, date, time || null, student, lessonCost]
+        );
+        bookingsMadeCount++;
     }
-    res.status(200).json({ message: 'Booking successful for pay later.' });
+
+    if (bookingsMadeCount > 0) {
+        // SMS sending logic can be added here if needed, iterating over coaches who had bookings made.
+        // For simplicity, the original SMS logic (which was for a single coach) is omitted but can be adapted.
+        res.status(200).json({ message: `Booking(s) successful for pay later. ${bookingsMadeCount} booking(s) created.` });
+    } else {
+        res.status(400).json({ message: 'No booking was made. Please check coach details or program type.' });
+    }
   } catch (err) {
     console.error('Pay Later booking failed.', err);
     res.status(500).json({ message: 'Booking failed due to a server error.' });

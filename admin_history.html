@@ -577,6 +577,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
       const updates = [];
       document.querySelectorAll('.history-cell[data-id]').forEach(td => {
+        console.log(`Processing cell for save: Booking ID ${td.dataset.id}, Field: ${td.dataset.field}, Original Value Attr: '${td.dataset.originalValue}'`);
         const bookingId = td.dataset.id;
         const fieldName = td.dataset.field;
         const originalValue = td.dataset.originalValue;
@@ -584,6 +585,7 @@ window.addEventListener('DOMContentLoaded', () => {
         let changed = false;
 
         if (fieldName === 'referral_source') {
+          console.log(`Entering referral_source specific logic for Booking ID ${bookingId}. Cell content editable: ${td.contentEditable}`);
           const selectEl = td.querySelector('select.history-referral-select');
           if (selectEl) {
             newValue = selectEl.value;

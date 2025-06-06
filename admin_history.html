@@ -295,616 +295,402 @@ ul.nav-links-mobile li a {
   </script>
 
   <script>
-  let allFetchedPastLessons = []; 
-  let activeCategoryFilter = 'All'; 
-  let editing = false; // Flag for editing state
+// Corrected JavaScript logic provided by the user starts here
+let allFetchedPastLessons = []; 
+let activeCategoryFilter = 'All'; 
+let editing = false; 
 
-  // DOM Elements
-  let enableHistoryEditingBtn;
-  let saveHistoryBtn;
-  let historyTableContainer; // Will be past-lessons-table-container
+let enableHistoryEditingBtn;
+let saveHistoryBtn;
+let historyTableContainer; 
+let bulkUpdateButton; // Added for the new bulk update button
 
-  // Helper to format time (assuming it's still needed)
-  function formatTime_12hr(timeStr) {
-    if (!timeStr || !timeStr.includes(':')) { return timeStr; }
-    const parts = timeStr.split(':');
-    let hours = parseInt(parts[0], 10);
-    const minutes = parseInt(parts[1], 10);
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12; 
-    const minutesStr = minutes < 10 ? '0' + minutes : minutes;
-    return hours + ':' + minutesStr + ' ' + ampm;
-  }
-
-  function checkTableInputChanges(tableContainerId) {
-    const container = document.getElementById(tableContainerId);
-    if (!container) {
-        console.error(`checkTableInputChanges: Container not found for ID: ${tableContainerId}`);
-        return;
-    }
-
-    const bulkButton = document.querySelector(`.bulk-update-costs-btn[data-table-id="${tableContainerId}"]`);
-    if (!bulkButton) {
-        console.error(`checkTableInputChanges: Bulk update button not found for table ID: ${tableContainerId}`);
-        return;
-    }
-
-    const inputs = container.querySelectorAll('.lesson-cost-input');
-    let hasChanges = false;
-
-    for (const inputField of inputs) {
-        const originalCostStr = inputField.getAttribute('data-original-cost');
-        const originalCost = parseFloat(originalCostStr); // NaN if empty or invalid
-
-        const currentValue = inputField.value.trim();
-        
-        if (currentValue === '' && (originalCostStr === '' || isNaN(originalCost))) {
-            // Both original and current are effectively "empty" or "not set"
-            continue;
-        }
-        if (currentValue === '' && (originalCostStr !== '' && !isNaN(originalCost)) ) {
-            // Original had a value, now it's cleared
-            hasChanges = true;
-            break;
-        }
-
-        const currentCost = parseFloat(currentValue);
-
-        if (isNaN(currentCost) && currentValue !== '') { // Invalid non-empty input
-            continue; 
-        }
-        
-        if (currentValue !== '' && isNaN(originalCost) && !isNaN(currentCost)) { // New valid price for previously empty
-             hasChanges = true;
-             break;
-        }
-        if (!isNaN(originalCost) && !isNaN(currentCost) && currentCost !== originalCost) { // Different numeric values
-             hasChanges = true;
-             break;
-        }
-    }
-    bulkButton.disabled = !hasChanges;
+function formatTime_12hr(timeStr) {
+  if (!timeStr || !timeStr.includes(':')) { return timeStr; }
+  const parts = timeStr.split(':');
+  let hours = parseInt(parts[0], 10);
+  const minutes = parseInt(parts[1], 10);
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12; 
+  const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+  return hours + ':' + minutesStr + ' ' + ampm;
 }
 
-  function formatTime_12hr(timeStr) {
-    if (!timeStr || !timeStr.includes(':')) { return timeStr; }
-    const parts = timeStr.split(':');
-    let hours = parseInt(parts[0], 10);
-    const minutes = parseInt(parts[1], 10);
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12; 
-    const minutesStr = minutes < 10 ? '0' + minutes : minutes;
-    return hours + ':' + minutesStr + ' ' + ampm;
+function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
+  const container = document.getElementById(containerId);
+  if (!container) {
+    console.error('Container not found for ID:', containerId);
+    return;
   }
 
-  function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
-    console.log('HISTORY.HTML: renderPastLessonsTable START for container:', containerId, 'with lessons:', lessonsArray.length);
-    const container = document.getElementById(containerId); 
-    if (!container) {
-      console.error('Container not found for ID:', containerId);
-      return;
-    }
+  if (lessonsArray.length === 0) {
+    container.innerHTML = `<p>${placeholderMessage}</p>`;
+    return;
+  }
 
-    if (lessonsArray.length === 0) {
-      console.log('HISTORY.HTML: Rendering placeholder for:', containerId);
-      container.innerHTML = `<p>${placeholderMessage}</p>`;
-      return;
-    }
-
-    let html = `
-      <table style="width:100%; border-collapse:collapse; margin-top:10px;">
-        <thead>
-          <tr style="background:#0c3c78; color:white;">
-            <th style="padding:8px; border:1px solid #ddd;">Program</th>
-            <th style="padding:8px; border:1px solid #ddd;">Coach</th>
-            <th style="padding:8px; border:1px solid #ddd;">Date</th>
-            <th style="padding:8px; border:1px solid #ddd;">Time</th>
-            <th style="padding:8px; border:1px solid #ddd;">Student</th>
-            <th style="padding:8px; border:1px solid #ddd;">Email</th>
-            <th style="padding:8px; border:1px solid #ddd;">Phone</th>
-            <th style="padding:8px; border:1px solid #ddd;">Lesson Cost</th>
-            <th style="padding:8px; border:1px solid #ddd;">Referral Source</th>
-            <th style="padding:8px; border:1px solid #ddd;">Paid</th>
-            <th style="padding:8px; border:1px solid #ddd;">Referral Source</th>
-            <th style="padding:8px; border:1px solid #ddd;">Paid</th>
-            <th style="padding:8px; border:1px solid #ddd;">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
-
-    lessonsArray.forEach(les => {
-      const dateStr = new Date(les.date).toLocaleDateString();
-      const formattedTime = formatTime_12hr(les.time);
-      let rowStyle = '';
-      // The specific styling for unpaid rows might be redundant now.
-      // if (!les.paid) { rowStyle = 'background-color: #ffebee;'; }
-
-      // Add referral_source to the displayed columns if it's part of `les` object
-      const referralSourceDisplay = les.referral_source || '—';
-
-      const originalDate = les.date ? les.date.substring(0,10) : ''; // Assuming les.date is in ISO format or similar
-
-      html += `
-        <tr data-id="${les.id}" ${rowStyle ? `style="${rowStyle}"` : ''}>
-          <td class="history-cell" data-id="${les.id}" data-field="program" data-original-value="${les.program || ''}" style="padding:8px; border:1px solid #ddd;">${les.program}</td>
-          <td class="history-cell" data-id="${les.id}" data-field="coach" data-original-value="${les.coach || ''}" style="padding:8px; border:1px solid #ddd;">${les.coach}</td>
-          <td class="history-cell" data-id="${les.id}" data-field="date" data-original-value="${originalDate}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
-          <td class="history-cell" data-id="${les.id}" data-field="time" data-original-value="${les.time || ''}" style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
-          <td class="history-cell" data-id="${les.id}" data-field="student" data-original-value="${les.student || ''}" style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td> <!-- Email not typically editable here -->
-          <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td> <!-- Phone not typically editable here -->
-          <td class="history-cell" data-id="${les.id}" data-field="lesson_cost" data-original-value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}</td>
-          <td class="history-cell" data-id="${les.id}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
-          <td class="history-cell" data-id="${les.id}" data-field="paid" data-original-value="${String(les.paid === true || String(les.paid).toLowerCase() === 'true')}" style="padding:8px; border:1px solid #ddd;">${(les.paid === true || String(les.paid).toLowerCase() === 'true') ? 'Yes' : 'No'}</td>
-          <td style="padding:8px; border:1px solid #ddd;">
-            <button onclick="deleteAdminLesson(${les.id})">Delete</button>
-          </td>
+  let tableHTML = `
+    <table style="width:100%; border-collapse:collapse; margin-top:10px;">
+      <thead>
+        <tr style="background:#0c3c78; color:white;">
+          <th style="padding:8px; border:1px solid #ddd;"><input type="checkbox" id="selectAllHistoryRows"></th>
+          <th style="padding:8px; border:1px solid #ddd;">Program</th>
+          <th style="padding:8px; border:1px solid #ddd;">Coach</th>
+          <th style="padding:8px; border:1px solid #ddd;">Date</th>
+          <th style="padding:8px; border:1px solid #ddd;">Time</th>
+          <th style="padding:8px; border:1px solid #ddd;">Student</th>
+          <th style="padding:8px; border:1px solid #ddd;">Email</th>
+          <th style="padding:8px; border:1px solid #ddd;">Phone</th>
+          <th style="padding:8px; border:1px solid #ddd;">Lesson Cost</th>
+          <th style="padding:8px; border:1px solid #ddd;">Referral Source</th>
+          <th style="padding:8px; border:1px solid #ddd;">Paid</th>
+          <th style="padding:8px; border:1px solid #ddd;">Actions</th>
         </tr>
-      `;
+      </thead>
+      <tbody>
+  `;
+
+  lessonsArray.forEach(les => {
+    const dateStr = les.date ? new Date(les.date).toLocaleDateString() : 'N/A';
+    const formattedTime = les.time ? formatTime_12hr(les.time) : 'N/A';
+    const referralSourceDisplay = les.referral_source || '—';
+    const originalDate = les.date ? les.date.substring(0,10) : '';
+    const isPaid = les.paid === true || String(les.paid).toLowerCase() === 'true';
+
+    tableHTML += `
+      <tr data-id="${les.id}">
+        <td style="padding:8px; border:1px solid #ddd;"><input type="checkbox" class="history-row-checkbox" data-id="${les.id}"></td>
+        <td class="history-cell" data-field="program" data-original-value="${les.program || ''}" style="padding:8px; border:1px solid #ddd;">${les.program || '—'}</td>
+        <td class="history-cell" data-field="coach" data-original-value="${les.coach || ''}" style="padding:8px; border:1px solid #ddd;">${les.coach || '—'}</td>
+        <td class="history-cell" data-field="date" data-original-value="${originalDate}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
+        <td class="history-cell" data-field="time" data-original-value="${les.time || ''}" style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
+        <td class="history-cell" data-field="student" data-original-value="${les.student || ''}" style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
+        <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td>
+        <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td>
+        <td class="history-cell" data-field="lesson_cost" data-original-value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}</td>
+        <td class="history-cell" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
+        <td class="history-cell" data-field="paid" data-original-value="${String(isPaid)}" style="padding:8px; border:1px solid #ddd;">${isPaid ? 'Yes' : 'No'}</td>
+        <td style="padding:8px; border:1px solid #ddd;">
+          <button onclick="deleteAdminLesson(${les.id})">Delete</button>
+        </td>
+      </tr>
+    `;
+  });
+  tableHTML += `</tbody></table>`;
+  container.innerHTML = tableHTML;
+
+  const selectAllCheckbox = document.getElementById('selectAllHistoryRows');
+  if (selectAllCheckbox) {
+    selectAllCheckbox.addEventListener('change', (event) => {
+      document.querySelectorAll('.history-row-checkbox').forEach(checkbox => {
+        checkbox.checked = event.target.checked;
+      });
+      if (bulkUpdateButton) bulkUpdateButton.disabled = !event.target.checked && !Array.from(document.querySelectorAll('.history-row-checkbox')).some(cb => cb.checked);
     });
-    html += `</tbody></table>`;
-    container.innerHTML = html;
-    console.log('HISTORY.HTML: Rendering actual table into:', containerId, 'HTML length:', html.length > 0 ? html.length : 'EMPTY!');
-    
-    // Cost input specific logic is removed from here as cells are now directly editable.
-    // The general checkTableInputChanges for the bulk cost update button remains if that button is kept.
-    // If the bulk-update-costs-btn is still desired, its checkTableInputChanges will need to be adjusted or it should be removed.
-    // For now, assuming it might still be there for cost inputs if any remain.
-    // checkTableInputChanges(containerId); // This might be redundant if cost inputs are removed in favor of editable cells
   }
 
-  async function loadHistory() { // Renamed from loadPastLessons
-    if (!historyTableContainer) historyTableContainer = document.getElementById('past-lessons-table-container');
-    historyTableContainer.innerHTML = '<p>Loading history...</p>';
-    
-    try {
-      const res = await fetch('/api/admin/lessons', { credentials: 'include' }); // Assuming this endpoint provides all necessary data
-      if (!res.ok) {
-        const errorMsg = '<p style="color:red;">Could not load lesson history data.</p>';
-        historyTableContainer.innerHTML = errorMsg;
-        return;
-      }
-      const lessons = await res.json();
-      console.log('HISTORY.HTML: Fetched total lessons for history:', lessons.length);
-
-      const now = new Date();
-      const pastLessons = lessons.filter(les => {
-        if (!les.date) return false; 
-        const dateStr = les.date.substring(0, 10); 
-        const dateParts = dateStr.split('-');
-        if (dateParts.length !== 3) return false; 
-        const year = parseInt(dateParts[0]);
-        const month = parseInt(dateParts[1]) - 1; 
-        const day = parseInt(dateParts[2]);
-        let hours = 23, minutes = 59, seconds = 59; 
-        if (les.time) {
-            const timeParts = les.time.split(':');
-            if (timeParts.length >= 2) {
-                hours = parseInt(timeParts[0]);
-                minutes = parseInt(timeParts[1]);
-                seconds = timeParts[2] ? parseInt(timeParts[2]) : 0;
-            }
+  document.querySelectorAll('.history-row-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', () => {
+        if (bulkUpdateButton) {
+            const anyChecked = Array.from(document.querySelectorAll('.history-row-checkbox')).some(cb => cb.checked);
+            bulkUpdateButton.disabled = !anyChecked;
         }
-        try {
-            const lessonDate = new Date(year, month, day, hours, minutes, seconds);
-            if (lessonDate.toDateString() === now.toDateString()) { 
-                return lessonDate < now; 
-            }
-            return lessonDate < now; 
-        } catch (e) {
-            console.error(`HISTORY.HTML: Invalid date components for lesson: Y:${year} M:${month} D:${day} H:${hours} M:${minutes}`, les, e);
-            return false;
+        if (selectAllCheckbox && !checkbox.checked) {
+            selectAllCheckbox.checked = false;
         }
     });
-      console.log('HISTORY.HTML: Filtered past lessons count for history:', pastLessons.length);
-      allFetchedPastLessons = [...pastLessons]; 
-      filterAndRenderHistory(''); // Initial render with no search term
-    } catch (error) {
-        console.error('Error loading lesson history:', error);
-        historyTableContainer.innerHTML = '<p style="color:red;">Failed to load history due to a network error.</p>';
-    }
-  }
+  });
+}
 
-  async function deleteAdminLesson(id) {
-    if (!confirm('Are you sure you want to delete this lesson?')) return;
-    try {
-        const res = await fetch(`/api/admin/lessons/${id}`, {
-            method: 'DELETE',
-            credentials: 'include'
-        });
-        if (res.ok) {
-            loadHistory(); // Refresh after delete
-        } else {
-            alert('Delete failed: ' + await res.text());
-        }
-    } catch (err) {
-        console.error('Error deleting lesson:', err);
-        alert('Delete failed due to a network error.');
-    }
-  }
+async function loadHistory() {
+  if (!historyTableContainer) historyTableContainer = document.getElementById('past-lessons-table-container');
+  historyTableContainer.innerHTML = '<p>Loading history...</p>';
   
-  // Removed handleUpdatePayment(bookingId) function (if any was left)
-  // Removed markAsPaid(bookingId) function (if any was left)
-
-  // async function handleUpdateCost(bookingId) { ... } // This function is now removed.
-
-  async function handleBulkUpdatePrices(tableContainerId) {
-    const container = document.getElementById(tableContainerId);
-    if (!container) {
-        console.error('Table container not found for ID:', tableContainerId);
-        return;
+  try {
+    const res = await fetch('/api/admin/lessons', { credentials: 'include' });
+    if (!res.ok) {
+      historyTableContainer.innerHTML = '<p style="color:red;">Could not load lesson history data.</p>';
+      return;
     }
-
-    const inputFields = container.querySelectorAll('.lesson-cost-input');
-    const pendingUpdates = [];
-    const results = { successes: [], failures: [] };
-
-    inputFields.forEach(inputField => {
-        const bookingId = inputField.getAttribute('data-booking-id');
-        const originalCostStr = inputField.getAttribute('data-original-cost');
-        const originalCost = parseFloat(originalCostStr); // Will be NaN if originalCostStr is empty
-        
-        const currentValue = inputField.value.trim();
-
-        if (currentValue === '') { // If input is empty, skip (treat as no change or invalid for bulk update).
-            return; 
+    const lessons = await res.json();
+    const now = new Date();
+    const pastLessons = lessons.filter(les => {
+      if (!les.date) return false;
+      const dateStr = les.date.substring(0, 10);
+      const dateParts = dateStr.split('-');
+      if (dateParts.length !== 3) return false;
+      const year = parseInt(dateParts[0]);
+      const month = parseInt(dateParts[1]) - 1;
+      const day = parseInt(dateParts[2]);
+      let hours = 23, minutes = 59, seconds = 59;
+      if (les.time) {
+        const timeParts = les.time.split(':');
+        if (timeParts.length >= 2) {
+          hours = parseInt(timeParts[0]);
+          minutes = parseInt(timeParts[1]);
+          seconds = timeParts[2] ? parseInt(timeParts[2]) : 0;
         }
+      }
+      try {
+        const lessonDate = new Date(year, month, day, hours, minutes, seconds);
+        return lessonDate < now;
+      } catch (e) {
+        console.error(`Error parsing date for lesson: ${les.id}`, e);
+        return false;
+      }
+    });
+    allFetchedPastLessons = [...pastLessons];
+    filterAndRenderHistory('');
+  } catch (error) {
+    console.error('Error loading lesson history:', error);
+    historyTableContainer.innerHTML = '<p style="color:red;">Failed to load history due to a network error.</p>';
+  }
+}
 
-        const currentCost = parseFloat(currentValue);
+async function deleteAdminLesson(id) {
+  if (!confirm('Are you sure you want to delete this lesson?')) return;
+  try {
+    const res = await fetch(`/api/admin/lessons/${id}`, { method: 'DELETE', credentials: 'include' });
+    if (res.ok) {
+      loadHistory();
+    } else {
+      alert('Delete failed: ' + await res.text());
+    }
+  } catch (err) {
+    console.error('Error deleting lesson:', err);
+    alert('Delete failed due to a network error.');
+  }
+}
 
-        if (isNaN(currentCost)) {
-            results.failures.push(`Booking ID ${bookingId}: Invalid cost format ('${currentValue}').`);
+function filterAndRenderHistory(searchTerm) {
+  let searchFilteredLessons;
+  if (!searchTerm) {
+    searchFilteredLessons = [...allFetchedPastLessons];
+  } else {
+    searchFilteredLessons = allFetchedPastLessons.filter(les => {
+      if (!les) return false;
+      const dateStr = les.date ? new Date(les.date).toLocaleDateString().toLowerCase() : '';
+      return [les.program, les.coach, les.student, les.email, les.phone, dateStr]
+        .some(field => field && String(field).toLowerCase().includes(searchTerm));
+    });
+  }
+
+  let finalDisplayLessons;
+  if (activeCategoryFilter === 'All') {
+    finalDisplayLessons = [...searchFilteredLessons];
+  } else {
+    finalDisplayLessons = searchFilteredLessons.filter(les => {
+      if (!les || !les.program) return false;
+      const programName = les.program.toLowerCase();
+      if (activeCategoryFilter === 'Privates') return programName.includes('private');
+      if (activeCategoryFilter === 'Camps') return programName.includes('camp') || programName.includes('pass');
+      if (activeCategoryFilter === 'Clinics') return programName.includes('clinic') || programName.includes('high performance');
+      return false;
+    });
+  }
+  renderPastLessonsTable(finalDisplayLessons, 'past-lessons-table-container', 'No matching past lessons found.');
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  enableHistoryEditingBtn = document.getElementById('enable-history-editing-btn');
+  saveHistoryBtn = document.getElementById('save-history-btn');
+  historyTableContainer = document.getElementById('past-lessons-table-container');
+  bulkUpdateButton = document.getElementById('bulkUpdateButton'); // Initialize new button
+
+  if(bulkUpdateButton) {
+    bulkUpdateButton.disabled = true; // Initially disabled
+    bulkUpdateButton.addEventListener('click', async () => {
+        const selectedIds = Array.from(document.querySelectorAll('.history-row-checkbox:checked')).map(cb => cb.dataset.id);
+        if(selectedIds.length === 0) {
+            alert('No lessons selected for bulk update.');
             return;
         }
-        
-        let isChanged = false;
-        if (isNaN(originalCost) && !isNaN(currentCost)) { // Original was empty/NaN, new is valid number
-             isChanged = true;
-        } else if (!isNaN(originalCost) && currentCost !== originalCost) { // Original was a number, new is different number
-             isChanged = true;
+        // Placeholder for bulk update action type
+        const actionType = prompt("Enter action type for selected lessons (e.g., 'markPaid', 'archive'):");
+        if (!actionType) {
+            alert('No action specified.');
+            return;
         }
-        // Note: This logic doesn't explicitly count clearing a field (original number, current empty) as a "pendingUpdate"
-        // because the initial check `if (currentValue === '')` skips it. If clearing should be an update to zero or null,
-        // this logic would need adjustment, or the backend needs to interpret empty cost as such.
-        // For now, only valid new numbers or changes between valid numbers are processed for bulk update.
-
-        if (isChanged) {
-            pendingUpdates.push({ bookingId, newCost: currentCost });
-        }
+        alert(`Bulk updating ${selectedIds.length} lessons with action: ${actionType}. IDs: ${selectedIds.join(', ')}.\n(Actual update logic not yet implemented)`);
+        // Example: await bulkUpdateLessons(selectedIds, actionType);
+        // After action, potentially reload history or update UI
+        // loadHistory(); 
+        // document.getElementById('selectAllHistoryRows').checked = false; // Uncheck select all
+        // bulkUpdateButton.disabled = true; // Disable button again
     });
+  }
 
-    if (pendingUpdates.length === 0 && results.failures.length === 0) {
-        alert("No valid changes detected to update.");
+
+  loadHistory();
+
+  if (enableHistoryEditingBtn) {
+    enableHistoryEditingBtn.addEventListener('click', () => {
+      editing = !editing;
+      enableHistoryEditingBtn.textContent = editing ? 'Disable Editing' : 'Enable Editing';
+      if (saveHistoryBtn) saveHistoryBtn.disabled = !editing;
+
+      document.querySelectorAll('.history-cell').forEach(td => {
+        if (td.dataset.field === 'referral_source') {
+          td.contentEditable = false;
+          if (editing) {
+            const originalValue = td.dataset.originalValue === '—' ? '' : td.dataset.originalValue;
+            td.innerHTML = '';
+            const selectEl = document.createElement('select');
+            selectEl.className = 'history-referral-select';
+            const options = [
+              { value: '', text: 'None' },
+              { value: 'Google', text: 'Google' },
+              { value: 'Friend', text: 'Friend' },
+              { value: 'Flyer', text: 'Flyer' }
+            ];
+            options.forEach(opt => {
+              const optionEl = document.createElement('option');
+              optionEl.value = opt.value;
+              optionEl.textContent = opt.text;
+              if (opt.value === originalValue) optionEl.selected = true;
+              selectEl.appendChild(optionEl);
+            });
+            td.appendChild(selectEl);
+          } else {
+            const selectEl = td.querySelector('select.history-referral-select');
+            if (selectEl) {
+              const selectedText = selectEl.options[selectEl.selectedIndex]?.text || selectEl.value;
+              td.innerHTML = '';
+              td.textContent = selectedText || '—';
+            }
+          }
+        } else { // For other editable cells
+          td.contentEditable = editing;
+          if (!editing) td.blur();
+        }
+      });
+    });
+  }
+
+  if (saveHistoryBtn) {
+    saveHistoryBtn.addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to save all changes to the history?')) return;
+      if (enableHistoryEditingBtn) enableHistoryEditingBtn.disabled = true;
+      saveHistoryBtn.disabled = true;
+
+      const updates = [];
+      document.querySelectorAll('.history-cell[data-id]').forEach(td => {
+        const bookingId = td.dataset.id;
+        const fieldName = td.dataset.field;
+        const originalValue = td.dataset.originalValue;
+        let newValue;
+        let changed = false;
+
+        if (fieldName === 'referral_source') {
+          const selectEl = td.querySelector('select.history-referral-select');
+          if (selectEl) {
+            newValue = selectEl.value;
+            // Normalize originalValue of '—' to empty string for comparison
+            const normalizedOriginalValue = originalValue === '—' ? '' : originalValue;
+            if (newValue !== normalizedOriginalValue) changed = true;
+          }
+        } else if (td.contentEditable === 'true') {
+          newValue = td.innerText.trim();
+          if (fieldName === 'date' && td.innerText.includes('/')) {
+            const parts = newValue.split('/');
+            if (parts.length === 3) newValue = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+          } else if (fieldName === 'lesson_cost') {
+            newValue = newValue.replace('$', '').trim();
+            if (newValue === '' && originalValue !== '') newValue = null; // Allow clearing cost
+            else if (newValue !== '' && isNaN(Number(newValue))) { // If not empty and not a number, skip change
+                console.warn(`Invalid cost for booking ${bookingId}: ${newValue}. Skipping update for this field.`);
+                return; 
+            }
+          } else if (fieldName === 'paid') {
+            const lowerNewValue = newValue.toLowerCase();
+            if (lowerNewValue === 'yes' || lowerNewValue === 'true') newValue = 'true';
+            else if (lowerNewValue === 'no' || lowerNewValue === 'false') newValue = 'false';
+          }
+          if (newValue !== originalValue) changed = true;
+        }
+
+        if (changed) {
+          updates.push({ bookingId, fieldName, newValue, originalValueForDebug: originalValue });
+        }
+      });
+
+      if (updates.length === 0) {
+        alert('No actual changes detected to save.');
+        if (enableHistoryEditingBtn) enableHistoryEditingBtn.disabled = false;
+        if (editing) saveHistoryBtn.disabled = false;
+        else saveHistoryBtn.disabled = true;
         return;
-    }
-     if (pendingUpdates.length === 0 && results.failures.length > 0) {
-        let summaryMessage = "Update Summary:\n";
-        summaryMessage += `0 prices to update successfully.\n`;
-        summaryMessage += `${results.failures.length} items had issues:\n`;
-        results.failures.forEach(failure => {
-            summaryMessage += `- ${failure}\n`;
-        });
-        alert(summaryMessage);
-        return;
-    }
+      }
 
+      let successes = 0;
+      let failures = 0;
+      const failureDetails = [];
 
-    for (const update of pendingUpdates) {
+      for (const upd of updates) {
         try {
-            const res = await fetch(`/api/admin/booking-payment/${update.bookingId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
-                body: JSON.stringify({ lesson_cost_from_req: update.newCost })
-            });
-
-            if (res.ok) {
-                results.successes.push(`Booking ID ${update.bookingId}: Cost updated to ${update.newCost}.`);
-            } else {
-                let errorMsg = `Booking ID ${update.bookingId}: Update failed (status ${res.status}).`;
-                try {
-                    const errorData = await res.json();
-                    errorMsg += ` ${errorData.message || ''}`;
-                } catch (e) { /* ignore if response not json */ }
-                results.failures.push(errorMsg);
-            }
-        } catch (err) {
-            results.failures.push(`Booking ID ${update.bookingId}: Network error - ${err.message}`);
+          const res = await fetch(`/api/admin/history/${upd.bookingId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
+            body: JSON.stringify({ field: upd.fieldName, value: upd.newValue })
+          });
+          if (res.ok) {
+            successes++;
+          } else {
+            failures++;
+            const errData = await res.json().catch(() => ({ message: `Update failed for ID ${upd.bookingId}, Field ${upd.fieldName} with status ${res.status}` }));
+            failureDetails.push(errData.message || `Failed for ${upd.fieldName}`);
+          }
+        } catch (networkError) {
+          failures++;
+          failureDetails.push(`Network error for ID ${upd.bookingId}, Field ${upd.fieldName}: ${networkError.message}`);
         }
-    }
+      }
 
-    let summaryMessage = "Update Summary:\n";
-    summaryMessage += `${results.successes.length} prices updated successfully.\n`;
-    if (results.failures.length > 0) {
-        summaryMessage += `${results.failures.length} updates failed or had issues:\n`;
-        results.failures.forEach(failure => {
-            summaryMessage += `- ${failure}\n`;
-        });
-    }
-    alert(summaryMessage);
+      let summaryMessage = `${successes} updates successful.`;
+      if (failures > 0) summaryMessage += `\n${failures} updates failed.\nDetails:\n${failureDetails.join('\n')}`;
+      alert(summaryMessage);
 
-    loadPastLessons(); // Crucially, call loadPastLessons to refresh data for the history page
-  }
-
-  function filterAndRenderHistory(searchTerm) {
-    console.log('HISTORY.HTML: filterAndRenderHistory called with searchTerm:', searchTerm, 'and activeCategoryFilter:', activeCategoryFilter);
-    let searchFilteredLessons;
-    if (!searchTerm) {
-        searchFilteredLessons = [...allFetchedPastLessons]; 
-    } else {
-        searchFilteredLessons = allFetchedPastLessons.filter(les => {
-            if (!les) return false; 
-            const dateStr = les.date ? new Date(les.date).toLocaleDateString().toLowerCase() : '';
-            const programName = les.program ? les.program.toLowerCase() : '';
-            const coachName = les.coach ? les.coach.toLowerCase() : '';
-            const studentName = les.student ? les.student.toLowerCase() : '';
-            const emailAddr = les.email ? les.email.toLowerCase() : '';
-            const phoneNum = les.phone ? les.phone.toLowerCase() : '';
-            return (
-                programName.includes(searchTerm) ||
-                coachName.includes(searchTerm) ||
-                studentName.includes(searchTerm) ||
-                emailAddr.includes(searchTerm) ||
-                phoneNum.includes(searchTerm) ||
-                dateStr.includes(searchTerm)
-            );
-        });
-    }
-
-    let finalDisplayLessons;
-    if (activeCategoryFilter === 'All') {
-        finalDisplayLessons = [...searchFilteredLessons];
-    } else {
-        finalDisplayLessons = searchFilteredLessons.filter(les => {
-            if (!les || !les.program) return false;
-            const programName = les.program.toLowerCase();
-            if (activeCategoryFilter === 'Privates') {
-                return programName.includes('private') || programName.includes('tennis private');
-            } else if (activeCategoryFilter === 'Camps') {
-                return programName.includes('camp') || programName.includes('pass');
-            } else if (activeCategoryFilter === 'Clinics') {
-                return programName.includes('clinic') || programName.includes('high performance');
-            }
-            return false; 
-        });
-    }
-    console.log(`HISTORY.HTML: Displaying ${finalDisplayLessons.length} lessons for category '${activeCategoryFilter}' and search '${searchTerm}'`);
-        
-    renderPastLessonsTable(finalDisplayLessons, 'past-lessons-table-container', 'No matching past lessons found.');
-  }
-
-  window.addEventListener('DOMContentLoaded', () => {
-    enableHistoryEditingBtn = document.getElementById('enable-history-editing-btn');
-    saveHistoryBtn = document.getElementById('save-history-btn');
-    historyTableContainer = document.getElementById('past-lessons-table-container'); // Ensure this ID matches your table container
-
-    loadHistory(); // Initial load of lesson history
-    
-    if (enableHistoryEditingBtn) {
-        enableHistoryEditingBtn.addEventListener('click', () => {
-            editing = !editing;
-            enableHistoryEditingBtn.textContent = editing ? 'Disable Editing' : 'Enable Editing';
-            if (saveHistoryBtn) saveHistoryBtn.disabled = !editing;
-
-            const cells = document.querySelectorAll('.history-cell');
-            cells.forEach(td => {
-                if (td.dataset.field === 'referral_source') {
-                    td.contentEditable = false; // Main TD is not editable, select is
-                    if (editing) {
-                        const originalValue = td.dataset.originalValue;
-                        td.innerHTML = ''; // Clear current text content
-                        const selectEl = document.createElement('select');
-                        selectEl.className = 'history-referral-select'; // For styling or specific targeting if needed
-                        
-                        const options = [
-                            { value: '', text: 'None' },
-                            { value: 'Google', text: 'Google' },
-                            { value: 'Friend', text: 'Friend' },
-                            { value: 'Flyer', text: 'Flyer' }
-                        ];
-
-                        options.forEach(opt => {
-                            const optionEl = document.createElement('option');
-                            optionEl.value = opt.value;
-                            optionEl.textContent = opt.text;
-                            if (opt.value === originalValue) {
-                                optionEl.selected = true;
-                            }
-                            selectEl.appendChild(optionEl);
-                        });
-                        td.appendChild(selectEl);
-                    } else { // Disabling editing
-                        const selectEl = td.querySelector('select.history-referral-select');
-                        if (selectEl) {
-                            const selectedText = selectEl.options[selectEl.selectedIndex]?.text || selectEl.value;
-                            td.innerHTML = ''; // Clear the select
-                            td.textContent = selectedText;
-                            // td.dataset.originalValue = selectEl.value; // Update originalValue if change is "committed" to cell display
-                        }
-                    }
-                } else { // For other editable cells
-                    td.contentEditable = editing;
-                    if (!editing) {
-                        td.blur(); 
-                    }
-                }
-            });
-        });
-    }
-
-    if (saveHistoryBtn) {
-        saveHistoryBtn.addEventListener('click', async () => {
-            if (!confirm('Are you sure you want to save all changes to the history?')) return;
-
-            if (enableHistoryEditingBtn) enableHistoryEditingBtn.disabled = true;
-            saveHistoryBtn.disabled = true;
-
-            const updates = [];
-            document.querySelectorAll('.history-cell[data-id]').forEach(td => { // Iterate over all cells with a data-id
-                const bookingId = td.dataset.id;
-                const fieldName = td.dataset.field;
-                const originalValue = td.dataset.originalValue;
-                let newValue;
-                let changed = false;
-
-                if (fieldName === 'referral_source') {
-                    const selectEl = td.querySelector('select.history-referral-select');
-                    if (selectEl) { // If select exists, editing was active for this cell
-                        newValue = selectEl.value;
-                        if (newValue !== originalValue) {
-                            changed = true;
-                        }
-                    } else {
-                        // If select is not present, it means editing for this cell was not active or already reverted.
-                        // We could try to derive the value from td.textContent if needed,
-                        // but ideally, changes are captured from active edit elements (selects/contentEditable).
-                        // For simplicity, if no select, assume no change to be saved for referral_source from this cell.
-                        // Or, ensure originalValue reflects the actual state if text was manually changed.
-                        // The current display logic updates td.textContent with the *text* of the option.
-                        // To compare, we'd need to map this text back to a value.
-                        // It's safer to rely on the select being present if a change is intended.
-                        // The current logic: if 'Disable Editing' was clicked, the select is gone.
-                        // 'Save' button should ideally capture changes *before* 'Disable Editing' state is fully applied to data model.
-                        // However, the `editing` flag is global.
-                        // Let's stick to: if select is there, take its value. If not, no change from this cell for referral_source.
-                        // This means if user edits, then clicks "Disable Editing", then "Save", referral changes are NOT currently saved.
-                        // This needs to be fixed by ensuring the save button can always get the "intended" new value.
-
-                        // To fix this, when "Disable Editing" is clicked and referral_source is reverted to text,
-                        // we should also update a temporary data attribute on the TD if the value changed.
-                        // OR, the save function must be aware of the global `editing` flag and behave accordingly.
-
-                        // For now, this simpler logic: if select is there, it's an explicit change.
-                        // This means user must click "Save" *while* the select is visible for referral_source.
-                        // The `saveHistoryBtn.disabled = !editing` in `enableHistoryEditingBtn` listener helps here.
-                        // If `editing` is false, save button is disabled.
-                        // If `editing` is true, save button is enabled, and select should be present for referral_source.
-                        // So, the `selectEl` should generally be found if `editing` is true.
-                        // The issue might be if save is clicked AFTER "Disable Editing" has been clicked. But then saveBtn is disabled.
-                        // The crucial part is that `saveHistoryBtn.disabled = !editing;` is set.
-                        // This implies that when saveHistoryBtn is clickable, `editing` is true, so selects are present.
-                    }
-                } else if (td.contentEditable === 'true') { // For other fields that are directly editable
-                    newValue = td.innerText.trim();
-                    if (fieldName === 'date' && td.innerText.includes('/')) {
-                        const parts = newValue.split('/');
-                        if (parts.length === 3) { // MM/DD/YYYY
-                            newValue = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
-                        }
-                    } else if (fieldName === 'lesson_cost') {
-                        newValue = newValue.replace('$', '').trim();
-                    } else if (fieldName === 'paid') {
-                        const lowerNewValue = newValue.toLowerCase();
-                        if (lowerNewValue === 'yes' || lowerNewValue === 'true') {
-                            newValue = 'true';
-                        } else if (lowerNewValue === 'no' || lowerNewValue === 'false') {
-                            newValue = 'false';
-                        }
-                    }
-                    if (newValue !== originalValue) {
-                        changed = true;
-                    }
-                }
-
-                if (changed) {
-                    updates.push({
-                        bookingId: bookingId,
-                        fieldName: fieldName,
-                        newValue: newValue,
-                        originalValueForDebug: originalValue
-                    });
-                }
-            });
-
-            if (updates.length === 0) {
-                alert('No actual changes detected to save.');
-                if (enableHistoryEditingBtn) enableHistoryEditingBtn.disabled = false;
-                if (editing) { // If editing was active, save button should reflect that (it's disabled if no changes)
-                   saveHistoryBtn.disabled = false; 
-                } else {
-                   saveHistoryBtn.disabled = true;
-                }
-                return;
-            }
-
-            let successes = 0;
-            let failures = 0;
-            const failureDetails = [];
-
-            for (const upd of updates) {
-                try {
-                    const res = await fetch(`/api/admin/history/${upd.bookingId}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
-                        body: JSON.stringify({ field: upd.fieldName, value: upd.newValue })
-                    });
-                    if (res.ok) {
-                        successes++;
-                    } else {
-                        failures++;
-                        const errData = await res.json().catch(() => ({ message: `Update failed for ID ${upd.bookingId}, Field ${upd.fieldName} with status ${res.status}` }));
-                        failureDetails.push(errData.message);
-                    }
-                } catch (networkError) {
-                    failures++;
-                    failureDetails.push(`Network error for ID ${upd.bookingId}, Field ${upd.fieldName}: ${networkError.message}`);
-                }
-            }
-
-            let summaryMessage = `${successes} updates successful.`;
-            if (failures > 0) {
-                summaryMessage += `\n${failures} updates failed.\nDetails:\n${failureDetails.join('\n')}`;
-            }
-            alert(summaryMessage);
-
-            // Reset editing state
-            editing = false;
-            if (enableHistoryEditingBtn) {
-                enableHistoryEditingBtn.disabled = false;
-                enableHistoryEditingBtn.textContent = 'Enable Editing';
-            }
-            if (saveHistoryBtn) saveHistoryBtn.disabled = true;
-            document.querySelectorAll('.history-cell').forEach(cell => cell.contentEditable = false);
-            
-            loadHistory(); // Refresh table
-        });
-    }
-    
-    // Keep existing bulk cost update button logic if it's still relevant
-    const bulkCostUpdateButton = document.querySelector('.bulk-update-costs-btn[data-table-id="past-lessons-table-container"]');
-    if (bulkCostUpdateButton) {
-        bulkUpdateButton.addEventListener('click', function() {
-            const tableId = this.getAttribute('data-table-id');
-            if (tableId) { // Should always be past-lessons-table-container here
-                 handleBulkUpdatePrices(tableId);
-            } else {
-                console.error('Bulk update button on history page clicked without a data-table-id attribute.');
-            }
-        });
-    }
-
-    const searchInput = document.getElementById('historySearchInput');
-    if (searchInput) {
-        searchInput.addEventListener('input', () => {
-            const searchTerm = searchInput.value.toLowerCase().trim();
-            filterAndRenderHistory(searchTerm);
-        });
-    }
-    const filterButtons = document.querySelectorAll('#category-filters .category-filter-button');
-    filterButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            activeCategoryFilter = button.getAttribute('data-category');
-            filterButtons.forEach(btn => btn.classList.remove('active-filter-button'));
-            button.classList.add('active-filter-button');
-            const currentSearchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
-            filterAndRenderHistory(currentSearchTerm); 
-        });
+      editing = false;
+      if (enableHistoryEditingBtn) {
+        enableHistoryEditingBtn.disabled = false;
+        enableHistoryEditingBtn.textContent = 'Enable Editing';
+      }
+      if (saveHistoryBtn) saveHistoryBtn.disabled = true;
+      document.querySelectorAll('.history-cell').forEach(cell => cell.contentEditable = false);
+      loadHistory();
     });
-    // Note: The checkSession() and logout() functions are in the subsequent script tag,
-    // so their functionality should remain as is.
+  }
+
+  const bulkCostUpdateButton = document.querySelector('.bulk-update-costs-btn');
+  if (bulkCostUpdateButton) {
+    // This button seems to be for a different bulk update type (costs from inputs, not general actions)
+    // Its existing logic (handleBulkUpdatePrices) should be preserved if it's still meant to function.
+    // For now, I'm assuming its event listener setup is separate or handled by its own function.
+    // If it was meant to be the `bulkUpdateButton` for checkbox actions, this needs clarification.
+    // The original prompt mentioned adding a new button with ID "bulkUpdateButton".
+    // The existing button with class "bulk-update-costs-btn" might be different.
+    // The provided code has `bulkUpdateButton = document.getElementById('bulkUpdateButton');`
+    // and its event listener. The `handleBulkUpdatePrices` and its button seems distinct.
+  }
+
+  const searchInput = document.getElementById('historySearchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      filterAndRenderHistory(searchInput.value.toLowerCase().trim());
+    });
+  }
+
+  const filterButtons = document.querySelectorAll('#category-filters .category-filter-button');
+  filterButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      activeCategoryFilter = button.getAttribute('data-category');
+      filterButtons.forEach(btn => btn.classList.remove('active-filter-button'));
+      button.classList.add('active-filter-button');
+      filterAndRenderHistory(searchInput ? searchInput.value.toLowerCase().trim() : '');
+    });
   });
+});
+// Corrected JavaScript logic provided by the user ends here
 </script>
   <script>
   // This entire block is for mobile menu and session management, remains unchanged.

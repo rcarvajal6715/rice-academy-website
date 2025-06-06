@@ -366,52 +366,61 @@ app.get('/api/financials', async (req, res) => {
     let totalAcademyCommissionForPrivates = 0;
 
     for (const booking of privateRows) {
-      const lessonCost = parseFloat(booking.lesson_cost);
-      if (isNaN(lessonCost) || lessonCost < 0) { 
-        console.warn(`Invalid or missing lesson_cost for booking ID ${booking.id || 'N/A'}: ${booking.lesson_cost}. Skipping this booking for commission.`);
-        continue;
-      }
-      totalPrivateRevenue += lessonCost;
+  const lessonCost = parseFloat(booking.lesson_cost);
+  if (isNaN(lessonCost) || lessonCost < 0) {
+    // skip invalid/missing cost
+    continue;
+  }
+  totalPrivateRevenue += lessonCost;
 
-      const coachFullName = booking.coach || '';
-      const coachFirstName = coachFullName.split(' ')[0]; // Use coachFirstName as per new logic
-      const referral = booking.referral_source ? booking.referral_source.trim() : '';
+  const coachFullName = booking.coach || '';
+  const simpleCoachName = coachFullName.split(' ')[0];
+  const referral = booking.referral_source ? booking.referral_source.trim() : '';
 
-      let coachGetsThisLesson = 0;
-      let academyGetsThisLesson = 0; // This represents Ricardo's commission
+  let coachGetsThisLesson = 0;
+  let academyGetsThisLesson = 0;
 
-      if (coachFirstName === 'Ricardo') {
-          // Rule: Ricardo gets 100% of any lesson he teaches himself.
-          coachGetsThisLesson = lessonCost;
-          academyGetsThisLesson = 0;
-      } else {
-          // Another coach is teaching
-          if (referral === 'Ricardo') {
-              // Rule: Ricardo gets $20 if any other coach (Paula, Jacob, Zach, etc.) teaches a private he referred.
-              academyGetsThisLesson = 20;
-              coachGetsThisLesson = Math.max(0, lessonCost - 20); // Coach gets remainder
-          } else if (coachFirstName === 'Jacob' && (referral === 'Jacob' || referral === 'JacobOwn' || referral === '')) {
-              // Rule: Ricardo gets $10 if Jacob books his own.
-              // '' (empty string) referral is treated as "own booking".
-              academyGetsThisLesson = 10;
-              coachGetsThisLesson = Math.max(0, lessonCost - 10);
-          } else if (coachFirstName === 'Paula' && (referral === 'Paula' || referral === 'PaulaOwn' || referral === '')) {
-              // Rule: Ricardo gets 10% if Paula books her own.
-              academyGetsThisLesson = lessonCost * 0.10;
-              coachGetsThisLesson = lessonCost - academyGetsThisLesson;
-          } else if (coachFirstName === 'Zach' && (referral === 'Zach' || referral === 'ZachOwn' || referral === '')) {
-              // Rule: Ricardo gets 10% if Zach books his own.
-              academyGetsThisLesson = lessonCost * 0.10;
-              coachGetsThisLesson = lessonCost - academyGetsThisLesson;
-          } else {
-              // Default case: If none of the above specific Ricardo-related commission rules apply.
-              coachGetsThisLesson = lessonCost;
-              academyGetsThisLesson = 0;
-          }
-      }
-      // Accumulate totals
-      totalCoachPayrollForPrivates += coachGetsThisLesson;
-      totalAcademyCommissionForPrivates += academyGetsThisLesson;
+  // Rule 1: Ricardo teaches → coach keeps 100%
+  if (simpleCoachName === 'Ricardo') {
+    academyGetsThisLesson = 0;
+    coachGetsThisLesson = lessonCost;
+  } else {
+    // Other coaches:
+    // Rule 4: Ricardo refers them (and the coach is not Ricardo)
+    if (referral === 'Ricardo') {
+      academyGetsThisLesson = 20;
+      coachGetsThisLesson = Math.max(0, lessonCost - 20);
+    }
+    // Rule 2: Jacob’s own lessons
+    else if (
+      simpleCoachName === 'Jacob' &&
+      (referral === 'Jacob' || referral === 'JacobOwn' || referral === null || referral === '')
+    ) {
+      academyGetsThisLesson = 10;
+      coachGetsThisLesson = Math.max(0, lessonCost - 10);
+    }
+    // Rule 3: Paula’s or Zach’s own lessons (10% goes to academy)
+    else if (
+      (simpleCoachName === 'Paula' &&
+        (referral === 'Paula' || referral === 'PaulaOwn' || referral === null || referral === '')) ||
+      (simpleCoachName === 'Zach' &&
+        (referral === 'Zach' || referral === 'ZachOwn' || referral === null || referral === ''))
+    ) {
+      academyGetsThisLesson = lessonCost * 0.10;
+      coachGetsThisLesson = lessonCost - academyGetsThisLesson;
+    }
+    // Fallback: everyone else (no special referral/own case)
+    else {
+      coachGetsThisLesson = lessonCost;
+      academyGetsThisLesson = 0;
+      console.warn(
+        `WARN: Fallback commission case for booking ID ${booking.id} (coach: ${coachFullName}, referral: '${referral}', cost: ${lessonCost}).`
+      );
+    }
+  }
+
+  totalCoachPayrollForPrivates += coachGetsThisLesson;
+  totalAcademyCommissionForPrivates += academyGetsThisLesson;
     }
 
     // Calculate revenue and coach pay for other lesson types

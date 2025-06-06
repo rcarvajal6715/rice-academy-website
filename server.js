@@ -1142,7 +1142,15 @@ app.post('/api/admin/expenses', async (req, res) => {
   if (!/^\d{4}-\d{2}$/.test(period)) {
     return res.status(400).json({ message: 'Invalid period format. Use YYYY-MM.' });
   }
-  const periodDate = `${period}-01`; // Convert to YYYY-MM-01 for DATE storage
+
+  // --- Start of change ---
+  const [yy, mm] = period.split('-').map(Number);
+  const safeDate = new Date(yy, mm - 1, 1); // mm - 1 because months are 0-indexed in JavaScript
+  if (isNaN(safeDate.getTime())) {
+    return res.status(400).json({ message: 'Invalid period (cannot form a real date).' });
+  }
+  const periodDate = safeDate.toISOString().slice(0, 10); // “YYYY-MM-01”
+  // --- End of change ---
 
   const parsedAmount = parseFloat(amount);
   if (isNaN(parsedAmount) || parsedAmount <= 0) {

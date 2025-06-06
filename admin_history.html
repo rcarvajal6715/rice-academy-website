@@ -324,6 +324,12 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
     return;
   }
 
+  const isCampProgram = (programName) => {
+    if (!programName) return false;
+    const lowerProgramName = programName.toLowerCase();
+    return lowerProgramName.includes('camp') || lowerProgramName.includes('pass');
+  };
+
   let tableHTML = `
     <table style="width:100%; border-collapse:collapse; margin-top:10px;">
       <thead>
@@ -345,32 +351,117 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
       <tbody>
   `;
 
-  lessonsArray.forEach(les => {
-    const dateStr = les.date ? new Date(les.date).toLocaleDateString() : 'N/A';
-    const formattedTime = les.time ? formatTime_12hr(les.time) : 'N/A';
-    const referralSourceDisplay = les.referral_source || '—';
-    const originalDate = les.date ? les.date.substring(0,10) : '';
-    const isPaid = les.paid === true || String(les.paid).toLowerCase() === 'true';
+  if (activeCategoryFilter === 'Camps') {
+    const groupedLessons = {};
+    lessonsArray.forEach(les => {
+      // Ensure only camp programs are processed for grouping if this function is ever called directly
+      // with mixed data when 'Camps' filter is active. filterAndRenderHistory should pre-filter.
+      if (!isCampProgram(les.program)) {
+          // Optionally, render as individual row or skip. For now, skip if not camp/pass.
+          // console.warn("Non-camp program found in 'Camps' filter:", les);
+          return; 
+      }
 
-    tableHTML += `
-      <tr data-id="${les.id}">
-        <td style="padding:8px; border:1px solid #ddd;"><input type="checkbox" class="history-row-checkbox" data-id="${les.id}"></td>
-        <td class="history-cell" data-id="${les.id}" data-field="program" data-original-value="${les.program || ''}" style="padding:8px; border:1px solid #ddd;">${les.program || '—'}</td>
-        <td class="history-cell" data-id="${les.id}" data-field="coach" data-original-value="${les.coach || ''}" style="padding:8px; border:1px solid #ddd;">${les.coach || '—'}</td>
-        <td class="history-cell" data-id="${les.id}" data-field="date" data-original-value="${originalDate}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
-        <td class="history-cell" data-id="${les.id}" data-field="time" data-original-value="${les.time || ''}" style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
-        <td class="history-cell" data-id="${les.id}" data-field="student" data-original-value="${les.student || ''}" style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
-        <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td>
-        <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td>
-        <td class="history-cell" data-id="${les.id}" data-field="lesson_cost" data-original-value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}</td>
-        <td class="history-cell" data-id="${les.id}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
-        <td class="history-cell" data-id="${les.id}" data-field="paid" data-original-value="${String(isPaid)}" style="padding:8px; border:1px solid #ddd;">${isPaid ? 'Yes' : 'No'}</td>
-        <td style="padding:8px; border:1px solid #ddd;">
-          <button onclick="deleteAdminLesson(${les.id})">Delete</button>
-        </td>
-      </tr>
-    `;
-  });
+      const originalDate = les.date ? les.date.substring(0, 10) : 'nodate';
+      const originalTime = les.time || 'notime';
+      const compositeKey = `${les.program}-${originalDate}-${originalTime}`;
+      const isLessonPaid = les.paid === true || String(les.paid).toLowerCase() === 'true';
+
+      if (!groupedLessons[compositeKey]) {
+        groupedLessons[compositeKey] = {
+          program: les.program,
+          date: originalDate,
+          time: originalTime,
+          student: les.student,
+          email: les.email,
+          phone: les.phone,
+          lesson_cost: les.lesson_cost,
+          referral_source: les.referral_source || '—',
+          coaches: [les.coach].filter(c => c), // Filter out null/undefined coaches
+          originalBookingIds: [les.id],
+          paid: isLessonPaid, // Initialize paid status with the first lesson's status
+          // Store formatted date/time from first lesson for display consistency
+          displayDate: les.date ? new Date(les.date).toLocaleDateString() : 'N/A',
+          displayTime: les.time ? formatTime_12hr(les.time) : 'N/A',
+        };
+      } else {
+        if (les.coach && !groupedLessons[compositeKey].coaches.includes(les.coach)) {
+          groupedLessons[compositeKey].coaches.push(les.coach);
+        }
+        groupedLessons[compositeKey].originalBookingIds.push(les.id);
+        if (isLessonPaid) { // If any lesson in the group is paid, the group is considered paid
+          groupedLessons[compositeKey].paid = true;
+        }
+        // Student, email, phone, cost, referral_source are assumed to be the same for the group, taken from the first lesson.
+      }
+    });
+
+    Object.values(groupedLessons).forEach(group => {
+      const groupDisplayId = group.originalBookingIds.join('-'); // For checkbox data-id
+      const rowDataId = group.originalBookingIds[0]; // Main row data-id, for now use first ID
+      const coachesDisplay = group.coaches.join(', ');
+      // Use stored displayDate/Time, or format from group.date/time if needed
+      const dateStr = group.displayDate; 
+      const formattedTime = group.displayTime;
+      const referralSourceDisplay = group.referral_source || '—';
+
+      tableHTML += `
+        <tr data-id="${rowDataId}" 
+            data-is-grouped="true" 
+            data-original-ids='${JSON.stringify(group.originalBookingIds)}'
+            data-program="${group.program || ''}"
+            data-date="${group.date || ''}"
+            data-time="${group.time || ''}"
+            data-student="${group.student || ''}"
+            data-email="${group.email || ''}"
+            data-phone="${group.phone || ''}"
+            data-lesson-cost="${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}">
+          <td style="padding:8px; border:1px solid #ddd;"><input type="checkbox" class="history-row-checkbox" data-id="group-${groupDisplayId}"></td>
+          <td class="history-cell" data-id="${rowDataId}" data-field="program" data-original-value="${group.program || ''}" style="padding:8px; border:1px solid #ddd;">${group.program || '—'}</td>
+          <td class="history-cell" data-id="${rowDataId}" data-field="coach" data-original-value="${coachesDisplay}" style="padding:8px; border:1px solid #ddd;">${coachesDisplay}</td>
+          <td class="history-cell" data-id="${rowDataId}" data-field="date" data-original-value="${group.date || ''}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
+          <td class="history-cell" data-id="${rowDataId}" data-field="time" data-original-value="${group.time || ''}" style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
+          <td class="history-cell" data-id="${rowDataId}" data-field="student" data-original-value="${group.student || ''}" style="padding:8px; border:1px solid #ddd;">${group.student || '—'}</td>
+          <td style="padding:8px; border:1px solid #ddd;">${group.email || '—'}</td>
+          <td style="padding:8px; border:1px solid #ddd;">${group.phone || '—'}</td>
+          <td class="history-cell" data-id="${rowDataId}" data-field="lesson_cost" data-original-value="${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}</td>
+          <td class="history-cell" data-id="${rowDataId}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
+          <td class="history-cell" data-id="${rowDataId}" data-field="paid" data-original-value="${String(group.paid)}" style="padding:8px; border:1px solid #ddd;">${group.paid ? 'Yes' : 'No'}</td>
+          <td style="padding:8px; border:1px solid #ddd;">
+            <button onclick="deleteAdminLesson(${rowDataId}, true)">Delete Group</button> <!-- Placeholder, needs specific handling for grouped deletion -->
+          </td>
+        </tr>
+      `;
+    });
+
+  } else { // Original logic for non-camp views
+    lessonsArray.forEach(les => {
+      const dateStr = les.date ? new Date(les.date).toLocaleDateString() : 'N/A';
+      const formattedTime = les.time ? formatTime_12hr(les.time) : 'N/A';
+      const referralSourceDisplay = les.referral_source || '—';
+      const originalDate = les.date ? les.date.substring(0,10) : '';
+      const isPaid = les.paid === true || String(les.paid).toLowerCase() === 'true';
+
+      tableHTML += `
+        <tr data-id="${les.id}">
+          <td style="padding:8px; border:1px solid #ddd;"><input type="checkbox" class="history-row-checkbox" data-id="${les.id}"></td>
+          <td class="history-cell" data-id="${les.id}" data-field="program" data-original-value="${les.program || ''}" style="padding:8px; border:1px solid #ddd;">${les.program || '—'}</td>
+          <td class="history-cell" data-id="${les.id}" data-field="coach" data-original-value="${les.coach || ''}" style="padding:8px; border:1px solid #ddd;">${les.coach || '—'}</td>
+          <td class="history-cell" data-id="${les.id}" data-field="date" data-original-value="${originalDate}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
+          <td class="history-cell" data-id="${les.id}" data-field="time" data-original-value="${les.time || ''}" style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
+          <td class="history-cell" data-id="${les.id}" data-field="student" data-original-value="${les.student || ''}" style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
+          <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td>
+          <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td>
+          <td class="history-cell" data-id="${les.id}" data-field="lesson_cost" data-original-value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}</td>
+          <td class="history-cell" data-id="${les.id}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
+          <td class="history-cell" data-id="${les.id}" data-field="paid" data-original-value="${String(isPaid)}" style="padding:8px; border:1px solid #ddd;">${isPaid ? 'Yes' : 'No'}</td>
+          <td style="padding:8px; border:1px solid #ddd;">
+            <button onclick="deleteAdminLesson(${les.id})">Delete</button>
+          </td>
+        </tr>
+      `;
+    });
+  }
   tableHTML += `</tbody></table>`;
   container.innerHTML = tableHTML;
 
@@ -442,7 +533,21 @@ async function loadHistory() {
   }
 }
 
-async function deleteAdminLesson(id) {
+async function deleteAdminLesson(id, isGroup = false) {
+  if (isGroup) {
+    // Placeholder for group deletion logic
+    // For now, we can use the ID of the first lesson in the group for confirmation,
+    // but actual deletion will need to handle all originalBookingIds.
+    console.log(`Attempting to delete group. Main ID displayed: ${id}. Full group deletion logic pending.`);
+    if (!confirm(`Are you sure you want to delete this entire group (associated with lesson ID ${id})? This will affect multiple bookings.`)) return;
+    // TODO: Implement actual group deletion by fetching originalBookingIds from the row's data attribute
+    // and then iterating through them to delete each one, or a new backend endpoint for group deletion.
+    alert(`Group deletion for (first) ID ${id} initiated. Backend functionality for deleting multiple IDs is required.`);
+    // For now, we'll prevent actual deletion of single ID if it's a group, to avoid partial data removal.
+    // loadHistory(); // Or reload after actual multi-delete
+    return; 
+  }
+
   if (!confirm('Are you sure you want to delete this lesson?')) return;
   try {
     const res = await fetch(`/api/admin/lessons/${id}`, { method: 'DELETE', credentials: 'include' });
@@ -525,40 +630,53 @@ window.addEventListener('DOMContentLoaded', () => {
       if (saveHistoryBtn) saveHistoryBtn.disabled = !editing;
 
       document.querySelectorAll('.history-cell').forEach(td => {
-        if (td.dataset.field === 'referral_source') {
-          td.contentEditable = false;
-          if (editing) {
-            const originalValue = td.dataset.originalValue === '—' ? '' : td.dataset.originalValue;
-            td.innerHTML = '';
-            const selectEl = document.createElement('select');
-            selectEl.className = 'history-referral-select';
-            const options = [
-                { value: '', text: 'None' }, // "None" option with an empty string value
-                { value: 'Ricardo', text: 'Referred by Ricardo' },
-                { value: 'Jacob', text: 'Jacob - Own Booking' },
-                { value: 'Paula', text: 'Paula - Own Booking' },
-                { value: 'Zach', text: 'Zach - Own Booking' },
-                { value: 'RicardoOwn', text: 'Ricardo - Teaches Himself' }
-            ];
-            options.forEach(opt => {
-              const optionEl = document.createElement('option');
-              optionEl.value = opt.value;
-              optionEl.textContent = opt.text;
-              if (opt.value === originalValue) optionEl.selected = true;
-              selectEl.appendChild(optionEl);
-            });
-            td.appendChild(selectEl);
+        const tr = td.closest('tr');
+        const isGroupedRow = tr && tr.dataset.isGrouped === 'true';
+        const fieldName = td.dataset.field;
+
+        if (isGroupedRow) {
+          if (fieldName === 'coach') { // Only coach field is editable for grouped rows
+            td.contentEditable = editing;
+            if (!editing) td.blur();
           } else {
-            const selectEl = td.querySelector('select.history-referral-select');
-            if (selectEl) {
-              const selectedText = selectEl.options[selectEl.selectedIndex]?.text || selectEl.value;
-              td.innerHTML = '';
-              td.textContent = selectedText || '—';
-            }
+            td.contentEditable = false; // Other fields are not editable for grouped rows
           }
-        } else { // For other editable cells
-          td.contentEditable = editing;
-          if (!editing) td.blur();
+        } else { // Logic for non-grouped rows
+          if (fieldName === 'referral_source') {
+            td.contentEditable = false;
+            if (editing) {
+              const originalValue = td.dataset.originalValue === '—' ? '' : td.dataset.originalValue;
+              td.innerHTML = '';
+              const selectEl = document.createElement('select');
+              selectEl.className = 'history-referral-select';
+              const options = [
+                  { value: '', text: 'None' },
+                  { value: 'Ricardo', text: 'Referred by Ricardo' },
+                  { value: 'Jacob', text: 'Jacob - Own Booking' },
+                  { value: 'Paula', text: 'Paula - Own Booking' },
+                  { value: 'Zach', text: 'Zach - Own Booking' },
+                  { value: 'RicardoOwn', text: 'Ricardo - Teaches Himself' }
+              ];
+              options.forEach(opt => {
+                const optionEl = document.createElement('option');
+                optionEl.value = opt.value;
+                optionEl.textContent = opt.text;
+                if (opt.value === originalValue) optionEl.selected = true;
+                selectEl.appendChild(optionEl);
+              });
+              td.appendChild(selectEl);
+            } else {
+              const selectEl = td.querySelector('select.history-referral-select');
+              if (selectEl) {
+                const selectedText = selectEl.options[selectEl.selectedIndex]?.text || selectEl.value;
+                td.innerHTML = '';
+                td.textContent = selectedText || '—';
+              }
+            }
+          } else { // For other editable cells in non-grouped rows
+            td.contentEditable = editing;
+            if (!editing) td.blur();
+          }
         }
       });
     });
@@ -571,76 +689,82 @@ window.addEventListener('DOMContentLoaded', () => {
       saveHistoryBtn.disabled = true;
 
       const updates = [];
+      const groupedUpdates = [];
+
       document.querySelectorAll('.history-cell[data-id]').forEach(td => {
-        console.log(`Processing cell for save: Booking ID ${td.dataset.id}, Field: ${td.dataset.field}, Original Value Attr: '${td.dataset.originalValue}'`);
-        const bookingId = td.dataset.id;
+        const tr = td.closest('tr');
+        const isGroupedRow = tr && tr.dataset.isGrouped === 'true';
+        const bookingId = td.dataset.id; // This is the first booking ID for grouped rows
         const fieldName = td.dataset.field;
         const originalValue = td.dataset.originalValue;
         let newValue;
         let changed = false;
 
-        if (fieldName === 'referral_source') {
-          console.log(`Entering referral_source specific logic for Booking ID ${bookingId}. Cell content editable: ${td.contentEditable}`);
-          const selectEl = td.querySelector('select.history-referral-select');
-          if (selectEl) {
-            newValue = selectEl.value;
-            // Normalize originalValue of '—' to empty string for comparison
-            const normalizedOriginalValue = originalValue === '—' ? '' : originalValue;
-
-            console.log(`Referral Save Check: Booking ID ${bookingId}`);
-            console.log(`  Original Value (from dataset): '${originalValue}'`);
-            console.log(`  Normalized Original Value: '${normalizedOriginalValue}'`);
-            console.log(`  New Value (from select): '${newValue}'`);
-            console.log(`  Comparison: '${newValue}' !== '${normalizedOriginalValue}' is ${newValue !== normalizedOriginalValue}`);
-            
-            if (newValue !== normalizedOriginalValue) changed = true;
-          }
-        } else if (td.contentEditable === 'true') {
-          newValue = td.innerText.trim();
-          const bookingId = td.dataset.id; // Ensure bookingId is defined for console warn
-
-          // Specific handling for 'time' field
-          if (fieldName === 'time') {
-            if (newValue === '' || newValue.toLowerCase() === 'n/a') { // Check for empty string or 'N/A'
-              newValue = null;
-            }
-            // If it's not empty or 'N/A', it will be passed as is (e.g., "10:00:00")
-            // The backend is expected to validate HH:MM or HH:MM:SS formats.
-          } else if (fieldName === 'coach' || fieldName === 'program' || fieldName === 'student') {
-            if (newValue === '' || newValue.toLowerCase() === 'null') {
-              newValue = null;
-            }
-          } else if (fieldName === 'date' && td.innerText.includes('/')) {
-            const parts = newValue.split('/');
-            if (parts.length === 3) newValue = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
-          } else if (fieldName === 'lesson_cost') {
-            newValue = newValue.replace('$', '').trim();
-            if (newValue === '' && originalValue !== '') {
-                newValue = null; 
-            } else if (newValue !== '') {
-                if (isNaN(Number(newValue))) {
-                    console.warn(`Invalid cost for booking ${bookingId}: ${newValue}. Skipping update for this field.`);
-                    return; 
-                }
-            }
-          } else if (fieldName === 'paid') {
-            const lowerNewValue = newValue.toLowerCase();
-            if (lowerNewValue === 'yes' || lowerNewValue === 'true') {
-              newValue = true; // ACTUAL BOOLEAN true
-            } else if (lowerNewValue === 'no' || lowerNewValue === 'false') {
-              newValue = false; // ACTUAL BOOLEAN false
+        if (isGroupedRow) {
+          if (fieldName === 'coach' && td.contentEditable === 'true') {
+            newValue = td.innerText.trim();
+            if (newValue !== originalValue) {
+              const newCoaches = newValue.split(',').map(name => name.trim()).filter(name => name !== '');
+              try {
+                  const originalBookingIds = JSON.parse(tr.dataset.originalIds);
+                  groupedUpdates.push({
+                    program: tr.dataset.program,
+                    date: tr.dataset.date, // Ensure YYYY-MM-DD
+                    time: tr.dataset.time, // Ensure HH:MM or HH:MM:SS
+                    originalBookingIds: originalBookingIds,
+                    newCoaches: newCoaches,
+                    lesson_cost: parseFloat(tr.dataset.lessonCost),
+                    student: tr.dataset.student,
+                    email: tr.dataset.email,
+                    phone: tr.dataset.phone,
+                    // For debugging or context:
+                    originalCoachValueForDebug: originalValue, 
+                    newCoachValueForDebug: newValue
+                  });
+              } catch (e) {
+                  console.error("Error parsing originalBookingIds for grouped update:", e, tr.dataset.originalIds);
+              }
             }
           }
-          
-          if (newValue !== originalValue) changed = true;
-        }
+          // Other fields in grouped rows are not processed for saving as they are not editable
+        } else { // Logic for non-grouped rows
+          if (fieldName === 'referral_source') {
+            const selectEl = td.querySelector('select.history-referral-select');
+            if (selectEl) {
+              newValue = selectEl.value;
+              const normalizedOriginalValue = originalValue === '—' ? '' : originalValue;
+              if (newValue !== normalizedOriginalValue) changed = true;
+            }
+          } else if (td.contentEditable === 'true') {
+            newValue = td.innerText.trim();
+            if (fieldName === 'time') {
+              if (newValue === '' || newValue.toLowerCase() === 'n/a') newValue = null;
+            } else if (fieldName === 'coach' || fieldName === 'program' || fieldName === 'student') {
+              if (newValue === '' || newValue.toLowerCase() === 'null') newValue = null;
+            } else if (fieldName === 'date' && td.innerText.includes('/')) {
+              const parts = newValue.split('/');
+              if (parts.length === 3) newValue = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+            } else if (fieldName === 'lesson_cost') {
+              newValue = newValue.replace('$', '').trim();
+              if (newValue === '' && originalValue !== '') newValue = null;
+              else if (newValue !== '' && isNaN(Number(newValue))) {
+                console.warn(`Invalid cost for booking ${bookingId}: ${newValue}. Skipping update.`);
+                return;
+              }
+            } else if (fieldName === 'paid') {
+              const lowerNewValue = newValue.toLowerCase();
+              newValue = (lowerNewValue === 'yes' || lowerNewValue === 'true');
+            }
+            if (String(newValue) !== originalValue) changed = true; // Compare as strings after processing
+          }
 
-        if (changed) {
-          updates.push({ bookingId, fieldName, newValue, originalValueForDebug: originalValue });
+          if (changed) {
+            updates.push({ bookingId, fieldName, newValue, originalValueForDebug: originalValue });
+          }
         }
       });
 
-      if (updates.length === 0) {
+      if (updates.length === 0 && groupedUpdates.length === 0) {
         alert('No actual changes detected to save.');
         if (enableHistoryEditingBtn) enableHistoryEditingBtn.disabled = false;
         if (editing) saveHistoryBtn.disabled = false;
@@ -652,6 +776,7 @@ window.addEventListener('DOMContentLoaded', () => {
       let failures = 0;
       const failureDetails = [];
 
+      // Process individual updates
       for (const upd of updates) {
         try {
           const res = await fetch(`/api/admin/history/${upd.bookingId}`, {
@@ -664,15 +789,36 @@ window.addEventListener('DOMContentLoaded', () => {
           } else {
             failures++;
             const errData = await res.json().catch(() => ({ message: `Update failed for ID ${upd.bookingId}, Field ${upd.fieldName} with status ${res.status}` }));
-            failureDetails.push(errData.message || `Failed for ${upd.fieldName}`);
+            failureDetails.push(`Individual: ${errData.message || `Failed for ${upd.fieldName}`}`);
           }
         } catch (networkError) {
           failures++;
-          failureDetails.push(`Network error for ID ${upd.bookingId}, Field ${upd.fieldName}: ${networkError.message}`);
+          failureDetails.push(`Individual Network error for ID ${upd.bookingId}, Field ${upd.fieldName}: ${networkError.message}`);
         }
       }
 
-      let summaryMessage = `${successes} updates successful.`;
+      // Process grouped updates
+      for (const groupUpd of groupedUpdates) {
+        try {
+          const res = await fetch('/api/admin/lessons/update-coaches', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
+            body: JSON.stringify(groupUpd)
+          });
+          if (res.ok) {
+            successes++;
+          } else {
+            failures++;
+            const errData = await res.json().catch(() => ({ message: `Group update failed for program ${groupUpd.program} on ${groupUpd.date} with status ${res.status}` }));
+            failureDetails.push(`Group: ${errData.message || `Failed for ${groupUpd.program} on ${groupUpd.date}`}`);
+          }
+        } catch (networkError) {
+          failures++;
+          failureDetails.push(`Group Network error for program ${groupUpd.program} on ${groupUpd.date}: ${networkError.message}`);
+        }
+      }
+
+      let summaryMessage = `${successes} update(s) successful.`;
       if (failures > 0) summaryMessage += `\n${failures} updates failed.\nDetails:\n${failureDetails.join('\n')}`;
       alert(summaryMessage);
 

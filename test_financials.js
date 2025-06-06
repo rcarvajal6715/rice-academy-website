@@ -4,13 +4,14 @@ const app = require('./server'); // Ensure server.js exports app
 
 // Dynamically import chai
 let expect;
+let agent; // Declare agent at a higher scope
 before(async () => { // This 'before' is equivalent to 'beforeAll' for the suite
   const chai = await import('chai');
   expect = chai.expect;
 });
 
 describe('POST /api/admin/expenses', () => {
-    let agent; // Declare agent
+    // agent is now declared globally
 
     before(async () => { // Hook for admin login (Mocha uses 'before' for 'beforeAll' in BDD)
         agent = request.agent(app);
@@ -240,6 +241,106 @@ describe('POST /api/admin/expenses', () => {
                     expect(res.body.message).to.equal('Unauthorized: Admin access required.');
                 } else {
                     console.warn(`INFO: Test 'should return 401' received ${res.status} instead of 401. Check auth enforcement.`);
+                    return done(new Error(`Expected 401 for non-admin access but got ${res.status}. Response: ${JSON.stringify(res.body)}`));
+                }
+                done(err);
+            });
+    });
+});
+
+describe('GET /api/admin/expenses', () => {
+    // Note: 'agent' is assumed to be defined and logged in from the 'before' hook
+    // in the 'POST /api/admin/expenses' describe block.
+    // If running this suite independently, a similar login mechanism would be needed here.
+
+    it('should fetch all expenses successfully (as admin)', (done) => {
+        agent
+            .get('/api/admin/expenses')
+            .end((err, res) => {
+                if (res.status === 401) {
+                    console.warn("WARN: Test 'should fetch all expenses successfully (as admin)' received 401. Admin login in a preceding 'before' hook might have failed.");
+                }
+                expect(res.status).to.equal(200, `Expected 200 but got ${res.status}. Admin login might have failed if 401.`);
+                if (res.status === 200) {
+                    expect(res.body).to.be.an('array');
+                    // Further checks can be added if we know what data to expect
+                    // For now, just check if it's an array and doesn't error out.
+                }
+                done(err);
+            });
+    });
+
+    it('should fetch expenses for a specific valid period (as admin)', (done) => {
+        // This test assumes the 'period' column exists and the data format is correct.
+        // It might be good to add some test data first for more robust testing.
+        agent
+            .get('/api/admin/expenses?period=2024-03') // Example period
+            .end((err, res) => {
+                if (res.status === 401) {
+                    console.warn("WARN: Test 'should fetch expenses for a specific valid period (as admin)' received 401.");
+                }
+                expect(res.status).to.equal(200, `Expected 200 but got ${res.status}.`);
+                if (res.status === 200) {
+                    expect(res.body).to.be.an('array');
+                    // If expenses for this period exist, they should be here.
+                    // If not, an empty array is expected.
+                    // Example: Check if all returned expenses match the period
+                    res.body.forEach(expense => {
+                        expect(expense.period.startsWith('2024-03')).to.be.true;
+                    });
+                }
+                done(err);
+            });
+    });
+
+    it('should return an empty array if no expenses match the period (as admin)', (done) => {
+        agent
+            .get('/api/admin/expenses?period=1900-01') // A period unlikely to have expenses
+            .end((err, res) => {
+                 if (res.status === 401) {
+                    console.warn("WARN: Test 'should return an empty array if no expenses match the period (as admin)' received 401.");
+                }
+                expect(res.status).to.equal(200, `Expected 200 but got ${res.status}.`);
+                 if (res.status === 200) {
+                    expect(res.body).to.be.an('array').that.is.empty;
+                }
+                done(err);
+            });
+    });
+
+    it('should return 400 for invalid period format (e.g., YYYY-M)', (done) => {
+        agent
+            .get('/api/admin/expenses?period=2023-7')
+            .expect(400)
+            .end((err, res) => {
+                if (err) return done(err);
+                expect(res.body.message).to.equal('Invalid period format. Use YYYY-MM.');
+                done();
+            });
+    });
+    
+    it('should return 400 for invalid period format (e.g., YYYY/MM)', (done) => {
+        agent
+            .get('/api/admin/expenses?period=2023/07')
+            .expect(400)
+            .end((err, res) => {
+                if (err) return done(err);
+                expect(res.body.message).to.equal('Invalid period format. Use YYYY-MM.');
+                done();
+            });
+    });
+
+    it('should return 401 if user is not admin (simulated by no active admin session)', (done) => {
+        // Uses request(app) directly, NOT the agent, to simulate no session
+        request(app) // Assuming 'request' and 'app' are available as in other tests
+            .get('/api/admin/expenses')
+            .end((err, res) => {
+                 if (res.status === 401) {
+                    expect(res.body.message).to.equal('Unauthorized: Admin access required.');
+                } else {
+                    // This path might be taken if the global 'before' hook for login somehow affects even non-agent requests,
+                    // or if there's default permissive behavior. The primary check is for 401.
+                    console.warn(`INFO: Test 'should return 401 for GET expenses' received ${res.status} instead of 401. Check auth enforcement.`);
                     return done(new Error(`Expected 401 for non-admin access but got ${res.status}. Response: ${JSON.stringify(res.body)}`));
                 }
                 done(err);

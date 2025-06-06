@@ -29,6 +29,47 @@ pool.on('error', (err, client) => {
   // process.exit(-1); // Good for production, commented out for debugging
 });
 
+// Function to check and add 'period' column to 'expenses' table
+async function ensureExpensesSchema() {
+  const client = await pool.connect();
+  try {
+    // Check if 'period' column exists
+    const checkColumnQuery = `
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_schema = 'public' AND table_name='expenses' AND column_name='period';
+    `;
+    const { rows } = await client.query(checkColumnQuery);
+
+    if (rows.length === 0) {
+      console.log('"period" column not found in "expenses" table. Attempting to add it...');
+      // Add the column. It will be nullable by default.
+      // The application logic ensures 'period' is provided on new inserts.
+      // Making it NOT NULL would require existing data to have a period,
+      // or a default value, which is more complex for an automatic migration here.
+      await client.query('ALTER TABLE expenses ADD COLUMN period DATE;');
+      console.log('"period" column added successfully to "expenses" table.');
+    } else {
+      // Optional: Check if it's NOT NULL and if not, alter it.
+      // This is more risky if there's data with NULL in period.
+      // For now, ensuring the column exists is the primary goal.
+      // console.log('"period" column already exists in "expenses" table.');
+    }
+  } catch (err) {
+    console.error('Error during schema check/modification for "expenses.period" column:', err.stack);
+    // Depending on the error, you might want to throw it to stop the app,
+    // or log and continue if the app can function without this specific alteration.
+  } finally {
+    client.release();
+  }
+}
+
+// Call this function at startup
+ensureExpensesSchema().catch(err => {
+  console.error('Failed to ensure expenses schema:', err.stack);
+  // process.exit(1); // Optionally exit if schema setup is critical
+});
+
 // Ensure 'expenses' table exists
 (async () => {
   const createExpensesTableQuery = `
@@ -1171,6 +1212,9 @@ app.post('/api/admin/expenses', async (req, res) => {
   // --- End of change ---
 
   const parsedAmount = parseFloat(amount);
+  if (parsedAmount > 99999999.99) {
+    return res.status(400).json({ message: 'Bad Request: amount exceeds the maximum allowed value (99999999.99).' });
+  }
   if (isNaN(parsedAmount) || parsedAmount <= 0) {
     return res.status(400).json({ message: 'Bad Request: amount must be a valid positive number.' });
   }
@@ -1214,7 +1258,7 @@ app.get('/api/admin/expenses', async (req, res) => {
     const { rows } = await pool.query(query, queryParams);
     res.json(rows);
   } catch (err) {
-    console.error('Error fetching expenses:', err);
+    console.error('Error fetching expenses:', { message: err.message, stack: err.stack, code: err.code, detail: err.detail, routine: err.routine });
     res.status(500).json({ message: 'Failed to fetch expenses due to a server error.' });
   }
 });

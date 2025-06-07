@@ -508,6 +508,7 @@ legend {
       <hr>
       <div class="dashboard-item"><span>Total Revenue:</span> <span class="value" id="dash_total_revenue">$0.00</span> | <span>Total Coach Payroll:</span> <span class="value" id="dash_total_payroll">$0.00</span></div>
       <div class="dashboard-item"><span>Gross Profit:</span> <span class="value" id="dash_gross_profit">$0.00</span> | <span>Fixed Overhead:</span> <span class="value" id="dash_fixed_overhead">$0.00</span> | <span>Net Profit:</span> <span class="value" id="dash_net_profit">$0.00</span></div>
+      <div class="dashboard-item"><span>Total Expenses:</span> <span class="value" id="dash_total_expenses">$0.00</span></div>
       <div class="dashboard-item"><span>Profit Margin (%):</span> <span class="value" id="dash_profit_margin">0.00%</span></div>
     </fieldset>
   </div>
@@ -805,6 +806,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         updateElement('dash_total_revenue', data.totalRevenue);
         updateElement('dash_total_payroll', data.totalCoachPayroll);
+        updateElement('dash_total_expenses', data.totalExpenses);
         updateElement('dash_gross_profit', data.grossProfit);
         updateElement('dash_fixed_overhead', data.totalOverhead);
         updateElement('dash_net_profit', data.netProfit);

@@ -1138,12 +1138,16 @@ ul.nav-links-mobile li a {
         coachDisplay = les.coach || 'N/A';
       }
 
+      const timeCellContent = isAdminEditing
+        ? `<input type="time" class="lesson-time-input" value="${les.time ? les.time.substring(0,5) : ''}" data-booking-id="${currentLessonIdOrIds}" data-original-time="${les.time || ''}">`
+        : formattedTime;
+
       html += `
         <tr data-id="${currentLessonIdOrIds}" ${rowStyle ? `style="${rowStyle}"` : ''}>
           <td style="padding:8px; border:1px solid #ddd;">${les.program}</td>
           <td style="padding:8px; border:1px solid #ddd;">${coachDisplay}</td>
           <td style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
+          <td style="padding:8px; border:1px solid #ddd;">${timeCellContent}</td>
           <td style="padding:8px; border:1px solid #ddd;">${ isCampTable ? 'N/A' : (les.student || '—')}</td>
           <td style="padding:8px; border:1px solid #ddd;">${ isCampTable ? 'N/A' : (les.email || '—')}</td>
           <td style="padding:8px; border:1px solid #ddd;">${ isCampTable ? 'N/A' : (les.phone || '—')}</td>

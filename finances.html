@@ -417,16 +417,17 @@ legend {
       <div><label>Kids Group Revenue:</label> <span id="display_kids_group_revenue">$0.00</span></div>
       <div><label>Adult Group Revenue:</label> <span id="display_adult_group_revenue">$0.00</span></div>
       <div><label>Private Lesson Revenue:</label> <span id="display_private_lesson_revenue">$0.00</span></div>
-      <div><label>Clinic/Camp Revenue:</label> <span id="display_clinic_camp_revenue">$0.00</span></div>
+      <div><label>Total Camp Revenue:</label> <span id="display_total_camp_revenue">$0.00</span></div> 
       <div><label>Total Revenue:</label> <span id="display_total_revenue">$0.00</span></div>
       <hr>
       <div><label>Kids Group Coach Pay:</label> <span id="display_kids_group_coach_pay">$0.00</span></div>
       <div><label>Adult Group Coach Pay:</label> <span id="display_adult_group_coach_pay">$0.00</span></div>
       <div><label>Private Lesson Coach Pay:</label> <span id="display_private_lesson_coach_pay">$0.00</span></div>
-      <div><label>Clinic/Camp Coach Pay:</label> <span id="display_clinic_camp_coach_pay">$0.00</span></div>
+      <div><label>Total Camp Coach Payroll:</label> <span id="display_total_camp_coach_payout">$0.00</span></div>
       <div><label>Total Coach Payroll:</label> <span id="display_total_coach_payroll">$0.00</span></div>
       <hr>
       <div><label>Academy Commission (Private Lessons):</label> <span id="display_academy_commission_privates">$0.00</span></div>
+      <div><label>Total Camp Academy Earnings:</label> <span id="display_total_camp_academy_earnings">$0.00</span></div>
       <hr>
       <div><label>Gross Profit (Revenue - Coach Payroll):</label> <span id="display_gross_profit">$0.00</span></div>
       <div><label>Net Profit (Gross Profit - Total Overhead):</label> <span id="display_net_profit">$0.00</span></div>
@@ -441,7 +442,8 @@ legend {
       <div class="dashboard-item"><span>Adult Group Revenue:</span> <span class="value" id="dash_adult_revenue">$0.00</span> | <span>Adult Group Coach Pay:</span> <span class="value" id="dash_adult_coach_pay">$0.00</span></div>
       <div class="dashboard-item"><span>Private Lesson Revenue:</span> <span class="value" id="dash_private_revenue">$0.00</span> | <span>Private Lesson Coach Pay:</span> <span class="value" id="dash_private_coach_pay">$0.00</span></div>
       <div class="dashboard-item"><span>Academy Commission (Private Lessons):</span> <span class="value" id="dash_academy_commission_privates">$0.00</span></div>
-      <div class="dashboard-item"><span>Clinic/Camp Revenue:</span> <span class="value" id="dash_camp_revenue">$0.00</span> | <span>Clinic/Camp Coach Pay:</span> <span class="value" id="dash_camp_coach_pay">$0.00</span></div>
+      <div class="dashboard-item"><span>Camp Revenue:</span> <span class="value" id="dash_camp_revenue">$0.00</span> | <span>Camp Coach Pay:</span> <span class="value" id="dash_camp_coach_pay">$0.00</span></div>
+      <div class="dashboard-item"><span>Camp Academy Earnings:</span> <span class="value" id="dash_camp_academy_earnings">$0.00</span></div>
       <hr>
       <div class="dashboard-item"><span>Total Revenue:</span> <span class="value" id="dash_total_revenue">$0.00</span> | <span>Total Coach Payroll:</span> <span class="value" id="dash_total_payroll">$0.00</span></div>
       <div class="dashboard-item"><span>Gross Profit:</span> <span class="value" id="dash_gross_profit">$0.00</span> | <span>Fixed Overhead:</span> <span class="value" id="dash_fixed_overhead">$0.00</span> | <span>Net Profit:</span> <span class="value" id="dash_net_profit">$0.00</span></div>
@@ -698,16 +700,19 @@ document.addEventListener('DOMContentLoaded', () => {
         updateElement('display_kids_group_revenue', data.kids_group_revenue);
         updateElement('display_adult_group_revenue', data.adult_group_revenue);
         updateElement('display_private_lesson_revenue', data.private_lesson_revenue);
-        updateElement('display_clinic_camp_revenue', data.clinic_camp_revenue);
+        // updateElement('display_clinic_camp_revenue', data.clinic_camp_revenue); // Old field
+        updateElement('display_total_camp_revenue', data.totalCampRevenue); // New field
         updateElement('display_total_revenue', data.totalRevenue);
 
         updateElement('display_kids_group_coach_pay', data.kids_group_coach_pay);
         updateElement('display_adult_group_coach_pay', data.adult_group_coach_pay);
         updateElement('display_private_lesson_coach_pay', data.total_private_coach_pay);
-        updateElement('display_clinic_camp_coach_pay', data.clinic_camp_coach_pay);
+        // updateElement('display_clinic_camp_coach_pay', data.clinic_camp_coach_pay); // Old field
+        updateElement('display_total_camp_coach_payout', data.totalCampCoachPayout); // New field
         updateElement('display_total_coach_payroll', data.totalCoachPayroll);
         
         updateElement('display_academy_commission_privates', data.total_academy_commission_from_privates);
+        updateElement('display_total_camp_academy_earnings', data.totalCampAcademyEarnings); // New field
 
         updateElement('display_gross_profit', data.grossProfit);
         // display_total_overhead is updated when director_salary or admin_expenses inputs change,
@@ -725,8 +730,11 @@ document.addEventListener('DOMContentLoaded', () => {
         updateElement('dash_private_revenue', data.private_lesson_revenue);
         updateElement('dash_private_coach_pay', data.total_private_coach_pay);
         updateElement('dash_academy_commission_privates', data.total_academy_commission_from_privates);
-        updateElement('dash_camp_revenue', data.clinic_camp_revenue);
-        updateElement('dash_camp_coach_pay', data.clinic_camp_coach_pay);
+        // updateElement('dash_camp_revenue', data.clinic_camp_revenue); // Old field
+        updateElement('dash_camp_revenue', data.totalCampRevenue); // New field, re-using dash_camp_revenue ID as per typical pattern
+        // updateElement('dash_camp_coach_pay', data.clinic_camp_coach_pay); // Old field
+        updateElement('dash_camp_coach_pay', data.totalCampCoachPayout); // New field, re-using dash_camp_coach_pay ID
+        updateElement('dash_camp_academy_earnings', data.totalCampAcademyEarnings); // New field
         
         updateElement('dash_total_revenue', data.totalRevenue);
         updateElement('dash_total_payroll', data.totalCoachPayroll);

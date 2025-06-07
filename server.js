@@ -477,7 +477,7 @@ app.get('/api/financials', async (req, res) => {
       })()
     );
     const summaryQuery = `
-      SELECT num_kids_enrolled, num_adults_enrolled, total_private_hours, num_clinic_participants
+      SELECT num_kids_enrolled, num_adults_enrolled, total_private_hours --, num_clinic_participants removed
       FROM enrollments_summary
       WHERE period = $1
     `;
@@ -486,7 +486,7 @@ app.get('/api/financials', async (req, res) => {
     const num_kids_enrolled       = parseInt(summaryRow.num_kids_enrolled)       || 0;
     const num_adults_enrolled     = parseInt(summaryRow.num_adults_enrolled)     || 0;
     const total_private_hours     = parseFloat(summaryRow.total_private_hours)   || 0;
-    const num_clinic_participants = parseInt(summaryRow.num_clinic_participants) || 0;
+    // const num_clinic_participants = parseInt(summaryRow.num_clinic_participants) || 0; // Replaced by new camp logic
 
     // 5) Fetch all private-lesson bookings for this period
     const privateRows = (
@@ -573,15 +573,76 @@ app.get('/api/financials', async (req, res) => {
     // Calculate revenue and coach pay for other lesson types
     const kidsGroupRevenue = getSetting('kids_group_fee') * num_kids_enrolled;
     const adultGroupRevenue = getSetting('adult_group_fee') * num_adults_enrolled;
-    const clinicCampRevenue = getSetting('clinic_camp_fee') * num_clinic_participants;
+    // const clinicCampRevenue = getSetting('clinic_camp_fee') * num_clinic_participants; // Replaced by totalCampRevenue
 
     const kidsGroupCoachPay = getSetting('coach_kids_group_rate') * num_kids_enrolled;
     const adultGroupCoachPay = getSetting('coach_adult_group_rate') * num_adults_enrolled;
-    const clinicCampCoachPay = getSetting('coach_clinic_camp_fee') * num_clinic_participants; // Assuming this is total for all participants
+    // const clinicCampCoachPay = getSetting('coach_clinic_camp_fee') * num_clinic_participants; // Replaced by totalCampCoachPayout
 
+    // New Camp Financial Logic
+    const campProgramNames = [
+      "Summer Camp", "Kids Camp", "Group Lessons", 
+      "Summer Camp / Group Lessons", "High Performance Training", "Adult Clinics"
+    ];
+
+    const campBookingsQuery = `
+      SELECT program, date, coach, lesson_cost
+      FROM bookings
+      WHERE program = ANY($1::text[])
+        AND date >= $2 AND date <= $3
+        AND lesson_cost IS NOT NULL AND lesson_cost > 0;
+    `;
+    const campBookingsResult = await pool.query(campBookingsQuery, [campProgramNames, sqlStartDate, sqlEndDate]);
+    const campBookings = campBookingsResult.rows;
+
+    const campSessions = {}; // Key: 'YYYY-MM-DD_ProgramName'
+
+    for (const booking of campBookings) {
+      // Ensure date is treated as UTC to avoid off-by-one day issues
+      const bookingDate = new Date(booking.date);
+      const sessionDateString = new Date(Date.UTC(bookingDate.getUTCFullYear(), bookingDate.getUTCMonth(), bookingDate.getUTCDate()))
+                                .toISOString().slice(0,10);
+      const sessionKey = `${sessionDateString}_${booking.program}`;
+      
+      if (!campSessions[sessionKey]) {
+        campSessions[sessionKey] = {
+          program: booking.program,
+          date: sessionDateString,
+          coaches: new Set(),
+          totalRevenue: 0,
+          // bookings: [] // Not strictly needed for financials, can be added if debugging
+        };
+      }
+      campSessions[sessionKey].coaches.add(booking.coach);
+      campSessions[sessionKey].totalRevenue += parseFloat(booking.lesson_cost);
+      // campSessions[sessionKey].bookings.push(booking);
+    }
+
+    let totalCampRevenue = 0;
+    let totalCampCoachPayout = 0;
+    let totalCampAcademyEarnings = 0;
+
+    for (const sessionKey in campSessions) {
+      const session = campSessions[sessionKey];
+      totalCampRevenue += session.totalRevenue;
+      const coachCount = session.coaches.size;
+      let sessionCoachPayoutPot = session.totalRevenue * 0.90;
+      
+      // The problem states "distribute 90% ... to the coach(es)"
+      // "If 1 coach, they get the full 90%."
+      // "If 2 or 3 coaches, they split the 90% evenly among them."
+      // This means the total payout from the session to *all* coaches combined is 90%
+      // The individual split is for information but for total payroll, it's just the 90%.
+      if (coachCount > 0) {
+        totalCampCoachPayout += sessionCoachPayoutPot;
+      }
+      // The remaining 10% goes to academy
+      totalCampAcademyEarnings += session.totalRevenue * 0.10;
+    }
+    
     // Overall totals
-    const overallTotalRevenue = kidsGroupRevenue + adultGroupRevenue + clinicCampRevenue + totalPrivateRevenue;
-    const overallTotalCoachPayroll = kidsGroupCoachPay + adultGroupCoachPay + clinicCampCoachPay + totalCoachPayrollForPrivates;
+    const overallTotalRevenue = kidsGroupRevenue + adultGroupRevenue + totalPrivateRevenue + totalCampRevenue;
+    const overallTotalCoachPayroll = kidsGroupCoachPay + adultGroupCoachPay + totalCoachPayrollForPrivates + totalCampCoachPayout;
     
     const grossProfit = overallTotalRevenue - overallTotalCoachPayroll;
     const totalOverhead = getSetting('director_salary') + getSetting('admin_expenses');
@@ -597,34 +658,37 @@ app.get('/api/financials', async (req, res) => {
       // Input settings values returned for transparency / display on form
       kids_group_fee:         getSetting('kids_group_fee'),
       adult_group_fee:        getSetting('adult_group_fee'),
-      private_lesson_rate:    getSetting('private_lesson_rate'), // This is a setting, not derived revenue per hour here
-      clinic_camp_fee:        getSetting('clinic_camp_fee'),
+      private_lesson_rate:    getSetting('private_lesson_rate'), 
+      // clinic_camp_fee:        getSetting('clinic_camp_fee'), // Removed as this specific fee setting is superseded by dynamic calculation
       coach_kids_group_rate:  getSetting('coach_kids_group_rate'),
       coach_adult_group_rate: getSetting('coach_adult_group_rate'),
-      coach_clinic_camp_fee: getSetting('coach_clinic_camp_fee'),
+      // coach_clinic_camp_fee: getSetting('coach_clinic_camp_fee'), // Removed as this specific fee setting is superseded by dynamic calculation
       director_salary:        getSetting('director_salary'),
       admin_expenses:         getSetting('admin_expenses'),
 
       // Enrollment data from summary
       num_kids_enrolled:      num_kids_enrolled,
       num_adults_enrolled:    num_adults_enrolled,
-      total_private_hours:    total_private_hours, // This is count of private lessons from summary, not used in new revenue calc
-      num_clinic_participants: num_clinic_participants,
+      total_private_hours:    total_private_hours, 
+      // num_clinic_participants: num_clinic_participants, // This metric might still be useful for display, but not for these financial calculations
 
       // Calculated financial metrics
       kids_group_revenue:     kidsGroupRevenue,
       adult_group_revenue:    adultGroupRevenue,
-      clinic_camp_revenue:    clinicCampRevenue,
-      private_lesson_revenue: totalPrivateRevenue, // Newly calculated
-      totalRevenue:           overallTotalRevenue, // Aggregated
+      // clinic_camp_revenue:    clinicCampRevenue, // Replaced by totalCampRevenue
+      private_lesson_revenue: totalPrivateRevenue, 
+      totalCampRevenue:       totalCampRevenue, // New: Revenue from camp-style programs
+      totalRevenue:           overallTotalRevenue, 
 
       kids_group_coach_pay:   kidsGroupCoachPay,
       adult_group_coach_pay:  adultGroupCoachPay,
-      clinic_camp_coach_pay:  clinicCampCoachPay,
-      total_private_coach_pay: totalCoachPayrollForPrivates, // Newly calculated
-      totalCoachPayroll:      overallTotalCoachPayroll, // Aggregated
+      // clinic_camp_coach_pay:  clinicCampCoachPay, // Replaced by totalCampCoachPayout
+      total_private_coach_pay: totalCoachPayrollForPrivates, 
+      totalCampCoachPayout:   totalCampCoachPayout, // New: Coach payout for camp-style programs
+      totalCoachPayroll:      overallTotalCoachPayroll, 
       
-      total_academy_commission_from_privates: totalAcademyCommissionForPrivates, // Newly calculated specific commission
+      total_academy_commission_from_privates: totalAcademyCommissionForPrivates,
+      totalCampAcademyEarnings: totalCampAcademyEarnings, // New: Academy earnings from camp-style programs
 
       grossProfit:            grossProfit,
       totalOverhead:          totalOverhead, // Sum of director_salary and admin_expenses from settings

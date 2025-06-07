@@ -527,43 +527,43 @@ app.get('/api/financials', async (req, res) => {
   let coachGetsThisLesson = 0;
   let academyGetsThisLesson = 0;
 
-  // Rule 1: Ricardo teaches → coach keeps 100%
+  // Priority 1: Ricardo as Coach
   if (simpleCoachName === 'Ricardo') {
-    academyGetsThisLesson = 0;
     coachGetsThisLesson = lessonCost;
-  } else {
-    // Other coaches:
-    // Rule 4: Ricardo refers them (and the coach is not Ricardo)
-    if (referral === 'Ricardo') {
-      academyGetsThisLesson = 20;
-      coachGetsThisLesson = Math.max(0, lessonCost - 20);
-    }
-    // Rule 2: Jacob’s own lessons
-    else if (
-      simpleCoachName === 'Jacob' &&
-      (referral === 'Jacob' || referral === 'JacobOwn' || referral === null || referral === '')
-    ) {
-      academyGetsThisLesson = 10;
-      coachGetsThisLesson = Math.max(0, lessonCost - 10);
-    }
-    // Rule 3: Paula’s or Zach’s own lessons (10% goes to academy)
-    else if (
-      (simpleCoachName === 'Paula' &&
-        (referral === 'Paula' || referral === 'PaulaOwn' || referral === null || referral === '')) ||
-      (simpleCoachName === 'Zach' &&
-        (referral === 'Zach' || referral === 'ZachOwn' || referral === null || referral === ''))
-    ) {
-      academyGetsThisLesson = lessonCost * 0.10;
-      coachGetsThisLesson = lessonCost - academyGetsThisLesson;
-    }
-    // Fallback: everyone else (no special referral/own case)
-    else {
-      coachGetsThisLesson = lessonCost;
-      academyGetsThisLesson = 0;
-      console.warn(
-        `WARN: Fallback commission case for booking ID ${booking.id} (coach: ${coachFullName}, referral: '${referral}', cost: ${lessonCost}).`
-      );
-    }
+    academyGetsThisLesson = 0;
+  }
+  // Priority 2: Specific Referral Sources (Non-Ricardo Coach)
+  else if (referral === 'FriendReferral') {
+    academyGetsThisLesson = 10;
+    coachGetsThisLesson = Math.max(0, lessonCost - 10);
+  } else if (referral === 'WebsiteReferral') {
+    academyGetsThisLesson = 20;
+    coachGetsThisLesson = Math.max(0, lessonCost - 20);
+  } else if (referral === 'Ricardo') { // Ricardo referral, but coach is not Ricardo
+    academyGetsThisLesson = 20;
+    coachGetsThisLesson = Math.max(0, lessonCost - 20);
+  }
+  // Priority 3: Coach-Specific Rules (Non-Ricardo Coach, No Matching Primary Referral)
+  else if (simpleCoachName === 'Jacob' && (referral === null || referral === '' || referral === 'Jacob' || referral === 'JacobOwn')) {
+    academyGetsThisLesson = 10;
+    coachGetsThisLesson = Math.max(0, lessonCost - 10);
+  } else if (simpleCoachName === 'Paula' && (referral === null || referral === '' || referral === 'Paula' || referral === 'PaulaOwn')) {
+    academyGetsThisLesson = lessonCost * 0.10;
+    coachGetsThisLesson = lessonCost - academyGetsThisLesson;
+    if (coachGetsThisLesson < 0) coachGetsThisLesson = 0; // Ensure not negative
+  } else if (simpleCoachName === 'Zach' && (referral === null || referral === '' || referral === 'Zach' || referral === 'ZachOwn')) {
+    academyGetsThisLesson = lessonCost * 0.10;
+    coachGetsThisLesson = lessonCost - academyGetsThisLesson;
+    if (coachGetsThisLesson < 0) coachGetsThisLesson = 0; // Ensure not negative
+  }
+  // Priority 4: Default Fallback (Non-Ricardo Coach, No Matching Primary or Coach-Specific Referral)
+  else {
+    coachGetsThisLesson = lessonCost;
+    academyGetsThisLesson = 0;
+    // Optional: Log fallback cases if needed for debugging or monitoring
+    // console.warn(
+    //   `WARN: Fallback commission case for booking (coach: ${coachFullName}, referral: '${referral}', cost: ${lessonCost}).`
+    // );
   }
 
   totalCoachPayrollForPrivates += coachGetsThisLesson;

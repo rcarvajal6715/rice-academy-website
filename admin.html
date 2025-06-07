@@ -1275,7 +1275,7 @@ ul.nav-links-mobile li a {
     const lessons = await res.json();
     console.log('ADMIN.HTML: Fetched total lessons:', lessons.length, 'First two:', lessons.slice(0,2));
 
-    const campLikePrograms = ["Summer Camp / Group Lessons", "High Performance Training", "Adult Clinics"];
+    const campLikePrograms = ["Summer Camp / Group Lessons", "High Performance Training", "Adult Clinics", "Summer Camp - Day Pass", "Summer Camp - Week Pass", "Kids Camp - Day Pass", "Kids Camp - Week Pass"];
     const now = new Date();
     const upcomingLessons = lessons.filter(les => {
         if (!les.date) return false; // Skip if no date

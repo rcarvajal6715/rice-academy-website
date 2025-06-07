@@ -537,34 +537,18 @@ app.get('/api/financials', async (req, res) => {
     const total_private_hours     = parseFloat(summaryRow.total_private_hours)   || 0;
     // const num_clinic_participants = parseInt(summaryRow.num_clinic_participants) || 0; // Replaced by new camp logic
 
-    // 5) Fetch all private-lesson bookings for this period
-    // Modified to include coach, coach2, coach3 (coach2 and coach3 as NULL placeholders for now)
-    const privateRows = (
-      await pool.query(
-        `
-            SELECT coach, lesson_cost, payout_type, referral_source, program,
-                   NULL AS coach2, NULL AS coach3
-            FROM bookings
-            WHERE (LOWER(program) LIKE '%private%') 
-              AND date >= $1 AND date <= $2
-            `, 
-        [sqlStartDate, sqlEndDate]
-      )
-    ).rows;
-    const actualPrivateRows = privateRows.filter(booking => normalizeProgramType(booking.program) === "Private Lessons");
-
     // Fetch data from admin_history
     const adminHistoryQuery = `
-      SELECT coach1, coach2, coach3, program, referral_source, lesson_cost
-      FROM admin_history
-      WHERE date >= $1 AND date <= $2;
+SELECT coach AS coach1, NULL AS coach2, NULL AS coach3, program, referral_source, lesson_cost
+FROM bookings
+WHERE date >= $1 AND date <= $2
     `;
-    const adminHistoryRows = (await pool.query(adminHistoryQuery, [sqlStartDate, sqlEndDate])).rows;
+    const allBookingRows = (await pool.query(adminHistoryQuery, [sqlStartDate, sqlEndDate])).rows;
     // Data merging and integration will be handled in the next steps.
-    // console.log('Admin History Rows:', adminHistoryRows); // For debugging, remove later
+    // console.log('Admin History Rows:', allBookingRows); // For debugging, remove later
 
-    // Combine adminHistoryRows and actualPrivateRows
-    const combinedLessonData = [...adminHistoryRows, ...actualPrivateRows];
+    // Data is now sourced entirely from the modified adminHistoryRows query (soon to be renamed)
+    const combinedLessonData = allBookingRows;
     // console.log('Combined Lesson Data Count:', combinedLessonData.length); // For debugging
 
     // 6) coach_rates related logic removed.

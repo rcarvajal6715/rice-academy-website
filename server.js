@@ -541,9 +541,8 @@ app.get('/api/financials', async (req, res) => {
     const adminHistoryQuery = `
 SELECT coach AS coach1, NULL AS coach2, NULL AS coach3, program, referral_source, lesson_cost
 FROM bookings
-WHERE date >= $1 AND date <= $2
     `;
-    const allBookingRows = (await pool.query(adminHistoryQuery, [sqlStartDate, sqlEndDate])).rows;
+    const allBookingRows = (await pool.query(adminHistoryQuery)).rows;
     // Data merging and integration will be handled in the next steps.
     // console.log('Admin History Rows:', allBookingRows); // For debugging, remove later
 

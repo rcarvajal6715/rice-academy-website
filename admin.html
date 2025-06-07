@@ -445,6 +445,7 @@ ul.nav-links-mobile li a {
    box-shadow: none; /* No shadow when disabled */
 }
   </style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 </head>
 <body>
 
@@ -572,13 +573,13 @@ ul.nav-links-mobile li a {
       <!-- Date -->
       <div>
         <label for="date">Date</label>
-        <input type="date" id="date" required />
+        <input type="text" id="date" placeholder="Select Date" required />
       </div>
 
       <!-- Time -->
       <div>
         <label for="time">Time</label>
-        <input type="time" id="time" required />
+        <select id="time" required></select>
       </div>
 
       <div class="full-width form-actions"> <!-- Wrapper for form submit button -->
@@ -890,6 +891,49 @@ ul.nav-links-mobile li a {
     });
   </script>
 
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Flatpickr initialization
+      flatpickr("#date", {
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "F j, Y",
+        enableTime: false,
+      });
+
+      // Time select population
+      const timeSelect = document.getElementById('time');
+      if (timeSelect) {
+        const startTime = 7 * 60; // 7:00 AM
+        const endTime = 21 * 60;  // 9:00 PM
+        const interval = 30;
+
+        const defaultOption = document.createElement('option');
+        defaultOption.value = "";
+        defaultOption.textContent = "Select Time";
+        defaultOption.disabled = true;
+        defaultOption.selected = true;
+        timeSelect.appendChild(defaultOption);
+
+        for (let minutes = startTime; minutes <= endTime; minutes += interval) {
+          let h = Math.floor(minutes / 60);
+          const m = minutes % 60;
+          const ampm = h >= 12 ? 'PM' : 'AM';
+          h = h % 12;
+          h = h ? h : 12;
+          
+          const timeString = `${h}:${m.toString().padStart(2, '0')} ${ampm}`;
+          const valueString = `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+          
+          const option = document.createElement('option');
+          option.value = valueString;
+          option.textContent = timeString;
+          timeSelect.appendChild(option);
+        }
+      }
+    });
+  </script>
   <script>
   // Helper function to format time to 12-hour AM/PM
   function formatTime_12hr(timeStr) {

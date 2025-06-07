@@ -582,6 +582,12 @@ ul.nav-links-mobile li a {
         <select id="time" required></select>
       </div>
 
+      <!-- Price -->
+      <div>
+        <label for="lesson-price">Price</label>
+        <input type="number" id="lesson-price" name="lesson_price" placeholder="Enter price" step="0.01" min="0">
+      </div>
+
       <div class="full-width form-actions"> <!-- Wrapper for form submit button -->
         <button type="submit">Save Lesson</button>
       </div>
@@ -668,7 +674,43 @@ ul.nav-links-mobile li a {
     const coach2Select = document.getElementById('coach2');
     const coach3Container = document.getElementById('coach3-container');
     const coach3Select = document.getElementById('coach3');
+    const priceInputEl = document.getElementById('lesson-price');
     // const studentNameEl = document.getElementById('student-name'); // Old element, replaced by studentNamesList
+
+    const updatePrice = () => {
+      const selectedProgram = programEl.value;
+      const studentEntries = studentNamesList.querySelectorAll('.student-name-entry');
+      const numStudents = studentEntries.length;
+      let calculatedPrice = 0;
+
+      switch (selectedProgram) {
+        case 'Summer Camp - Day Pass':
+          calculatedPrice = 30 * numStudents;
+          break;
+        case 'Summer Camp - Week Pass':
+          calculatedPrice = 130 * numStudents;
+          break;
+        case 'Kids Camp - Day Pass':
+          calculatedPrice = 30 * numStudents;
+          break;
+        case 'Kids Camp - Week Pass':
+          calculatedPrice = 130 * numStudents;
+          break;
+        case 'Adult Clinics':
+          calculatedPrice = 20; // Flat rate
+          break;
+        case 'Private Lesson':
+          priceInputEl.value = ''; // Clear for private lessons, admin sets manually
+          // priceInputEl.readOnly = false; // Ensure editable
+          return; // Exit early for private lessons
+        default:
+          priceInputEl.value = ''; // Clear for any other program or if none selected
+          // priceInputEl.readOnly = false; // Ensure editable
+          return; // Exit if no specific pricing
+      }
+      priceInputEl.value = calculatedPrice.toFixed(2);
+      // priceInputEl.readOnly = true; // Make it read-only after auto-calculation for non-private
+    };
 
     const addStudentEntry = () => {
       const newStudentGroup = document.createElement('div');
@@ -684,6 +726,7 @@ ul.nav-links-mobile li a {
       if (removeBtn) {
           removeBtn.style.display = isPrivateLesson || studentNamesList.children.length <= 1 ? 'none' : 'flex'; // Changed to flex
       }
+      updatePrice(); // Update price when a student entry is added
     };
 
     const handleProgramChange = () => {
@@ -771,6 +814,7 @@ ul.nav-links-mobile li a {
         coach3Select.required = false;
         coach3Select.value = "";
       }
+      updatePrice(); // Update price when program changes
     };
 
     programEl.addEventListener('change', handleProgramChange);
@@ -789,6 +833,7 @@ ul.nav-links-mobile li a {
               }
           });
       }
+      updatePrice(); // Update price when a student is added via button
     });
 
     // Event listener for "Remove Student" buttons (using event delegation)
@@ -814,10 +859,14 @@ ul.nav-links-mobile li a {
             }
         });
       }
+      if (event.target.classList.contains('remove-student-btn')) {
+        updatePrice(); // Update price when a student is removed
+      }
     });
 
     // Initial call to set student/coach fields based on default or pre-selected program
     handleProgramChange(); 
+    updatePrice(); // Also call updatePrice directly on initial load
 
     // Submit new lesson
     document.getElementById('lesson-form').addEventListener('submit', async e => {
@@ -853,6 +902,7 @@ ul.nav-links-mobile li a {
         coachName3: document.getElementById('coach3').value,
         date: document.getElementById('date').value,
         time: document.getElementById('time').value,
+        lesson_cost: document.getElementById('lesson-price').valueAsNumber || 0,
         student_names: studentNames, // Use the array of student names
         referral_source: isPrivateLesson ? referralSourceValue : '' 
       };
@@ -881,13 +931,15 @@ ul.nav-links-mobile li a {
         referralSourceDiv.style.display = 'none'; 
         referralSourceSelect.required = false; 
         referralSourceSelect.value = '';
+        document.getElementById('lesson-price').value = '';
         
         if(programEl.options.length > 0 && programEl.options[0].value === "" && programEl.options[0].disabled){
             programEl.value = "";
         }
         // Crucially, call handleProgramChange() AFTER resetting the program dropdown and clearing students.
         // This will ensure the student input area is correctly set up for the placeholder program state.
-        handleProgramChange(); 
+        handleProgramChange();
+        updatePrice(); // Update price on form reset
     });
   </script>
 

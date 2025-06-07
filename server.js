@@ -1242,8 +1242,8 @@ app.post('/api/admin/lessons', async (req, res) => {
   if (!req.session?.user?.isAdmin) {
     return res.status(403).json({ message: 'Forbidden' });
   }
-  // Destructure all three potential coach names, and new student_names array
-  let { program, coachName, coachName2, coachName3, date, time, student_names, referral_source } = req.body;
+  // Destructure all three potential coach names, and new student_names array, and lesson_cost
+  let { program, coachName, coachName2, coachName3, date, time, student_names, referral_source, lesson_cost } = req.body;
 
   if (program === 'Tennis Private') {
     program = 'Private Lesson'; // Normalize program name
@@ -1263,6 +1263,15 @@ app.post('/api/admin/lessons', async (req, res) => {
 
   // Ensure referral_source is null if empty string, otherwise use its value.
   const referralSourceForDb = referral_source && referral_source.trim() !== '' ? referral_source.trim() : null;
+  
+  // Process lesson_cost
+  let costForDb = null;
+  if (lesson_cost !== undefined && lesson_cost !== null) {
+      const parsedCost = parseFloat(lesson_cost);
+      if (!isNaN(parsedCost)) {
+          costForDb = parsedCost;
+      }
+  }
   // Student name for DB is now derived from student_names array
   // const studentForDb = student || ''; // Old way
 
@@ -1281,8 +1290,8 @@ app.post('/api/admin/lessons', async (req, res) => {
       let lessonsAddedCount = 0;
       for (const currentCoach of coachesToProcess) {
         await pool.query(
-          'INSERT INTO bookings (email, program, coach, date, time, student, paid, session_id, referral_source) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
-          ['', program, currentCoach, date, time, studentValueForDb, false, null, referralSourceForDb] // Use studentValueForDb
+          'INSERT INTO bookings (email, program, coach, date, time, student, paid, session_id, referral_source, lesson_cost) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
+          ['', program, currentCoach, date, time, studentValueForDb, false, null, referralSourceForDb, costForDb]
         );
         lessonsAddedCount++;
       }
@@ -1295,11 +1304,11 @@ app.post('/api/admin/lessons', async (req, res) => {
     if (!coachName || coachName.trim() === '') {
       return res.status(400).json({ message: 'Coach name is required for this program type.' });
     }
-    console.log('🎾 Adding non-camp lesson via admin for coach:', coachName, 'Program:', program, 'Referral:', referral_source);
+    console.log('🎾 Adding non-camp lesson via admin for coach:', coachName, 'Program:', program, 'Referral:', referral_source, 'Cost:', costForDb);
     try {
       await pool.query(
-        'INSERT INTO bookings (email, program, coach, date, time, student, paid, session_id, referral_source) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
-        ['', program, coachName, date, time, studentValueForDb, false, null, referralSourceForDb] // Use studentValueForDb
+        'INSERT INTO bookings (email, program, coach, date, time, student, paid, session_id, referral_source, lesson_cost) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
+        ['', program, coachName, date, time, studentValueForDb, false, null, referralSourceForDb, costForDb]
       );
       res.status(200).send('Lesson added successfully');
     } catch (err) {

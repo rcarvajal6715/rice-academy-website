@@ -16,6 +16,34 @@
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { padding: 8px; border:1px solid #ddd; }
     thead th { background: #0c3c78; color: white; }
+
+/* Styling for Enable Editing and Save All History buttons */
+#enable-history-editing-btn,
+#save-history-btn {
+  background-color: #0c3c78;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  display: inline-block; /* Keep button width tight around text */
+  text-decoration: none; /* Though default for button, good to be explicit */
+  font-size: 1rem; /* Match other buttons if necessary, or use existing */
+}
+
+#enable-history-editing-btn:hover,
+#save-history-btn:hover {
+  background-color: #0f4fa0;
+}
+
+/* Container for the two buttons */
+.history-action-buttons-container {
+  display: flex;
+  gap: 10px; /* Spacing between buttons */
+  margin-bottom: 20px; /* Space below the button group */
+  /* flex-wrap: wrap; */ /* Optional: allows buttons to wrap on smaller screens if needed */
+}
+
 /* === Global Header & Navigation Styles (Finalized Version) === */
      header {
        background-color: #0c3c78; 
@@ -278,11 +306,12 @@ ul.nav-links-mobile li a {
       <button class="category-filter-button" data-category="Camps">Camps & Passes</button>
       <button class="category-filter-button" data-category="Clinics">Clinics & Other</button>
     </div>
-    
-    <button id="enable-history-editing-btn" style="margin-bottom:10px;">Enable Editing</button>
-    <div style="text-align:right; margin-bottom: 5px;">
-      <button id="save-history-btn" disabled>Save All History Changes</button>
-    </div>
+
+<!-- New container for the buttons -->
+<div class="history-action-buttons-container">
+  <button id="enable-history-editing-btn">Enable Editing</button>
+  <button id="save-history-btn" disabled>Save All History Changes</button>
+</div>
     
     <div id="past-lessons-table-container" style="margin-top: 20px;">
         <!-- The single table of past lessons will be rendered here by JavaScript -->

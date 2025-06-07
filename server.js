@@ -983,78 +983,86 @@ app.put('/api/admin/update-booking/:id', async (req, res) => {
   if (!req.session?.user?.isAdmin) {
     return res.status(401).json({ message: 'Unauthorized: Admin access required.' });
   }
-  // console.log(`WARN: /api/admin/update-booking/${req.params.id} auth bypassed for testing.`); // Auth enabled
-  
-  const bookingId = req.params.id;
-  // Destructure all potential fields that can be updated by admin table interactions
-  const { payout_type: newPayoutType, lesson_cost: newLessonCost, paid: newPaidStatus, referral_source: newReferralSource } = req.body;
-
-  // Basic check: At least one field must be provided for update
-  if (newPayoutType === undefined && newLessonCost === undefined && newPaidStatus === undefined && newReferralSource === undefined) {
-    return res.status(400).json({ message: 'Bad request: Must provide at least one field: payout_type, lesson_cost, paid, or referral_source.' });
+  const bookingId = parseInt(req.params.id, 10);
+  if (isNaN(bookingId)) {
+    return res.status(400).json({ message: 'Invalid booking ID.' });
   }
 
-  const updateFields = {};
+  // Extract updatable fields
+  const {
+    payout_type: newPayoutType,
+    lesson_cost: newLessonCost,
+    paid: newPaidStatus,
+    referral_source: newReferralSource
+  } = req.body;
+
+  // Must have at least one field
+  if (
+    newPayoutType === undefined &&
+    newLessonCost === undefined &&
+    newPaidStatus === undefined &&
+    newReferralSource === undefined
+  ) {
+    return res.status(400).json({
+      message: 'Provide at least one of: payout_type, lesson_cost, paid, referral_source.'
+    });
+  }
+
+  const fields = [];
   const values = [];
-  
-  // Prioritize referral_source if both referral_source and payout_type are sent
+
+  // referral_source takes priority over payout_type
   if (newReferralSource !== undefined) {
-    if (typeof newReferralSource !== 'string' && newReferralSource !== null) { 
-        return res.status(400).json({ message: 'Bad request: referral_source must be a string or null.' });
+    if (newReferralSource !== null && typeof newReferralSource !== 'string') {
+      return res.status(400).json({ message: 'referral_source must be a string or null.' });
     }
-    // If an empty string is passed, store it as NULL.
-    updateFields.referral_source = (newReferralSource === '' || newReferralSource === null) ? null : newReferralSource;
-    values.push(updateFields.referral_source);
-    if (newPayoutType !== undefined) {
-        console.warn(`WARN: Both referral_source ('${newReferralSource}') and payout_type ('${newPayoutType}') were provided for booking ID ${bookingId}. Prioritizing referral_source.`);
-        // payout_type will be ignored if referral_source is set.
+    fields.push(`referral_source = $${fields.length + 1}`);
+    values.push(newReferralSource || null);
+  } else if (newPayoutType !== undefined) {
+    const allowed = ['coach_private', 'zach_private', 'ricardo_referral'];
+    if (newPayoutType !== null && !allowed.includes(newPayoutType)) {
+      return res.status(400).json({
+        message: `payout_type must be one of ${allowed.join(', ')} or null.`
+      });
     }
-  } else if (newPayoutType !== undefined) { // Only consider payout_type if referral_source is not provided
-    const allowedPayoutTypes = ['coach_private', 'zach_private', 'ricardo_referral'];
-    if (newPayoutType === null || newPayoutType === '' || allowedPayoutTypes.includes(newPayoutType)) {
-      updateFields.payout_type = (newPayoutType === '' || newPayoutType === null) ? null : newPayoutType;
-      values.push(updateFields.payout_type);
-    } else {
-      return res.status(400).json({ message: 'Invalid payout_type value. Must be one of ' + allowedPayoutTypes.join(', ') + ' or null/empty if referral_source is not provided.' });
-    }
+    fields.push(`payout_type = $${fields.length + 1}`);
+    values.push(newPayoutType || null);
   }
 
   if (newLessonCost !== undefined) {
     const cost = parseFloat(newLessonCost);
-    if (isNaN(cost) || cost < 0) { // Assuming cost cannot be negative
-        return res.status(400).json({ message: 'Invalid lesson_cost format or value.'});
+    if (isNaN(cost) || cost < 0) {
+      return res.status(400).json({ message: 'lesson_cost must be a non-negative number.' });
     }
-    updateFields.lesson_cost = cost;
+    fields.push(`lesson_cost = $${fields.length + 1}`);
     values.push(cost);
   }
-  
+
   if (newPaidStatus !== undefined) {
     if (typeof newPaidStatus !== 'boolean') {
-        return res.status(400).json({ message: 'Invalid paid status format (must be boolean).'});
+      return res.status(400).json({ message: 'paid must be a boolean.' });
     }
-    updateFields.paid = newPaidStatus;
+    fields.push(`paid = $${fields.length + 1}`);
     values.push(newPaidStatus);
   }
 
-  if (values.length === 0) { // Should be caught by the initial check, but as a safeguard
-     return res.status(400).json({ message: 'No valid fields to update after processing.' });
-  }
-
-  const setClauses = Object.keys(updateFields).map((key, index) => `${key} = $${index + 1}`).join(', ');
-  values.push(bookingId); // Add bookingId as the last parameter for WHERE clause
-
+  // build and execute
   try {
-    const sqlQuery = `UPDATE bookings SET ${setClauses} WHERE id = $${values.length} RETURNING id, coach, referral_source, payout_type, lesson_cost, paid, student, program, date, time`;
-    console.log('Executing SQL for update-booking:', sqlQuery, 'with values:', values);
-    const result = await pool.query(sqlQuery, values);
+    const sql =
+      `UPDATE bookings
+         SET ${fields.join(', ')}
+       WHERE id = $${fields.length + 1}
+       RETURNING *;`;
+    values.push(bookingId);
 
+    const result = await pool.query(sql, values);
     if (result.rowCount === 0) {
       return res.status(404).json({ message: 'Booking not found.' });
     }
-    res.json({ message: 'Booking updated successfully.', booking: result.rows[0] });
+    res.json(result.rows[0]);
   } catch (err) {
-    console.error(`Error updating booking ${bookingId}:`, err);
-    res.status(500).json({ message: 'Failed to update booking due to a server error.' });
+    console.error('Error updating booking:', err);
+    res.status(500).json({ message: 'Server error updating booking.' });
   }
 });
 

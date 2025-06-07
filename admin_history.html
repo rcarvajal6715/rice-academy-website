@@ -214,6 +214,15 @@ ul.nav-links-mobile li a {
 .update-payment-btn:hover {
     background-color: #45a049;
 }
+.coach-checkbox-list label {
+  background-color: #f5f5f5;
+  padding: 6px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.coach-checkbox-list label:hover {
+  background-color: #e0e0e0;
+}
   </style>
 </head>
 <body>
@@ -648,49 +657,72 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (editing) {
                     const currentCoachValue = td.innerText.trim();
                     const programType = tr.dataset.program ? tr.dataset.program.toLowerCase() : '';
-                    td.innerHTML = ''; 
-                    const selectEl = document.createElement('select');
-                    selectEl.className = 'history-coach-select';
+                    td.innerHTML = ''; // Clear the cell
 
                     if (programType.includes('camp') || programType.includes('pass')) {
-                        selectEl.multiple = true;
-                        const selectedCoaches = currentCoachValue.split(',').map(c => c.trim());
+                        // Create a div for checkbox list
+                        const coachListContainer = document.createElement('div');
+                        coachListContainer.className = 'coach-checkbox-list';
+                        coachListContainer.style.display = 'flex';
+                        coachListContainer.style.flexWrap = 'wrap';
+                        coachListContainer.style.gap = '10px';
+
+                        const selectedCoaches = currentCoachValue.split(',').map(c => c.trim().toLowerCase());
                         validCoaches.forEach(coachName => {
-                            const optionEl = document.createElement('option');
-                            optionEl.value = coachName;
-                            optionEl.textContent = coachName;
-                            if (selectedCoaches.includes(coachName)) {
-                                optionEl.selected = true;
+                            const label = document.createElement('label');
+                            label.style.display = 'flex';
+                            label.style.alignItems = 'center';
+                            label.style.gap = '5px';
+
+                            const checkbox = document.createElement('input');
+                            checkbox.type = 'checkbox';
+                            checkbox.name = 'coach-checkbox';
+                            checkbox.value = coachName;
+                            if (selectedCoaches.includes(coachName.toLowerCase())) {
+                                checkbox.checked = true;
                             }
-                            selectEl.appendChild(optionEl);
+                            
+                            label.appendChild(checkbox);
+                            label.appendChild(document.createTextNode(coachName));
+                            coachListContainer.appendChild(label);
                         });
+                        td.appendChild(coachListContainer);
                     } else {
-                        // Single select logic for non-camp/pass grouped rows (if any) or if programType is undefined
+                        // Fallback to single select for non-camp/pass grouped rows (if any such case exists)
+                        const selectEl = document.createElement('select');
+                        selectEl.className = 'history-coach-select';
                         validCoaches.forEach(coachName => {
                             const optionEl = document.createElement('option');
                             optionEl.value = coachName;
                             optionEl.textContent = coachName;
-                            if (coachName === currentCoachValue.split(',')[0].trim()) { // Select first coach if multiple were listed
+                            // Select first coach if multiple were listed, or the single coach
+                            if (coachName === currentCoachValue.split(',')[0].trim()) {
                                 optionEl.selected = true;
                             }
                             selectEl.appendChild(optionEl);
                         });
+                        td.appendChild(selectEl);
                     }
-                    td.appendChild(selectEl);
                     td.contentEditable = false; 
                 } else {
                     // When disabling editing for a grouped coach cell
-                    const selectEl = td.querySelector('select.history-coach-select');
-                    if (selectEl) {
-                        if (selectEl.multiple) {
-                            const selectedOptions = Array.from(selectEl.selectedOptions).map(opt => opt.value);
-                            td.innerHTML = '';
-                            td.textContent = selectedOptions.join(', ') || '—';
-                        } else {
+                    const coachListContainer = td.querySelector('.coach-checkbox-list');
+                    if (coachListContainer) { // If checkboxes were used
+                        const selectedCheckboxes = Array.from(coachListContainer.querySelectorAll('input[type="checkbox"]:checked'));
+                        const selectedCoachNames = selectedCheckboxes.map(cb => cb.value);
+                        td.innerHTML = ''; // Clear the checkboxes
+                        td.textContent = selectedCoachNames.join(', ') || '—';
+                    } else { // Fallback for select elements (if program was not camp/pass)
+                        const selectEl = td.querySelector('select.history-coach-select');
+                        if (selectEl) {
+                            // This part remains for single-select dropdowns in grouped rows (non camp/pass)
                             const selectedCoach = selectEl.value;
                             td.innerHTML = ''; 
                             td.textContent = selectedCoach || '—'; 
                         }
+                        // If it was a multi-select (older version, or if a non-camp/pass somehow had it), this also needs to be handled
+                        // However, current logic only creates multi-select for camp/pass, which are now checkboxes.
+                        // So, this 'else' for selectEl should primarily hit single-selects.
                     }
                 }
             } else {
@@ -788,46 +820,72 @@ window.addEventListener('DOMContentLoaded', () => {
         if (isGroupedRow) {
           // Updated handling for grouped rows coach saving
           if (fieldName === 'coach') {
-            const selectEl = td.querySelector('select.history-coach-select');
-            if (selectEl) { // If dropdown is present
-              if (selectEl.multiple) {
-                newValue = Array.from(selectEl.selectedOptions).map(opt => opt.value); // Array of selected coaches
-                const originalCoachesArray = originalValue.split(',').map(name => name.trim()).filter(name => name);
-                // Compare arrays: sort both and convert to string to check for differences in content or order.
-                if (JSON.stringify(newValue.sort()) !== JSON.stringify(originalCoachesArray.sort())) {
-                  changed = true;
-                }
-              } else { // Single select logic (for non-camp/pass grouped rows or if programType was undefined)
-                newValue = selectEl.value; // Single selected coach
+            const checkboxes = td.querySelectorAll('input[type="checkbox"][name="coach-checkbox"]');
+            let selectedCoaches = []; // Initialize here to ensure it's always an array
+
+            if (checkboxes.length > 0) { // Check if checkboxes are present (Camp/Pass row)
+              checkboxes.forEach(cb => {
+                if (cb.checked) selectedCoaches.push(cb.value);
+              });
+
+              const originalCoachesArray = originalValue
+                .split(',')
+                .map(name => name.trim())
+                .filter(name => name);
+
+              const originalSet = new Set(originalCoachesArray.sort());
+              const selectedSet = new Set(selectedCoaches.sort());
+
+              if (originalCoachesArray.length !== selectedCoaches.length ||
+                  !originalCoachesArray.every(coach => selectedSet.has(coach)) ||
+                  !selectedCoaches.every(coach => originalSet.has(coach)) ) {
+                changed = true;
+              }
+              // newValue is implicitly selectedCoaches here for the changed check and data push
+            } else {
+              // This is a grouped row, but not a Camp/Pass (e.g., uses a single select for coach)
+              const selectEl = td.querySelector('select.history-coach-select');
+              if (selectEl) {
+                newValue = selectEl.value; // This is the single selected coach
                 const originalCoachesArray = originalValue.split(',').map(name => name.trim()).filter(name => name);
                 const firstOriginalCoach = originalCoachesArray[0] || '';
-                // Simplified change detection for single select case, similar to before
-                if (newValue !== firstOriginalCoach || originalCoachesArray.length > 1 || (originalCoachesArray.length === 0 && newValue !== '') || (originalCoachesArray.length === 1 && newValue !== firstOriginalCoach) ) {
-                   changed = true;
+
+                // A single select value is considered changed if it's different from the first original coach,
+                // or if the original had multiple coaches (implying a consolidation),
+                // or if the original was empty and now a coach is selected.
+                if (newValue !== firstOriginalCoach || originalCoachesArray.length > 1 || (originalCoachesArray.length === 0 && newValue !== '')) {
+                  changed = true;
+                }
+                if (changed) {
+                  selectedCoaches = [newValue]; // Ensure selectedCoaches is an array for the data push
+                } else {
+                  // If not changed, selectedCoaches should reflect the original state for this path
+                  // or remain empty if no change and no original value.
+                  // However, newCoaches in groupedUpdates will only be populated if changed is true.
+                  selectedCoaches = originalCoachesArray; // Keep original if no change
                 }
               }
+            }
 
-              if (changed) {
-                try {
-                  const originalBookingIds = JSON.parse(tr.dataset.originalIds);
-                  groupedUpdates.push({
-                    program: tr.dataset.program,
-                    date: tr.dataset.date,
-                    time: tr.dataset.time,
-                    originalBookingIds: originalBookingIds,
-                    // newCoaches should be an array, matching the backend expectation
-                    newCoaches: Array.isArray(newValue) ? newValue : [newValue], 
-                    lesson_cost: parseFloat(tr.dataset.lessonCost) || 0,
-                    student: tr.dataset.student,
-                    email: tr.dataset.email,
-                    phone: tr.dataset.phone,
-                    originalCoachValueForDebug: originalValue,
-                    newCoachValueForDebug: Array.isArray(newValue) ? newValue.join(', ') : newValue
-                  });
-                } catch (e) {
-                  console.error("Error processing grouped update for coach:", e, tr.dataset.originalIds);
-                  changed = false; 
-                }
+            if (changed) {
+              try {
+                const originalBookingIds = JSON.parse(tr.dataset.originalIds);
+                groupedUpdates.push({
+                  program: tr.dataset.program,
+                  date: tr.dataset.date,
+                  time: tr.dataset.time,
+                  originalBookingIds: originalBookingIds,
+                  newCoaches: selectedCoaches, // selectedCoaches is already an array
+                  lesson_cost: parseFloat(tr.dataset.lessonCost) || 0,
+                  student: tr.dataset.student,
+                  email: tr.dataset.email,
+                  phone: tr.dataset.phone,
+                  originalCoachValueForDebug: originalValue,
+                  newCoachValueForDebug: selectedCoaches.join(', ')
+                });
+              } catch (e) {
+                console.error("Error processing grouped update for coach:", e, tr.dataset.originalIds);
+                changed = false;
               }
             }
           }

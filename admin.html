@@ -399,8 +399,14 @@ ul.nav-links-mobile li a {
 
       <!-- Student (for Private Lessons) -->
       <div id="student-name-container" class="full-width">
-        <label for="student-name">Student Name</label>
-        <textarea id="student-name" name="student-name" required></textarea>
+        <label for="student-names-list">Student Name(s)</label>
+        <div id="student-names-list">
+          <div>
+            <input type="text" class="student-name-entry" name="student_names[]" required placeholder="Student Name">
+            <button type="button" class="remove-student-btn" style="display: none;">🗑</button>
+          </div>
+        </div>
+        <button type="button" id="add-student-btn" style="display: none;">+ Add Student</button>
       </div>
 
       <!-- Referral Source (for Private Lessons) -->
@@ -538,6 +544,8 @@ ul.nav-links-mobile li a {
     const studentDiv = document.getElementById('student-name-container');
     const referralSourceDiv = document.getElementById('referral-source-container');
     const referralSourceSelect = document.getElementById('referral_source');
+    const studentNamesList = document.getElementById('student-names-list');
+    const addStudentBtn = document.getElementById('add-student-btn');
 
     // Coach selection elements
     const coach1Container = document.getElementById('coach-container');
@@ -546,21 +554,71 @@ ul.nav-links-mobile li a {
     const coach2Select = document.getElementById('coach2');
     const coach3Container = document.getElementById('coach3-container');
     const coach3Select = document.getElementById('coach3');
-    const studentNameEl = document.getElementById('student-name'); // Get student name element
+    // const studentNameEl = document.getElementById('student-name'); // Old element, replaced by studentNamesList
+
+    const addStudentEntry = () => {
+      const newStudentGroup = document.createElement('div');
+      newStudentGroup.innerHTML = `
+        <input type="text" class="student-name-entry" name="student_names[]" required placeholder="Student Name">
+        <button type="button" class="remove-student-btn">🗑</button>
+      `;
+      studentNamesList.appendChild(newStudentGroup);
+      // Visibility of remove button will be handled by handleProgramChange or specific logic after adding
+      const programType = programEl.value;
+      const isPrivateLesson = ['Private Lessons', 'Tennis Private'].includes(programType);
+      const removeBtn = newStudentGroup.querySelector('.remove-student-btn');
+      if (removeBtn) {
+          removeBtn.style.display = isPrivateLesson || studentNamesList.children.length <= 1 ? 'none' : 'inline-block';
+      }
+    };
 
     const handleProgramChange = () => {
       const selectedProgram = programEl.value;
-      // Valid private lesson program names that require referral source
       const privateLessonPrograms = ['Private Lessons', 'Tennis Private'];
       const isPrivateLesson = privateLessonPrograms.includes(selectedProgram);
 
       studentDiv.style.display = 'block'; // Always visible
-      studentNameEl.required = true; // Always required
 
       if (isPrivateLesson) {
-        studentNameEl.placeholder = 'Enter student name';
-      } else {
-        studentNameEl.placeholder = 'Enter student names (one per line, e.g.,\nJohn Doe\nJane Smith)';
+        addStudentBtn.style.display = 'none';
+        // Keep only the first student input group, remove others
+        while (studentNamesList.children.length > 1) {
+          studentNamesList.removeChild(studentNamesList.lastChild);
+        }
+        if (studentNamesList.children.length === 0) { // Should not happen if HTML has one, but as a safeguard
+            addStudentEntry(); // Ensure at least one entry exists
+        }
+        // Configure the first (and only) input field for private lessons
+        const firstStudentGroup = studentNamesList.children[0];
+        if (firstStudentGroup) {
+          const inputField = firstStudentGroup.querySelector('.student-name-entry');
+          const removeBtn = firstStudentGroup.querySelector('.remove-student-btn');
+          if (inputField) {
+            inputField.required = true;
+            inputField.placeholder = 'Enter student name';
+          }
+          if (removeBtn) {
+            removeBtn.style.display = 'none';
+          }
+        }
+      } else { // Group program
+        addStudentBtn.style.display = 'inline-block'; // Or 'block' depending on desired layout
+        if (studentNamesList.children.length === 0) {
+          addStudentEntry(); // Add initial entry if list is empty
+        }
+        // Configure all input fields for group programs
+        Array.from(studentNamesList.children).forEach((studentGroup, index) => {
+          const inputField = studentGroup.querySelector('.student-name-entry');
+          const removeBtn = studentGroup.querySelector('.remove-student-btn');
+          if (inputField) {
+            inputField.required = true; 
+            inputField.placeholder = 'Enter student name';
+          }
+          if (removeBtn) {
+            // Show remove button for all, but could be hidden for the first if it's the only one
+            removeBtn.style.display = studentNamesList.children.length > 1 ? 'inline-block' : 'none';
+          }
+        });
       }
       
       referralSourceDiv.style.display = isPrivateLesson ? 'block' : 'none';
@@ -603,7 +661,48 @@ ul.nav-links-mobile li a {
 
     programEl.addEventListener('change', handleProgramChange);
 
-    // Initial call to set coach fields based on default or pre-selected program
+    // Event listener for "Add Student" button
+    addStudentBtn.addEventListener('click', () => {
+      addStudentEntry();
+      // After adding, ensure all remove buttons are potentially visible if it's a group program
+      // and there's more than one student.
+      const isPrivateLesson = ['Private Lessons', 'Tennis Private'].includes(programEl.value);
+      if (!isPrivateLesson) {
+          Array.from(studentNamesList.children).forEach((studentGroup, index) => {
+              const removeBtn = studentGroup.querySelector('.remove-student-btn');
+              if (removeBtn) {
+                  removeBtn.style.display = studentNamesList.children.length > 1 ? 'inline-block' : 'none';
+              }
+          });
+      }
+    });
+
+    // Event listener for "Remove Student" buttons (using event delegation)
+    studentNamesList.addEventListener('click', (event) => {
+      if (event.target.classList.contains('remove-student-btn')) {
+        const studentGroup = event.target.closest('div'); // Get the div containing input and button
+        if (studentGroup) {
+          studentGroup.remove();
+        }
+        
+        const selectedProgram = programEl.value;
+        const isPrivateLesson = ['Private Lessons', 'Tennis Private'].includes(selectedProgram);
+
+        if (!isPrivateLesson && studentNamesList.children.length === 0) {
+          addStudentEntry(); // Ensure at least one input for group programs
+        }
+        // Update visibility of remaining remove buttons
+        Array.from(studentNamesList.children).forEach((group, index) => {
+            const removeBtn = group.querySelector('.remove-student-btn');
+            if (removeBtn) {
+                 // Hide if it's the only one left in a group session, or if it's private lesson (though it should already be hidden)
+                removeBtn.style.display = (!isPrivateLesson && studentNamesList.children.length > 1) ? 'inline-block' : 'none';
+            }
+        });
+      }
+    });
+
+    // Initial call to set student/coach fields based on default or pre-selected program
     handleProgramChange(); 
 
     // Submit new lesson
@@ -614,11 +713,17 @@ ul.nav-links-mobile li a {
       const privateLessonPrograms = ['Private Lessons', 'Tennis Private'];
       const isPrivateLesson = privateLessonPrograms.includes(selectedProgram);
       const referralSourceValue = referralSourceSelect.value;
-      const studentNameEl = document.getElementById('student-name');
-      const studentNamesInput = studentNameEl.value.trim();
+      
+      const studentInputs = document.querySelectorAll('.student-name-entry');
+      const studentNames = Array.from(studentInputs).map(input => input.value.trim()).filter(name => name !== '');
 
-      if (!studentNamesInput) {
+      if (studentNames.length === 0) {
         alert('Student name(s) are required.');
+        return;
+      }
+
+      if (isPrivateLesson && studentNames.length > 1) {
+        alert('Only one student name is allowed for Private Lessons.');
         return;
       }
 
@@ -634,7 +739,7 @@ ul.nav-links-mobile li a {
         coachName3: document.getElementById('coach3').value,
         date: document.getElementById('date').value,
         time: document.getElementById('time').value,
-        student: studentNamesInput, // Use trimmed input
+        student_names: studentNames, // Use the array of student names
         referral_source: isPrivateLesson ? referralSourceValue : '' 
       };
       const res = await fetch('/api/admin/lessons', {
@@ -655,20 +760,20 @@ ul.nav-links-mobile li a {
     // Handle form reset event
     document.getElementById('lesson-form').addEventListener('reset', () => {
         studentDiv.style.display = 'block'; // Always visible
-        const studentNameEl = document.getElementById('student-name');
-        studentNameEl.required = true; // Always required
-        studentNameEl.value = ''; // Clear the textarea
-        referralSourceDiv.style.display = 'none'; // Keep referral logic as is for now, or clarify if it should also be always visible
-        referralSourceSelect.required = false; // Keep referral logic as is for now
+        
+        studentNamesList.innerHTML = ''; // Clear all student name entries
+        // addStudentEntry(); // Add back a single, fresh input field
+
+        referralSourceDiv.style.display = 'none'; 
+        referralSourceSelect.required = false; 
         referralSourceSelect.value = '';
-        // programEl.value = ''; // Reset program dropdown to default placeholder
-        // Ensure programEl is reset to its placeholder option.
-        // The default "Choose a program" is disabled, so setting value to "" works.
+        
         if(programEl.options.length > 0 && programEl.options[0].value === "" && programEl.options[0].disabled){
             programEl.value = "";
         }
-        // Also reset coach fields on form reset
-        handleProgramChange();
+        // Crucially, call handleProgramChange() AFTER resetting the program dropdown and clearing students.
+        // This will ensure the student input area is correctly set up for the placeholder program state.
+        handleProgramChange(); 
     });
   </script>
 

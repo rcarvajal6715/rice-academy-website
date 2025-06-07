@@ -19,7 +19,7 @@
     input, select, button { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
     button { background-color: #0c3c78; color: white; cursor: pointer; grid-column: 1 / -1; margin-top: 20px; }
     button:hover { background-color: #0f4fa0; }
-    #student-name-container { display: none; }
+    /* #student-name-container { display: none; } */ /* Removed to make student name always visible */
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { padding: 8px; border:1px solid #ddd; }
     thead th { background: #0c3c78; color: white; }
@@ -400,7 +400,7 @@ ul.nav-links-mobile li a {
       <!-- Student (for Private Lessons) -->
       <div id="student-name-container" class="full-width">
         <label for="student-name">Student Name</label>
-        <input type="text" id="student-name" placeholder="Enter student name for private lesson" />
+        <textarea id="student-name" name="student-name" required></textarea>
       </div>
 
       <!-- Referral Source (for Private Lessons) -->
@@ -546,6 +546,7 @@ ul.nav-links-mobile li a {
     const coach2Select = document.getElementById('coach2');
     const coach3Container = document.getElementById('coach3-container');
     const coach3Select = document.getElementById('coach3');
+    const studentNameEl = document.getElementById('student-name'); // Get student name element
 
     const handleProgramChange = () => {
       const selectedProgram = programEl.value;
@@ -553,8 +554,14 @@ ul.nav-links-mobile li a {
       const privateLessonPrograms = ['Private Lessons', 'Tennis Private'];
       const isPrivateLesson = privateLessonPrograms.includes(selectedProgram);
 
-      studentDiv.style.display = isPrivateLesson ? 'block' : 'none';
-      document.getElementById('student-name').required = isPrivateLesson;
+      studentDiv.style.display = 'block'; // Always visible
+      studentNameEl.required = true; // Always required
+
+      if (isPrivateLesson) {
+        studentNameEl.placeholder = 'Enter student name';
+      } else {
+        studentNameEl.placeholder = 'Enter student names (one per line, e.g.,\nJohn Doe\nJane Smith)';
+      }
       
       referralSourceDiv.style.display = isPrivateLesson ? 'block' : 'none';
       referralSourceSelect.required = isPrivateLesson;
@@ -607,9 +614,11 @@ ul.nav-links-mobile li a {
       const privateLessonPrograms = ['Private Lessons', 'Tennis Private'];
       const isPrivateLesson = privateLessonPrograms.includes(selectedProgram);
       const referralSourceValue = referralSourceSelect.value;
+      const studentNameEl = document.getElementById('student-name');
+      const studentNamesInput = studentNameEl.value.trim();
 
-      if (isPrivateLesson && !document.getElementById('student-name').value) {
-        alert('Student name is required for private lessons.');
+      if (!studentNamesInput) {
+        alert('Student name(s) are required.');
         return;
       }
 
@@ -625,7 +634,7 @@ ul.nav-links-mobile li a {
         coachName3: document.getElementById('coach3').value,
         date: document.getElementById('date').value,
         time: document.getElementById('time').value,
-        student: document.getElementById('student-name').value || '',
+        student: studentNamesInput, // Use trimmed input
         referral_source: isPrivateLesson ? referralSourceValue : '' 
       };
       const res = await fetch('/api/admin/lessons', {
@@ -645,10 +654,12 @@ ul.nav-links-mobile li a {
 
     // Handle form reset event
     document.getElementById('lesson-form').addEventListener('reset', () => {
-        studentDiv.style.display = 'none';
-        document.getElementById('student-name').required = false;
-        referralSourceDiv.style.display = 'none';
-        referralSourceSelect.required = false;
+        studentDiv.style.display = 'block'; // Always visible
+        const studentNameEl = document.getElementById('student-name');
+        studentNameEl.required = true; // Always required
+        studentNameEl.value = ''; // Clear the textarea
+        referralSourceDiv.style.display = 'none'; // Keep referral logic as is for now, or clarify if it should also be always visible
+        referralSourceSelect.required = false; // Keep referral logic as is for now
         referralSourceSelect.value = '';
         // programEl.value = ''; // Reset program dropdown to default placeholder
         // Ensure programEl is reset to its placeholder option.

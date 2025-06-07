@@ -17,8 +17,70 @@
     .full-width { grid-column: 1 / -1; }
     label { display: block; font-weight: bold; color: #0c3c78; margin-bottom: 5px; }
     input, select, button { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
-    button { background-color: #0c3c78; color: white; cursor: pointer; grid-column: 1 / -1; margin-top: 20px; }
+    button { 
+      background-color: #0c3c78; 
+      color: white; 
+      cursor: pointer; 
+      /* Removed: width: 100%; */
+      /* Removed: grid-column: 1 / -1; */
+      /* Removed: margin-top: 20px; */
+      display: inline-block;
+      width: auto; /* Override width: 100% from input, select, button */
+      margin: 5px; /* Default margin for all buttons */
+      text-align: center; /* Center text within buttons */
+      padding: 10px 15px; /* Default padding for standard buttons */
+    }
     button:hover { background-color: #0f4fa0; }
+
+    /* Smaller buttons / Icon buttons */
+    .btn-small {
+      padding: 5px 10px;
+      font-size: 0.9em; /* Optionally smaller font */
+    }
+
+    /* Specific styling for remove student button if needed */
+    .remove-student-btn {
+      background-color: #f0f0f0; /* Light gray */
+      color: #333; /* Dark gray icon/text */
+      border: 1px solid #ccc;
+      border-radius: 50%; /* Round shape */
+      padding: 4px; /* Minimal padding */
+      width: 24px; 
+      height: 24px;
+      display: flex; /* For centering content */
+      align-items: center;
+      justify-content: center;
+      font-size: 14px; /* Size of the icon/text */
+      line-height: 1; 
+      margin-left: 8px; 
+      /* margin-top, margin-bottom, margin-right will be 5px from generic button if not overridden by .btn-small or specific rule */
+    }
+    .remove-student-btn:hover {
+      background-color: #e53935; /* Red background on hover */
+      color: white;
+      border-color: #e53935; /* Match border to background */
+    }
+
+    #add-student-btn {
+      background-color: white;
+      color: #0c3c78; /* Blue text */
+      border: 1px solid #0c3c78; /* Blue border */
+      border-radius: 9999px; /* Pill/chip shape */
+      padding: 6px 12px; /* Compact padding */
+      /* display: inline-block; width: auto; margin: 5px; inherited from generic button */
+    }
+    #add-student-btn:hover {
+      background-color: #0f4fa0; /* Standard blue hover */
+      color: white;
+      border-color: #0f4fa0; /* Match border to background */
+    }
+
+    #enable-editing-btn {
+      /* Styles like background, color, padding, radius are inherited from generic button */
+      /* Hover is also inherited */
+      margin-bottom: 10px; 
+    }
+
     /* #student-name-container { display: none; } */ /* Removed to make student name always visible */
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { padding: 8px; border:1px solid #ddd; }
@@ -26,14 +88,17 @@
     .edit-coaches-btn { 
         background-color: #ffc107; /* Amber */
         color: black; 
-        padding: 5px 10px; 
+        /* padding is already 5px 10px, which is good */
         border-radius: 4px; 
         border: 1px solid #e0a800; /* Darker amber */
         cursor: pointer; 
         font-size: 0.9em;
-        margin-left: 5px; /* Space from delete button */
+        /* margin-left: 5px; /* Will inherit 5px from generic button or can be overridden */
     }
-    .edit-coaches-btn:hover { background-color: #e0a800; }
+    .edit-coaches-btn:hover { 
+      background-color: #0f4fa0; /* Consistent hover */
+      color: white; 
+    }
 
     /* Modal Styles */
     .modal {
@@ -83,8 +148,20 @@
       color: black;
     }
     .modal-footer button.cancel-btn:hover {
-      background-color: #bbb;
+      background-color: #bbb; /* Keep existing distinct hover */
     }
+    #saveCoachesChangesBtn { /* Save button in modal */
+      background-color: #0c3c78; /* Primary action color */
+      color: white;
+      border: none; /* Assuming padding and radius come from .modal-footer button or generic button */
+    }
+    /* Hover for #saveCoachesChangesBtn will be the generic blue hover from button:hover */
+
+    #save-all-btn-container { /* Styles for the container of the 'Update All Changed Prices' button */
+      text-align: right; /* Default alignment for desktop */
+      margin-bottom: 15px;
+    }
+
     #coach-checkboxes-container label {
         display: block;
         margin-bottom: 8px;
@@ -191,7 +268,10 @@
        border-radius: 5px; font-weight: bold; cursor: pointer; display: block;
        width: 80%; max-width: 250px; margin: 10px auto; box-sizing: border-box;
      }
-     .auth-buttons-mobile a button:hover, .auth-buttons-mobile button:hover { background-color: #c1da3b; }
+     .auth-buttons-mobile a button:hover, .auth-buttons-mobile button:hover { 
+       background-color: #0f4fa0; /* Consistent hover */
+       color: white; 
+     }
      
      
      footer { /* Global footer style */
@@ -230,6 +310,37 @@
         overflow-x: auto; /* Allow horizontal scrolling only for the table container */
         -webkit-overflow-scrolling: touch; /* Optional: for smoother scrolling on iOS */
       }
+
+      /* Specific Mobile Button Adjustments */
+      #add-student-btn {
+        display: block; /* Make it take its own line */
+        margin-top: 10px; /* Add some space above it */
+        margin-left: 0; /* Reset horizontal margins if any from generic */
+        margin-right: 0;
+        /* width: auto; by default from button, or set explicitly if needed */
+      }
+
+      #enable-editing-btn {
+        display: block;
+        width: 100%; /* Make it full width */
+        margin-left: auto; /* Center if not full width, but with 100% it's just for consistency */
+        margin-right: auto;
+        text-align: center; /* Center text if button itself isn't full width of text */
+        margin-bottom: 10px; /* Keep its bottom margin */
+      }
+      
+      /* Container for the 'Update All Changed Prices' button */
+      #save-all-btn-container { /* Assuming we wrap #save-all-btn in this ID, or select its existing parent */
+        text-align: center; /* Center the button within its container */
+        margin-bottom: 15px; /* Keep its bottom margin */
+      }
+      #save-all-btn-container .universal-update-prices-btn {
+          width: 100%; /* Make button full width */
+          margin-left: auto;
+          margin-right: auto;
+          box-sizing: border-box; /* Include padding in width calculation */
+      }
+
     }
   /* Override the highlighted “Book” pill to be fully rounded */
 ul.nav-links-desktop li a.highlighted-nav {
@@ -278,7 +389,7 @@ ul.nav-links-mobile li a {
 }
 
 .explore-button:hover {
-  background-color: #2563eb; /* Darker blue on hover */
+  background-color: #0f4fa0; /* Consistent hover */
   transform: scale(1.05);
   color: white !important;
   text-decoration: none;
@@ -320,7 +431,7 @@ ul.nav-links-mobile li a {
 }
 
 .universal-update-prices-btn:hover {
-  background-color: #45a049; /* Darker green on hover */
+  background-color: #0f4fa0; /* Consistent hover */
   transform: scale(1.05); /* Match explore-button */
   color: white !important;
   text-decoration: none;
@@ -403,10 +514,10 @@ ul.nav-links-mobile li a {
         <div id="student-names-list">
           <div>
             <input type="text" class="student-name-entry" name="student_names[]" required placeholder="Student Name">
-            <button type="button" class="remove-student-btn" style="display: none;">🗑</button>
+        <button type="button" class="remove-student-btn" style="display: none;">🗑</button>
           </div>
         </div>
-        <button type="button" id="add-student-btn" style="display: none;">+ Add Student</button>
+    <button type="button" id="add-student-btn" style="display: none;">+ Add Student</button>
       </div>
 
       <!-- Referral Source (for Private Lessons) -->
@@ -470,15 +581,17 @@ ul.nav-links-mobile li a {
         <input type="time" id="time" required />
       </div>
 
-      <button type="submit">Save Lesson</button>
+      <div class="full-width form-actions"> <!-- Wrapper for form submit button -->
+        <button type="submit">Save Lesson</button>
+      </div>
     </form>
 
     <!-- All Scheduled Lessons -->
     <h2>Scheduled Lessons Overview</h2>
-    <div style="text-align: right; margin-bottom: 15px;"> <!-- Changed to text-align: right -->
+    <div id="save-all-btn-container"> <!-- Inline styles removed -->
         <button id="save-all-btn" class="universal-update-prices-btn" disabled>Update All Changed Prices</button>
     </div>
-    <button id="enable-editing-btn" style="margin-bottom:10px;">Enable Editing</button>
+    <button id="enable-editing-btn">Enable Editing</button> <!-- Inline style removed -->
     <div id="private-lessons-section" style="margin-bottom: 30px;">
         <h3>Private Lessons</h3>
         <div id="private-lessons-table-container">Loading private lessons...</div>
@@ -561,14 +674,14 @@ ul.nav-links-mobile li a {
       newStudentGroup.innerHTML = `
         <input type="text" class="student-name-entry" name="student_names[]" required placeholder="Student Name">
         <button type="button" class="remove-student-btn">🗑</button>
-      `;
+      `; // btn-small class removed here
       studentNamesList.appendChild(newStudentGroup);
       // Visibility of remove button will be handled by handleProgramChange or specific logic after adding
       const programType = programEl.value;
       const isPrivateLesson = ['Private Lessons', 'Tennis Private'].includes(programType);
       const removeBtn = newStudentGroup.querySelector('.remove-student-btn');
       if (removeBtn) {
-          removeBtn.style.display = isPrivateLesson || studentNamesList.children.length <= 1 ? 'none' : 'inline-block';
+          removeBtn.style.display = isPrivateLesson || studentNamesList.children.length <= 1 ? 'none' : 'flex'; // Changed to flex
       }
     };
 
@@ -602,7 +715,7 @@ ul.nav-links-mobile li a {
           }
         }
       } else { // Group program
-        addStudentBtn.style.display = 'inline-block'; // Or 'block' depending on desired layout
+        addStudentBtn.style.display = 'inline-block'; // This is fine for #add-student-btn
         if (studentNamesList.children.length === 0) {
           addStudentEntry(); // Add initial entry if list is empty
         }
@@ -616,7 +729,7 @@ ul.nav-links-mobile li a {
           }
           if (removeBtn) {
             // Show remove button for all, but could be hidden for the first if it's the only one
-            removeBtn.style.display = studentNamesList.children.length > 1 ? 'inline-block' : 'none';
+            removeBtn.style.display = studentNamesList.children.length > 1 ? 'flex' : 'none'; // Changed to flex
           }
         });
       }
@@ -671,7 +784,7 @@ ul.nav-links-mobile li a {
           Array.from(studentNamesList.children).forEach((studentGroup, index) => {
               const removeBtn = studentGroup.querySelector('.remove-student-btn');
               if (removeBtn) {
-                  removeBtn.style.display = studentNamesList.children.length > 1 ? 'inline-block' : 'none';
+                  removeBtn.style.display = studentNamesList.children.length > 1 ? 'flex' : 'none'; // Changed to flex
               }
           });
       }
@@ -696,7 +809,7 @@ ul.nav-links-mobile li a {
             const removeBtn = group.querySelector('.remove-student-btn');
             if (removeBtn) {
                  // Hide if it's the only one left in a group session, or if it's private lesson (though it should already be hidden)
-                removeBtn.style.display = (!isPrivateLesson && studentNamesList.children.length > 1) ? 'inline-block' : 'none';
+                removeBtn.style.display = (!isPrivateLesson && studentNamesList.children.length > 1) ? 'flex' : 'none'; // Changed to flex
             }
         });
       }
@@ -960,15 +1073,15 @@ ul.nav-links-mobile li a {
           
       html += `<td style="padding:8px; border:1px solid #ddd;">`;
       if (isCampTable && les.booking_ids && Array.isArray(les.booking_ids)) {
-        html += `<button onclick="deleteGroupedCampLesson('${les.booking_ids.join(',')}')">Delete Session</button>`;
-        html += `<button class="edit-coaches-btn" 
+        html += `<button class="btn-small" onclick="deleteGroupedCampLesson('${les.booking_ids.join(',')}')">Delete Session</button>`;
+        html += `<button class="edit-coaches-btn btn-small" 
                          data-program="${les.program}" 
                          data-date="${les.date}" 
                          data-time="${les.time}" 
                          data-booking-ids="${les.booking_ids.join(',')}" 
                          data-coaches="${les.coaches.join(',')}">Edit Coaches</button>`;
       } else {
-        html += `<button onclick="deleteAdminLesson(${les.id})">Delete</button>`;
+        html += `<button class="btn-small" onclick="deleteAdminLesson(${les.id})">Delete</button>`;
       }
       html += `</td>`;
 

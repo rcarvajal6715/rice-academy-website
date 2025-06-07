@@ -70,52 +70,6 @@ ensureExpensesSchema().catch(err => {
   // process.exit(1); // Optionally exit if schema setup is critical
 });
 
-// Function to check and add 'coach2' and 'coach3' columns to 'bookings' table
-async function ensureBookingsSchema() {
-  const client = await pool.connect();
-  try {
-    // Check if 'coach2' column exists
-    const checkCoach2Query = `
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_schema = 'public' AND table_name='bookings' AND column_name='coach2';
-    `;
-    let result = await client.query(checkCoach2Query);
-    if (result.rows.length === 0) {
-      console.log('"coach2" column not found in "bookings" table. Attempting to add it...');
-      await client.query('ALTER TABLE bookings ADD COLUMN coach2 TEXT;');
-      console.log('"coach2" column added successfully to "bookings" table.');
-    } else {
-      // console.log('"coach2" column already exists in "bookings" table.');
-    }
-
-    // Check if 'coach3' column exists
-    const checkCoach3Query = `
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_schema = 'public' AND table_name='bookings' AND column_name='coach3';
-    `;
-    result = await client.query(checkCoach3Query);
-    if (result.rows.length === 0) {
-      console.log('"coach3" column not found in "bookings" table. Attempting to add it...');
-      await client.query('ALTER TABLE bookings ADD COLUMN coach3 TEXT;');
-      console.log('"coach3" column added successfully to "bookings" table.');
-    } else {
-      // console.log('"coach3" column already exists in "bookings" table.');
-    }
-  } catch (err) {
-    console.error('Error during schema check/modification for "bookings" coach columns:', err.stack);
-  } finally {
-    client.release();
-  }
-}
-
-// Call this function at startup
-ensureBookingsSchema().catch(err => {
-  console.error('Failed to ensure bookings schema:', err.stack);
-  // process.exit(1); // Optionally exit if schema setup is critical
-});
-
 // Ensure 'expenses' table exists
 (async () => {
   const createExpensesTableQuery = `
@@ -263,30 +217,26 @@ app.post('/api/admin/lessons/update-coaches', async (req, res) => {
     lesson_cost, 
     student, 
     email, 
-    phone,
-    referral_source // Added referral_source here
+    phone 
   } = req.body;
 
   // Basic Validation
-  if (!program || !date || !time || lesson_cost === undefined) {
-    return res.status(400).json({ message: 'Missing required fields: program, date, time, lesson_cost are mandatory.' });
-  }
-  if (!originalBookingIds || !Array.isArray(originalBookingIds) || originalBookingIds.length === 0) {
-    return res.status(400).json({ message: 'originalBookingIds must be a non-empty array of booking IDs.' });
+  if (!program || !date || !time || !originalBookingIds || !Array.isArray(originalBookingIds) || !newCoaches || !Array.isArray(newCoaches) || lesson_cost === undefined) {
+    return res.status(400).json({ message: 'Missing required fields or invalid data format.' });
   }
   if (originalBookingIds.some(id => typeof id !== 'number' || id <= 0)) {
     return res.status(400).json({ message: 'Invalid originalBookingIds. Must be an array of positive integers.' });
   }
-  if (!newCoaches || !Array.isArray(newCoaches)) {
-    return res.status(400).json({ message: 'newCoaches must be an array.' });
-  }
-  // Validate coach names if newCoaches array is not empty
-  if (newCoaches.length > 0 && newCoaches.some(coach => typeof coach !== 'string' || coach.trim() === '')) {
-    return res.status(400).json({ message: 'Invalid newCoaches. If provided, names must be non-empty strings.' });
+   if (newCoaches.some(coach => typeof coach !== 'string' || coach.trim() === '')) {
+    // Allow empty newCoaches array, but if not empty, coaches must be valid strings.
+    if (newCoaches.length > 0) { // Only apply this validation if newCoaches is not empty
+        return res.status(400).json({ message: 'Invalid newCoaches. Must be an array of non-empty strings.' });
+    }
   }
   if (typeof lesson_cost !== 'number' || lesson_cost < 0) {
     return res.status(400).json({ message: 'Invalid lesson_cost. Must be a non-negative number.' });
   }
+  // Date and Time validation (basic)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return res.status(400).json({ message: 'Invalid date format. Use YYYY-MM-DD.' });
   }
@@ -298,68 +248,36 @@ app.post('/api/admin/lessons/update-coaches', async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    const primaryBookingId = originalBookingIds[0];
-    const idsToDelete = originalBookingIds.slice(1);
+    // Delete existing bookings
+    for (const bookingId of originalBookingIds) {
+      const deleteResult = await client.query('DELETE FROM bookings WHERE id = $1', [bookingId]);
+      // Optional: check deleteResult.rowCount if needed
+    }
 
-    const updatedCoach1 = (newCoaches[0] && newCoaches[0].trim() !== '') ? newCoaches[0].trim() : null;
-    const updatedCoach2 = (newCoaches[1] && newCoaches[1].trim() !== '') ? newCoaches[1].trim() : null;
-    const updatedCoach3 = (newCoaches[2] && newCoaches[2].trim() !== '') ? newCoaches[2].trim() : null;
+    let newBookingsCount = 0;
+    if (newCoaches.length > 0) {
+      // Create new bookings for the new set of coaches
+      const studentForDb = student || ''; // Default to empty string if null/undefined
+      const emailForDb = email || '';
+      const phoneForDb = phone || '';
+      const referralSourceForDb = null; // Typically null for camps/group sessions
 
-    const studentForDb = student || '';
-    const emailForDb = email || '';
-    const phoneForDb = phone || '';
-    const referralSourceForDb = (referral_source && typeof referral_source === 'string' && referral_source.trim() !== '') ? referral_source.trim() : null;
-
-    let message = '';
-
-    if (!updatedCoach1) {
-      // If newCoaches is empty (or first coach is invalid), delete all original bookings
-      if (!idsToDelete.includes(primaryBookingId)) {
-        idsToDelete.push(primaryBookingId);
-      }
-      if (idsToDelete.length > 0) {
-        const deleteQuery = 'DELETE FROM bookings WHERE id = ANY($1::int[])';
-        const deleteResult = await client.query(deleteQuery, [idsToDelete]);
-        console.log(`Deleted ${deleteResult.rowCount} booking(s) as no primary coach was assigned.`);
-      }
-      message = `Session effectively deleted as no primary coach was assigned. ${idsToDelete.length} booking(s) removed.`;
-    } else {
-      // Update the primary booking
-      const updateQuery = `
-        UPDATE bookings 
-        SET program = $1, coach = $2, coach2 = $3, coach3 = $4, date = $5, time = $6, 
-            lesson_cost = $7, student = $8, email = $9, phone = $10, referral_source = $11
-        WHERE id = $12
-        RETURNING *;
-      `;
-      const updateValues = [
-        program, updatedCoach1, updatedCoach2, updatedCoach3, date, time, 
-        lesson_cost, studentForDb, emailForDb, phoneForDb, referralSourceForDb,
-        primaryBookingId
-      ];
-      const updateResult = await client.query(updateQuery, updateValues);
-
-      if (updateResult.rowCount === 0) {
-        // This case should ideally not happen if originalBookingIds[0] is valid
-        // but as a safeguard, if the primary booking to update wasn't found, roll back.
-        await client.query('ROLLBACK');
-        return res.status(404).json({ message: `Primary booking with ID ${primaryBookingId} not found for update.` });
-      }
-      
-      console.log(`Updated primary booking ID ${primaryBookingId}.`);
-      message = `Session successfully updated for primary booking ID ${primaryBookingId}.`;
-
-      // Delete other original bookings if any
-      if (idsToDelete.length > 0) {
-        const deleteQuery = 'DELETE FROM bookings WHERE id = ANY($1::int[])';
-        const deleteRestResult = await client.query(deleteQuery, [idsToDelete]);
-        console.log(`Deleted ${deleteRestResult.rowCount} other original booking(s).`);
-        message += ` ${deleteRestResult.rowCount} other original booking(s) removed.`;
+      for (const coachName of newCoaches) {
+        await client.query(
+          'INSERT INTO bookings (program, coach, date, time, lesson_cost, student, email, phone, paid, session_id, referral_source) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
+          [program, coachName, date, time, lesson_cost, studentForDb, emailForDb, phoneForDb, false, null, referralSourceForDb]
+        );
+        newBookingsCount++;
       }
     }
 
     await client.query('COMMIT');
-    res.status(200).json({ message });
+    
+    if (newCoaches.length === 0) {
+        res.status(200).json({ message: `Successfully removed ${originalBookingIds.length} original booking(s). No new coaches assigned (session effectively deleted).` });
+    } else {
+        res.status(200).json({ message: `Successfully updated coaches for session. ${originalBookingIds.length} original booking(s) removed, ${newBookingsCount} new booking(s) created.` });
+    }
 
   } catch (err) {
     await client.query('ROLLBACK');
@@ -547,24 +465,9 @@ app.get('/api/financials', async (req, res) => {
   if (!req.session?.user?.isAdmin) {
     return res.status(401).json({ message: 'Unauthorized: Admin access required.' });
   }
+  // console.log('WARN: /api/financials auth bypassed for testing.'); // Auth enabled
 
   try {
-    // Helper function to normalize coach names
-    function normalizeCoachName(nameString) {
-      if (!nameString || typeof nameString !== 'string' || nameString.trim() === '') {
-        return null;
-      }
-      const trimmedName = nameString.trim();
-      // Convert to Title Case: "john doe" -> "John Doe", "MARY-ANNE smith" -> "Mary-Anne Smith"
-      return trimmedName
-        .toLowerCase()
-        .split(' ')
-        .map(part => 
-          part.split('-').map(subPart => subPart.charAt(0).toUpperCase() + subPart.slice(1)).join('-')
-        )
-        .join(' ');
-    }
-
     // 2) Determine period → startDate/endDate (YYYY-MM or default to current month)
     const period = req.query.period;
     let startDate, endDate;
@@ -589,11 +492,15 @@ app.get('/api/financials', async (req, res) => {
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
       return res.status(400).json({ message: 'Invalid date calculated from period.' });
     }
-    const sqlStartDate = startDate.toISOString().slice(0, 10); 
+    const sqlStartDate = startDate.toISOString().slice(0, 10); // "YYYY-MM-DD"
     const sqlEndDate   = endDate.toISOString().slice(0, 10);
 
-    // 3) Fetch overhead values from settings.value_numeric
-    const settingsKeys = ['director_salary', 'admin_expenses'];
+    // 3) Fetch fee/rate/overhead values from settings.value_numeric
+    const settingsKeys = [
+      'kids_group_fee', 'adult_group_fee', 'private_lesson_rate', 'clinic_camp_fee',
+      'coach_kids_group_rate', 'coach_adult_group_rate', 'coach_private_hourly_pay',
+      'coach_clinic_camp_fee', 'director_salary', 'admin_expenses'
+    ];
     const settingsQuery = `
       SELECT key, value_numeric AS value
       FROM settings
@@ -604,141 +511,345 @@ app.get('/api/financials', async (req, res) => {
     settingsResult.rows.forEach(row => {
       const num = parseFloat(row.value);
       settings[row.key] = isNaN(num) ? 0 : num;
+      if (isNaN(num)) {
+        console.warn(`Financials: Setting "${row.key}" has invalid numeric value "${row.value}". Defaulting to 0.`);
+      }
     });
     const getSetting = key => (settings[key] || 0);
 
-    // 4) Fetch summary data (num_kids_enrolled, etc.) for display purposes (not used in core financial calculation)
-    const summaryPeriodForDisplay = period ? (period + '-01') : (
+    // 4) Fetch enrollment totals from enrollments_summary (kids/adults/clinic)
+    const summaryPeriod = period ? (period + '-01') : (
       (() => {
         const y = startDate.getFullYear();
         const m = String(startDate.getMonth() + 1).padStart(2, '0');
         return `${y}-${m}-01`;
       })()
     );
-    const summaryDisplayQuery = `
-      SELECT num_kids_enrolled, num_adults_enrolled, total_private_hours
+    const summaryQuery = `
+      SELECT num_kids_enrolled, num_adults_enrolled, total_private_hours --, num_clinic_participants removed
       FROM enrollments_summary
       WHERE period = $1
     `;
-    const summaryDisplayResult = await pool.query(summaryDisplayQuery, [summaryPeriodForDisplay]);
-    const summaryDisplayRow = summaryDisplayResult.rows[0] || {};
-    const num_kids_enrolled_display = parseInt(summaryDisplayRow.num_kids_enrolled) || 0;
-    const num_adults_enrolled_display = parseInt(summaryDisplayRow.num_adults_enrolled) || 0;
-    const total_private_hours_display = parseFloat(summaryDisplayRow.total_private_hours) || 0;
+    const summaryResult = await pool.query(summaryQuery, [summaryPeriod]);
+    const summaryRow = summaryResult.rows[0] || {};
+    const num_kids_enrolled       = parseInt(summaryRow.num_kids_enrolled)       || 0;
+    const num_adults_enrolled     = parseInt(summaryRow.num_adults_enrolled)     || 0;
+    const total_private_hours     = parseFloat(summaryRow.total_private_hours)   || 0;
+    // const num_clinic_participants = parseInt(summaryRow.num_clinic_participants) || 0; // Replaced by new camp logic
 
-
-    // Define PROGRAM_DURATIONS (used in the new loop)
-    const PROGRAM_DURATIONS = {
-      "Private Lessons": 1,
-      "Summer Camp": 2.5,
-      "Kids Camp": 1.5,
-      "Group Lesson": 1,
-      "Other": 0 // Default for programs not listed or if normalization fails
-    };
-
-    // Fetch all relevant bookings for the period for financial calculation
-    const bookingsQuery = `
-      SELECT id, program, coach, coach2, coach3, date, time, lesson_cost
-      FROM bookings 
-      WHERE date >= $1 AND date <= $2 AND lesson_cost IS NOT NULL AND lesson_cost > 0;
+    // Fetch data from admin_history
+    const adminHistoryQuery = `
+SELECT coach AS coach1, NULL AS coach2, NULL AS coach3, program, referral_source, lesson_cost
+FROM bookings
     `;
-    const bookingsResult = await pool.query(bookingsQuery, [sqlStartDate, sqlEndDate]);
-    const allBookingsInRange = bookingsResult.rows;
+    const allBookingRows = (await pool.query(adminHistoryQuery)).rows;
+    // Data merging and integration will be handled in the next steps.
+    // console.log('Admin History Rows:', allBookingRows); // For debugging, remove later
 
-    // Initialize financial accumulators
-    let overallTotalRevenue = 0;
-    let overallTotalCoachPayroll = 0;
-    let overallAcademyEarnings = 0; 
+    // Data is now sourced entirely from the modified adminHistoryRows query (soon to be renamed)
+    const combinedLessonData = allBookingRows;
+    // console.log('Combined Lesson Data Count:', combinedLessonData.length); // For debugging
+
+    // 6) coach_rates related logic removed.
+    // const coachRateKeys = ... (removed)
+    // const coachRatesResult = ... (removed)
+    // const rates = {}; (removed)
+    // rates[...] = ... (removed)
+
+    // 7) Implement new Commission Calculation Logic for Private Lessons
+    let totalPrivateRevenue = 0;
+    let totalCoachPayrollForPrivates = 0;
+    let totalAcademyCommissionForPrivates = 0;
+
+    // Initialize coachFinancials earlier, as it's used in the commission loop
     const coachFinancials = {};
 
-    // Iterate through each booking to calculate financials
-    for (const booking of allBookingsInRange) {
-      const lessonCost = parseFloat(booking.lesson_cost);
-      // Skip if lesson_cost is invalid (already handled by query `lesson_cost > 0`, but good for safety)
-      if (isNaN(lessonCost) || lessonCost <= 0) { 
-        console.warn(`Skipping booking ID ${booking.id} due to invalid lesson_cost: ${booking.lesson_cost}`);
-        continue; 
-      }
+    // Define PROGRAM_DURATIONS earlier if needed by logic within the loop, or ensure it's before the second loop.
+    // For now, commission loop first.
+    
+    for (const booking of combinedLessonData) { // Iterate over combined data
+  const lessonCost = parseFloat(booking.lesson_cost);
+  if (isNaN(lessonCost) || lessonCost < 0) {
+    // skip invalid/missing cost
+    continue;
+  }
+  totalPrivateRevenue += lessonCost; // This will now sum lesson_cost from both sources
 
-      overallTotalRevenue += lessonCost;
+  // Use coach if present (from bookings), otherwise use coach1 (from admin_history)
+  const primaryCoachName = booking.coach || booking.coach1 || 'Unknown Coach'; 
+  const simpleCoachName = primaryCoachName.split(' ')[0];
+  const referral = booking.referral_source ? booking.referral_source.trim() : '';
+  // Ensure program is read correctly, it should exist in both structures
+  const program = booking.program; 
 
-      const rawCoachNamesForBooking = [booking.coach, booking.coach2, booking.coach3];
-      const normalizedCoachesInBooking = [];
-      for (const rawName of rawCoachNamesForBooking) {
-        const normalizedName = normalizeCoachName(rawName);
-        if (normalizedName) { // Ensures not null and not an empty string after normalization
-          normalizedCoachesInBooking.push(normalizedName);
+  // Filter to apply commission logic only to "Private Lessons"
+  // This check is important because combinedLessonData contains various program types.
+  if (normalizeProgramType(program) !== "Private Lessons") {
+    continue; // Skip if not a private lesson for this specific commission logic
+  }
+
+  let coachGetsThisLesson = 0;
+  let academyGetsThisLesson = 0;
+
+  // Priority 1: Ricardo as Coach
+  if (simpleCoachName === 'Ricardo') {
+    coachGetsThisLesson = lessonCost;
+    academyGetsThisLesson = 0;
+  }
+  // Priority 2: Specific Referral Sources (Non-Ricardo Coach)
+  else if (referral === 'FriendReferral') {
+    academyGetsThisLesson = 10;
+    coachGetsThisLesson = Math.max(0, lessonCost - 10);
+  } else if (referral === 'WebsiteReferral') {
+    academyGetsThisLesson = 20;
+    coachGetsThisLesson = Math.max(0, lessonCost - 20);
+  } else if (referral === 'Ricardo') { // Ricardo referral, but coach is not Ricardo
+    academyGetsThisLesson = 20;
+    coachGetsThisLesson = Math.max(0, lessonCost - 20);
+  }
+  // Priority 3: Coach-Specific Rules (Non-Ricardo Coach, No Matching Primary Referral)
+  else if (simpleCoachName === 'Jacob' && (referral === null || referral === '' || referral === 'Jacob' || referral === 'JacobOwn')) {
+    academyGetsThisLesson = 10;
+    coachGetsThisLesson = Math.max(0, lessonCost - 10);
+  } else if (simpleCoachName === 'Paula' && (referral === null || referral === '' || referral === 'Paula' || referral === 'PaulaOwn')) {
+    academyGetsThisLesson = lessonCost * 0.10;
+    coachGetsThisLesson = lessonCost - academyGetsThisLesson;
+    if (coachGetsThisLesson < 0) coachGetsThisLesson = 0; // Ensure not negative
+  } else if (simpleCoachName === 'Zach' && (referral === null || referral === '' || referral === 'Zach' || referral === 'ZachOwn')) {
+    academyGetsThisLesson = lessonCost * 0.10;
+    coachGetsThisLesson = lessonCost - academyGetsThisLesson;
+    if (coachGetsThisLesson < 0) coachGetsThisLesson = 0; // Ensure not negative
+  }
+  // Priority 4: Default Fallback (Non-Ricardo Coach, No Matching Primary or Coach-Specific Referral)
+  else {
+    coachGetsThisLesson = lessonCost;
+    academyGetsThisLesson = 0;
+    // Optional: Log fallback cases if needed for debugging or monitoring
+    // console.warn(
+    //   `WARN: Fallback commission case for booking (coach: ${coachFullName}, referral: '${referral}', cost: ${lessonCost}).`
+    // );
+  }
+
+  totalCoachPayrollForPrivates += coachGetsThisLesson;
+  totalAcademyCommissionForPrivates += academyGetsThisLesson;
+
+      // Add to coachFinancials totalPay for private lessons
+      if (primaryCoachName !== 'Unknown Coach') {
+        if (!coachFinancials[primaryCoachName]) {
+          coachFinancials[primaryCoachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
+          // console.warn(`Financials: Coach ${primaryCoachName} from commission loop not found in coachFinancials. Initializing.`);
         }
-      }
-      
-      const uniqueCoachesForSplit = [...new Set(normalizedCoachesInBooking)];
-      const numCoachesInLesson = uniqueCoachesForSplit.length;
-
-      if (numCoachesInLesson > 0) {
-        const lessonAcademyShare = lessonCost * 0.10;
-        const lessonCoachTotalShare = lessonCost * 0.90;
-
-        overallAcademyEarnings += lessonAcademyShare;
-        overallTotalCoachPayroll += lessonCoachTotalShare;
-        
-        const individualCoachPayout = lessonCoachTotalShare / numCoachesInLesson;
-        const normalizedProgram = normalizeProgramType(booking.program);
-        const duration = PROGRAM_DURATIONS[normalizedProgram] || PROGRAM_DURATIONS["Other"];
-
-        for (const coachName of uniqueCoachesForSplit) { 
-          if (!coachFinancials[coachName]) {
-            coachFinancials[coachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
-          }
-          coachFinancials[coachName].totalPay += individualCoachPayout;
-          coachFinancials[coachName].lessonsTaught += 1; 
-          coachFinancials[coachName].totalHours += duration; 
-        }
-      } else {
-        // If no *valid* coaches are assigned, the academy takes the full lesson_cost.
-        overallAcademyEarnings += lessonCost; 
-        // overallTotalCoachPayroll remains unchanged as no coach is paid for this lesson.
-        console.warn(`Booking ID ${booking.id} (cost: ${lessonCost}) has no valid assigned coaches after normalization. Full cost attributed to academy.`);
+        coachFinancials[primaryCoachName].totalPay += coachGetsThisLesson;
       }
     }
-        
+
+    // Calculate revenue and coach pay for other lesson types
+    const kidsGroupRevenue = getSetting('kids_group_fee') * num_kids_enrolled;
+    const adultGroupRevenue = getSetting('adult_group_fee') * num_adults_enrolled;
+    // const clinicCampRevenue = getSetting('clinic_camp_fee') * num_clinic_participants; // Replaced by totalCampRevenue
+
+    const kidsGroupCoachPay = getSetting('coach_kids_group_rate') * num_kids_enrolled;
+    const adultGroupCoachPay = getSetting('coach_adult_group_rate') * num_adults_enrolled;
+    // const clinicCampCoachPay = getSetting('coach_clinic_camp_fee') * num_clinic_participants; // Replaced by totalCampCoachPayout
+
+    // New Camp Financial Logic
+    const campBookingsResult = await pool.query(
+      `
+          SELECT program, date, coach, lesson_cost
+          FROM bookings
+          WHERE (
+              LOWER(program) LIKE '%summer%' OR
+              LOWER(program) LIKE '%kid%' OR
+              LOWER(program) LIKE '%group%' OR
+              LOWER(program) LIKE '%adult%' OR
+              LOWER(program) LIKE '%camp%' OR 
+              LOWER(program) LIKE '%clinic%' OR
+              LOWER(program) LIKE '%high performance%'
+          )
+            AND date >= $1 AND date <= $2
+            AND lesson_cost IS NOT NULL AND lesson_cost > 0;
+          `,
+      [sqlStartDate, sqlEndDate]
+    );
+    const campBookingsRaw = campBookingsResult.rows;
+    const filteredCampBookings = campBookingsRaw.filter(booking => {
+      const normalized = normalizeProgramType(booking.program);
+      return normalized === "Summer Camp" || normalized === "Kids Camp" || normalized === "Group Lesson";
+    });
+
+    const campSessions = {}; // Key: 'YYYY-MM-DD_ProgramName'
+
+    for (const booking of filteredCampBookings) {
+      // Ensure date is treated as UTC to avoid off-by-one day issues
+      const bookingDate = new Date(booking.date);
+      const sessionDateString = new Date(Date.UTC(bookingDate.getUTCFullYear(), bookingDate.getUTCMonth(), bookingDate.getUTCDate()))
+                                .toISOString().slice(0,10);
+      // const sessionKey = `${sessionDateString}_${booking.program}`; // Original
+      const normalizedCampProgram = normalizeProgramType(booking.program); // Ensure this is done before creating sessionKey
+      const sessionKey = `${sessionDateString}_${normalizedCampProgram}`;
+      
+      if (!campSessions[sessionKey]) {
+        campSessions[sessionKey] = {
+          // program: booking.program, // Original
+          program: normalizedCampProgram, // Use the same normalized variable
+          date: sessionDateString,
+          coaches: new Set(),
+          totalRevenue: 0,
+          // bookings: [] // Not strictly needed for financials, can be added if debugging
+        };
+      }
+      campSessions[sessionKey].coaches.add(booking.coach);
+      campSessions[sessionKey].totalRevenue += parseFloat(booking.lesson_cost);
+      // campSessions[sessionKey].bookings.push(booking);
+    }
+
+    let totalCampRevenue = 0;
+    let totalCampCoachPayout = 0;
+    let totalCampAcademyEarnings = 0;
+
+    for (const sessionKey in campSessions) {
+      const session = campSessions[sessionKey];
+      totalCampRevenue += session.totalRevenue;
+      const coachCount = session.coaches.size;
+      let sessionCoachPayoutPot = session.totalRevenue * 0.90; // 90% of session revenue goes to coaches
+
+      if (coachCount > 0) {
+        totalCampCoachPayout += sessionCoachPayoutPot; // Aggregate total payout for camps
+
+        const individualCoachPayout = sessionCoachPayoutPot / coachCount;
+        session.coaches.forEach(coachName => {
+          if (coachName && coachName !== 'Unknown Coach') {
+            if (!coachFinancials[coachName]) {
+              // This case should ideally not happen if campBookings loop ran correctly and initialized all coaches
+              coachFinancials[coachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
+              console.warn(`Financials: Coach ${coachName} from campSessions not found in coachFinancials during pay distribution. Initializing.`);
+            }
+            coachFinancials[coachName].totalPay += individualCoachPayout;
+          }
+        });
+      }
+      // The remaining 10% goes to academy
+      totalCampAcademyEarnings += session.totalRevenue * 0.10;
+    }
+    
+    // Overall totals
+    // Note: kidsGroupCoachPay and adultGroupCoachPay are part of overallTotalCoachPayroll,
+    // but NOT added to individual coachFinancials[coachName].totalPay as per subtask instructions.
+    const overallTotalRevenue = kidsGroupRevenue + adultGroupRevenue + totalPrivateRevenue + totalCampRevenue;
+    const overallTotalCoachPayroll = kidsGroupCoachPay + adultGroupCoachPay + totalCoachPayrollForPrivates + totalCampCoachPayout;
+    
     const grossProfit = overallTotalRevenue - overallTotalCoachPayroll;
     const totalOverhead = getSetting('director_salary') + getSetting('admin_expenses');
     const netProfit = grossProfit - totalOverhead;
     const profitMargin = overallTotalRevenue > 0 ? (netProfit / overallTotalRevenue) * 100 : 0;
 
-    // Build and send the JSON response
+    // coachFinancials is already initialized before the commission loop.
+    // const coachFinancials = {}; // Remove re-initialization
+
+    // Define PROGRAM_DURATIONS
+    const PROGRAM_DURATIONS = {
+      "Private Lessons": 1,    // From "Private Lesson": 1, "Tennis Private": 1
+      "Summer Camp": 2.5,      // From "Summer Camp": 2.5
+      "Kids Camp": 1.5,        // From "Kids Camp": 1.5
+      "Group Lesson": 1,       // From "Adult Clinic": 1, "Group Lessons": 1
+      // Programs normalizing to "Other" will default to 0 hours if not explicitly listed here,
+      // due to the `|| 0` fallback in the financial calculation logic.
+    };
+
+    // Iterate through combinedLessonData to calculate hours and lessons taught for Private Lessons
+    // Note: Camp/Group lesson hours and counts are handled by `filteredCampBookings` loop later.
+    // This loop should specifically add hours/lessons for "Private Lessons" from combinedLessonData.
+    for (const booking of combinedLessonData) {
+      const primaryCoachName = booking.coach || booking.coach1 || 'Unknown Coach';
+      const normalizedProgram = normalizeProgramType(booking.program);
+
+      // Only count hours and lessons for "Private Lessons" here.
+      // Other program types (Summer Camp, Kids Camp, Group Lesson) are handled by filteredCampBookings loop.
+      if (normalizedProgram === "Private Lessons") {
+        if (!coachFinancials[primaryCoachName]) {
+          coachFinancials[primaryCoachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
+          // console.warn(`Financials: Coach ${primaryCoachName} from hours/lessons loop not found. Initializing.`);
+        }
+        coachFinancials[primaryCoachName].lessonsTaught += 1;
+        
+        const duration = PROGRAM_DURATIONS[normalizedProgram] || 0;
+        if (duration === 0 && normalizedProgram !== "Other") {
+          console.warn(`Financials: Program "${booking.program}" (Normalized: "${normalizedProgram}", Coach: ${primaryCoachName}) not in PROGRAM_DURATIONS or duration is 0 for private lesson. Hours not added.`);
+        }
+        coachFinancials[primaryCoachName].totalHours += duration;
+      }
+    }
+
+    // Process Camp Bookings for hours and lessons taught (this loop remains as is, operating on filteredCampBookings)
+    for (const booking of filteredCampBookings) {
+        const coachName = booking.coach || 'Unknown Coach'; // This data comes from 'bookings' table, so 'booking.coach' is correct.
+        if (!coachFinancials[coachName]) {
+            coachFinancials[coachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
+        }
+        coachFinancials[coachName].lessonsTaught += 1; 
+
+        const normalizedProgram = normalizeProgramType(booking.program);
+        const duration = PROGRAM_DURATIONS[normalizedProgram] || 0;
+        if (duration === 0 && normalizedProgram !== "Other") {
+            console.warn(`Financials: Program "${booking.program}" (Normalized: "${normalizedProgram}", Coach: ${coachName}) not in PROGRAM_DURATIONS or duration is 0 for camp/group. Hours not added.`);
+        }
+        coachFinancials[coachName].totalHours += duration;
+        // Pay for camp bookings is handled per session later (in campSessions loop)
+    }
+
+    // 8) Build and send the JSON response
     const financialData = {
       period: period || `${startDate.getFullYear()}-${String(startDate.getMonth()+1).padStart(2,'0')}`,
       startDate: sqlStartDate,
       endDate:   sqlEndDate,
       
+      // Input settings values returned for transparency / display on form
+      kids_group_fee:         getSetting('kids_group_fee'),
+      adult_group_fee:        getSetting('adult_group_fee'),
+      private_lesson_rate:    getSetting('private_lesson_rate'), 
+      // clinic_camp_fee:        getSetting('clinic_camp_fee'), // Removed as this specific fee setting is superseded by dynamic calculation
+      coach_kids_group_rate:  getSetting('coach_kids_group_rate'),
+      coach_adult_group_rate: getSetting('coach_adult_group_rate'),
+      // coach_clinic_camp_fee: getSetting('coach_clinic_camp_fee'), // Removed as this specific fee setting is superseded by dynamic calculation
       director_salary:        getSetting('director_salary'),
       admin_expenses:         getSetting('admin_expenses'),
 
-      // Display-only summary fields (not used in core calculations anymore)
-      num_kids_enrolled:      num_kids_enrolled_display,
-      num_adults_enrolled:    num_adults_enrolled_display,
-      total_private_hours:    total_private_hours_display, 
+      // Enrollment data from summary
+      num_kids_enrolled:      num_kids_enrolled,
+      num_adults_enrolled:    num_adults_enrolled,
+      total_private_hours:    total_private_hours, 
+      // num_clinic_participants: num_clinic_participants, // This metric might still be useful for display, but not for these financial calculations
 
       // Calculated financial metrics
+      kids_group_revenue:     kidsGroupRevenue,
+      adult_group_revenue:    adultGroupRevenue,
+      // clinic_camp_revenue:    clinicCampRevenue, // Replaced by totalCampRevenue
+      private_lesson_revenue: totalPrivateRevenue, 
+      totalCampRevenue:       totalCampRevenue, // New: Revenue from camp-style programs
       totalRevenue:           overallTotalRevenue, 
+
+      kids_group_coach_pay:   kidsGroupCoachPay,
+      adult_group_coach_pay:  adultGroupCoachPay,
+      // clinic_camp_coach_pay:  clinicCampCoachPay, // Replaced by totalCampCoachPayout
+      total_private_coach_pay: totalCoachPayrollForPrivates, 
+      totalCampCoachPayout:   totalCampCoachPayout, // New: Coach payout for camp-style programs
       totalCoachPayroll:      overallTotalCoachPayroll, 
-      totalAcademyEarnings:   overallAcademyEarnings,
+      
+      total_academy_commission_from_privates: totalAcademyCommissionForPrivates,
+      totalCampAcademyEarnings: totalCampAcademyEarnings, // New: Academy earnings from camp-style programs
 
       grossProfit:            grossProfit,
-      totalOverhead:          totalOverhead,
+      totalOverhead:          totalOverhead, // Sum of director_salary and admin_expenses from settings
       netProfit:              netProfit,
       profitMargin:           profitMargin,
 
-      coachDetails: Object.entries(coachFinancials)
-        .map(([coachName, data]) => ({
-          coachName,
-          lessonsTaught: data.lessonsTaught || 0,
-          totalHours: data.totalHours || 0,
-          totalPay: data.totalPay || 0,
-        }))
-        .filter(coachEntry => coachEntry.totalPay > 0 || coachEntry.lessonsTaught > 0)
-        .sort((a, b) => b.totalPay - a.totalPay)
+      // Coach details
+      coachDetails: Object.entries(coachFinancials).map(([coachName, data]) => ({
+        coachName,
+        lessonsTaught: data.lessonsTaught || 0,
+        totalHours: data.totalHours || 0,
+        totalPay: data.totalPay || 0,
+      })).sort((a, b) => b.totalPay - a.totalPay) // Sort by pay, descending
     };
 
     return res.json(financialData);
@@ -1109,40 +1220,61 @@ app.post('/api/admin/lessons', async (req, res) => {
   if (!req.session?.user?.isAdmin) {
     return res.status(403).json({ message: 'Forbidden' });
   }
-  // Destructure all potential coach names
+  // Destructure all three potential coach names
   let { program, coachName, coachName2, coachName3, date, time, student, referral_source } = req.body;
 
-  // Normalize program name
   if (program === 'Tennis Private') {
-    program = 'Private Lesson'; 
+    program = 'Private Lesson'; // Normalize program name
   }
 
-  // Validate primary coach name
-  if (!coachName || typeof coachName !== 'string' || coachName.trim() === '') {
-    return res.status(400).json({ message: 'Primary coach name (coachName) is required.' });
-  }
-  const processedCoachName = coachName.trim();
+  const campLikePrograms = ["Summer Camp / Group Lessons", "High Performance Training", "Adult Clinics"];
+  const isCampLikeProgram = campLikePrograms.includes(program);
 
-  // Process secondary and tertiary coach names (store as NULL if empty or not provided)
-  const processedCoachName2 = (coachName2 && typeof coachName2 === 'string' && coachName2.trim() !== '') ? coachName2.trim() : null;
-  const processedCoachName3 = (coachName3 && typeof coachName3 === 'string' && coachName3.trim() !== '') ? coachName3.trim() : null;
-  
   // Ensure referral_source is null if empty string, otherwise use its value.
-  const referralSourceForDb = (referral_source && typeof referral_source === 'string' && referral_source.trim() !== '') ? referral_source.trim() : null;
-  // Student name defaults to empty string if not provided.
+  const referralSourceForDb = referral_source && referral_source.trim() !== '' ? referral_source.trim() : null;
+  // Student name is usually empty for camps, but pass it through if provided.
   const studentForDb = student || ''; 
 
-  console.log(`🎾 Adding lesson via admin. Program: ${program}, Coach1: ${processedCoachName}, Coach2: ${processedCoachName2}, Coach3: ${processedCoachName3}, Referral: ${referralSourceForDb}`);
+  if (isCampLikeProgram) {
+    const coachesToProcess = [];
+    if (coachName && coachName.trim() !== '') coachesToProcess.push(coachName.trim());
+    if (coachName2 && coachName2.trim() !== '') coachesToProcess.push(coachName2.trim());
+    if (coachName3 && coachName3.trim() !== '') coachesToProcess.push(coachName3.trim());
 
-  try {
-    await pool.query(
-      'INSERT INTO bookings (email, program, coach, coach2, coach3, date, time, student, paid, session_id, referral_source) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
-      ['', program, processedCoachName, processedCoachName2, processedCoachName3, date, time, studentForDb, false, null, referralSourceForDb]
-    );
-    res.status(200).send('Lesson record added successfully.');
-  } catch (err) {
-    console.error('Error adding admin lesson:', err);
-    res.status(500).send('Error adding lesson record.');
+    if (coachesToProcess.length === 0) {
+      return res.status(400).json({ message: 'At least one coach is required for camp-like programs.' });
+    }
+
+    console.log('🎾 Adding camp-like lesson via admin for program:', program, 'Coaches:', coachesToProcess.join(', '));
+    try {
+      let lessonsAddedCount = 0;
+      for (const currentCoach of coachesToProcess) {
+        await pool.query(
+          'INSERT INTO bookings (email, program, coach, date, time, student, paid, session_id, referral_source) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+          ['', program, currentCoach, date, time, studentForDb, false, null, referralSourceForDb] // studentForDb and referralSourceForDb are same for all coaches in a camp
+        );
+        lessonsAddedCount++;
+      }
+      res.status(200).send(`${lessonsAddedCount} lesson(s) added successfully for program: ${program}`);
+    } catch (err) {
+      console.error('Error adding admin camp-like lesson:', err);
+      res.status(500).send('Error adding camp-like lesson(s)');
+    }
+  } else { // Not a camp-like program (e.g., Private Lesson)
+    if (!coachName || coachName.trim() === '') {
+      return res.status(400).json({ message: 'Coach name is required for this program type.' });
+    }
+    console.log('🎾 Adding non-camp lesson via admin for coach:', coachName, 'Program:', program, 'Referral:', referral_source);
+    try {
+      await pool.query(
+        'INSERT INTO bookings (email, program, coach, date, time, student, paid, session_id, referral_source) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+        ['', program, coachName, date, time, studentForDb, false, null, referralSourceForDb]
+      );
+      res.status(200).send('Lesson added successfully');
+    } catch (err) {
+      console.error('Error adding admin non-camp lesson:', err);
+      res.status(500).send('Error adding lesson');
+    }
   }
 });
 

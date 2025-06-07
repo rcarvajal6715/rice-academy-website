@@ -1853,15 +1853,44 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
       checkSession();
       loadAllLessons(); // Initial load of lesson data
 
+      let isAdminEditing = false;
+      let originalFieldStates = {};
+
       const enableEditingBtn = document.getElementById('enable-editing-btn');
       if (enableEditingBtn) {
         enableEditingBtn.addEventListener('click', () => {
-          document.querySelectorAll('.referral-select, .lesson-cost-input').forEach(el => {
-            el.disabled = false; // enable editing
-          });
-          enableEditingBtn.disabled = true; // single‐use
-          enableEditingBtn.textContent = 'Editing Enabled'; 
-          checkGlobalInputChanges(); // Call after enabling to set initial state of save button
+          if (!isAdminEditing) {
+            // Enable editing mode
+            isAdminEditing = true;
+            enableEditingBtn.textContent = 'Disable Editing';
+            document.querySelectorAll('.referral-select, .lesson-cost-input').forEach(el => {
+              const fieldId = el.dataset.bookingId + (el.classList.contains('referral-select') ? '_referral' : '_cost');
+              originalFieldStates[fieldId] = {
+                disabled: el.disabled,
+                value: el.value
+              };
+              el.disabled = false; // enable editing
+            });
+            checkGlobalInputChanges(); // Call after enabling to set initial state of save button
+          } else {
+            // Disable editing mode
+            isAdminEditing = false;
+            enableEditingBtn.textContent = 'Enable Editing';
+            document.querySelectorAll('.referral-select, .lesson-cost-input').forEach(el => {
+              const fieldId = el.dataset.bookingId + (el.classList.contains('referral-select') ? '_referral' : '_cost');
+              if (originalFieldStates[fieldId]) {
+                el.disabled = originalFieldStates[fieldId].disabled;
+                // Value is intentionally not reverted: el.value = originalFieldStates[fieldId].value;
+              } else {
+                // Fallback if somehow the original state wasn't stored (should not happen)
+                el.disabled = true; 
+              }
+            });
+            // Clear originalFieldStates as we are no longer in editing mode
+            // and want to capture fresh states if editing is re-enabled.
+            originalFieldStates = {}; 
+            checkGlobalInputChanges(); // Update save button state
+          }
         });
       } else {
         console.warn('Enable Editing button not found on initial load.');

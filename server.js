@@ -182,6 +182,26 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+function normalizeProgramType(program) {
+  if (!program || typeof program !== 'string') {
+    return "Other";
+  }
+  const lowerProgram = program.toLowerCase();
+  if (lowerProgram.includes("private") || lowerProgram.includes("tennis private")) {
+    return "Private Lessons";
+  }
+  if (lowerProgram.includes("summer")) {
+    return "Summer Camp";
+  }
+  if (lowerProgram.includes("kid")) {
+    return "Kids Camp";
+  }
+  if (lowerProgram.includes("group") || lowerProgram.includes("adult")) {
+    return "Group Lesson";
+  }
+  return "Other";
+}
+
 // ---- Admin Update Coaches for a Session Route ----
 app.post('/api/admin/lessons/update-coaches', async (req, res) => {
   if (!req.session?.user?.isAdmin) {
@@ -309,22 +329,51 @@ app.post('/api/admin/update-enrollments-summary', async (req, res) => {
       const aggregationQuery = `
         SELECT
             TO_CHAR(date, 'YYYY-MM') AS period_month,
+
             SUM(CASE
-                WHEN LOWER(program) LIKE ANY (ARRAY['%kids camp%', '%summer camp%', '%junior%', '%summer camp / group lessons%']) THEN 1
+                -- Condition for "Summer Camp"
+                WHEN LOWER(program) LIKE '%summer%' THEN 1
+                -- Condition for "Kids Camp" (must not be private or summer)
+                WHEN LOWER(program) LIKE '%kid%' AND 
+                     NOT (LOWER(program) LIKE '%private%' OR LOWER(program) LIKE '%tennis private%') AND 
+                     NOT LOWER(program) LIKE '%summer%' 
+                THEN 1
                 ELSE 0
-            END) AS num_kids_enrolled,
+            END) AS num_kids_enrolled, -- Sums "Summer Camp" and "Kids Camp"
+
             SUM(CASE
-                WHEN LOWER(program) LIKE '%adult clinic%' THEN 1
+                -- Condition for "Group Lesson" (must not be private, summer, or kid)
+                WHEN (LOWER(program) LIKE '%group%' OR LOWER(program) LIKE '%adult%') AND 
+                     NOT (LOWER(program) LIKE '%private%' OR LOWER(program) LIKE '%tennis private%') AND 
+                     NOT LOWER(program) LIKE '%summer%' AND 
+                     NOT LOWER(program) LIKE '%kid%'
+                THEN 1
                 ELSE 0
-            END) AS num_adults_enrolled,
+            END) AS num_adults_enrolled, -- Sums "Group Lesson"
+
             SUM(CASE
-                WHEN LOWER(program) LIKE ANY (ARRAY['%private%', '%private lesson%']) THEN 1
+                -- Condition for "Private Lessons"
+                WHEN (LOWER(program) LIKE '%private%' OR LOWER(program) LIKE '%tennis private%')
+                THEN 1
                 ELSE 0
-            END) AS total_private_hours, -- Count of private lessons
+            END) AS total_private_hours, -- Sums "Private Lessons"
+
             SUM(CASE
-                WHEN LOWER(program) LIKE ANY (ARRAY['%camp%', '%clinic%', '%high performance%']) THEN 1
+                -- Condition for "Summer Camp"
+                WHEN LOWER(program) LIKE '%summer%' THEN 1
+                -- Condition for "Kids Camp" (must not be private or summer)
+                WHEN LOWER(program) LIKE '%kid%' AND 
+                     NOT (LOWER(program) LIKE '%private%' OR LOWER(program) LIKE '%tennis private%') AND 
+                     NOT LOWER(program) LIKE '%summer%'
+                THEN 1
+                -- Condition for "Group Lesson" (must not be private, summer, or kid)
+                WHEN (LOWER(program) LIKE '%group%' OR LOWER(program) LIKE '%adult%') AND 
+                     NOT (LOWER(program) LIKE '%private%' OR LOWER(program) LIKE '%tennis private%') AND 
+                     NOT LOWER(program) LIKE '%summer%' AND 
+                     NOT LOWER(program) LIKE '%kid%'
+                THEN 1
                 ELSE 0
-            END) AS num_clinic_participants
+            END) AS num_clinic_participants -- Sums "Summer Camp", "Kids Camp", and "Group Lesson"
         FROM
             bookings
         WHERE
@@ -492,14 +541,15 @@ app.get('/api/financials', async (req, res) => {
     const privateRows = (
       await pool.query(
         `
-        SELECT coach, lesson_cost, payout_type, referral_source -- Added payout_type, kept referral_source for now
-        FROM bookings
-        WHERE (program = 'Private Lesson' OR program = 'Tennis Private')
-          AND date >= $1 AND date <= $2
-        `, 
+            SELECT coach, lesson_cost, payout_type, referral_source, program
+            FROM bookings
+            WHERE (LOWER(program) LIKE '%private%') 
+              AND date >= $1 AND date <= $2
+            `, 
         [sqlStartDate, sqlEndDate]
       )
     ).rows;
+    const actualPrivateRows = privateRows.filter(booking => normalizeProgramType(booking.program) === "Private Lessons");
 
     // 6) coach_rates related logic removed.
     // const coachRateKeys = ... (removed)
@@ -512,7 +562,7 @@ app.get('/api/financials', async (req, res) => {
     let totalCoachPayrollForPrivates = 0;
     let totalAcademyCommissionForPrivates = 0;
 
-    for (const booking of privateRows) {
+    for (const booking of actualPrivateRows) {
   const lessonCost = parseFloat(booking.lesson_cost);
   if (isNaN(lessonCost) || lessonCost < 0) {
     // skip invalid/missing cost
@@ -590,33 +640,45 @@ app.get('/api/financials', async (req, res) => {
     // const clinicCampCoachPay = getSetting('coach_clinic_camp_fee') * num_clinic_participants; // Replaced by totalCampCoachPayout
 
     // New Camp Financial Logic
-    const campProgramNames = [
-      "Summer Camp", "Kids Camp", "Group Lessons", 
-      "Summer Camp / Group Lessons", "High Performance Training", "Adult Clinics"
-    ];
-
-    const campBookingsQuery = `
-      SELECT program, date, coach, lesson_cost
-      FROM bookings
-      WHERE program = ANY($1::text[])
-        AND date >= $2 AND date <= $3
-        AND lesson_cost IS NOT NULL AND lesson_cost > 0;
-    `;
-    const campBookingsResult = await pool.query(campBookingsQuery, [campProgramNames, sqlStartDate, sqlEndDate]);
-    const campBookings = campBookingsResult.rows;
+    const campBookingsResult = await pool.query(
+      `
+          SELECT program, date, coach, lesson_cost
+          FROM bookings
+          WHERE (
+              LOWER(program) LIKE '%summer%' OR
+              LOWER(program) LIKE '%kid%' OR
+              LOWER(program) LIKE '%group%' OR
+              LOWER(program) LIKE '%adult%' OR
+              LOWER(program) LIKE '%camp%' OR 
+              LOWER(program) LIKE '%clinic%' OR
+              LOWER(program) LIKE '%high performance%'
+          )
+            AND date >= $1 AND date <= $2
+            AND lesson_cost IS NOT NULL AND lesson_cost > 0;
+          `,
+      [sqlStartDate, sqlEndDate]
+    );
+    const campBookingsRaw = campBookingsResult.rows;
+    const filteredCampBookings = campBookingsRaw.filter(booking => {
+      const normalized = normalizeProgramType(booking.program);
+      return normalized === "Summer Camp" || normalized === "Kids Camp" || normalized === "Group Lesson";
+    });
 
     const campSessions = {}; // Key: 'YYYY-MM-DD_ProgramName'
 
-    for (const booking of campBookings) {
+    for (const booking of filteredCampBookings) {
       // Ensure date is treated as UTC to avoid off-by-one day issues
       const bookingDate = new Date(booking.date);
       const sessionDateString = new Date(Date.UTC(bookingDate.getUTCFullYear(), bookingDate.getUTCMonth(), bookingDate.getUTCDate()))
                                 .toISOString().slice(0,10);
-      const sessionKey = `${sessionDateString}_${booking.program}`;
+      // const sessionKey = `${sessionDateString}_${booking.program}`; // Original
+      const normalizedCampProgram = normalizeProgramType(booking.program); // Ensure this is done before creating sessionKey
+      const sessionKey = `${sessionDateString}_${normalizedCampProgram}`;
       
       if (!campSessions[sessionKey]) {
         campSessions[sessionKey] = {
-          program: booking.program,
+          // program: booking.program, // Original
+          program: normalizedCampProgram, // Use the same normalized variable
           date: sessionDateString,
           coaches: new Set(),
           totalRevenue: 0,
@@ -673,46 +735,46 @@ app.get('/api/financials', async (req, res) => {
 
     // Define PROGRAM_DURATIONS
     const PROGRAM_DURATIONS = {
-      "Private Lesson": 1,
-      "Tennis Private": 1, // Alias for Private Lesson
-      "Summer Camp": 2.5,
-      "Kids Camp": 1.5,
-      "Adult Clinic": 1,
-      "Adult Clinics": 1, 
-      "Group Lessons": 1,
-      "Summer Camp / Group Lessons": 1, 
-      "High Performance Training": 1.5, 
-      // Add other program types and their durations as needed
+      "Private Lessons": 1,    // From "Private Lesson": 1, "Tennis Private": 1
+      "Summer Camp": 2.5,      // From "Summer Camp": 2.5
+      "Kids Camp": 1.5,        // From "Kids Camp": 1.5
+      "Group Lesson": 1,       // From "Adult Clinic": 1, "Group Lessons": 1
+      // Programs normalizing to "Other" will default to 0 hours if not explicitly listed here,
+      // due to the `|| 0` fallback in the financial calculation logic.
     };
 
     // Iterate through all bookings to calculate hours and lessons taught
 
     // Process Private Lessons for hours and lessons taught
-    for (const booking of privateRows) {
+    for (const booking of actualPrivateRows) {
       const coachName = booking.coach || 'Unknown Coach';
       if (!coachFinancials[coachName]) {
         coachFinancials[coachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
       }
       coachFinancials[coachName].lessonsTaught += 1;
-      const duration = PROGRAM_DURATIONS[booking.program] || 0;
-      if (duration === 0) {
-        console.warn(`Financials: Program "${booking.program}" (Coach: ${coachName}) not in PROGRAM_DURATIONS or duration is 0. Hours not added.`);
+      // Inside the loop for actualPrivateRows, when processing for coachFinancials:
+      const normalizedProgram = normalizeProgramType(booking.program);
+      const duration = PROGRAM_DURATIONS[normalizedProgram] || 0;
+      if (duration === 0 && normalizedProgram !== "Other") {
+        console.warn(`Financials: Program "${booking.program}" (Normalized: "${normalizedProgram}", Coach: ${coachName}) not in PROGRAM_DURATIONS or duration is 0. Hours not added.`);
       }
       coachFinancials[coachName].totalHours += duration;
       // Pay for private lessons is added in the existing loop that calculates totalCoachPayrollForPrivates
     }
 
     // Process Camp Bookings for hours and lessons taught
-    for (const booking of campBookings) {
+    for (const booking of filteredCampBookings) {
         const coachName = booking.coach || 'Unknown Coach';
         if (!coachFinancials[coachName]) {
             coachFinancials[coachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
         }
         coachFinancials[coachName].lessonsTaught += 1; 
 
-        const duration = PROGRAM_DURATIONS[booking.program] || 0;
-        if (duration === 0) {
-            console.warn(`Financials: Program "${booking.program}" (Coach: ${coachName}) not in PROGRAM_DURATIONS or duration is 0. Hours not added.`);
+        // Inside the loop for filteredCampBookings, when processing for coachFinancials:
+        const normalizedProgram = normalizeProgramType(booking.program);
+        const duration = PROGRAM_DURATIONS[normalizedProgram] || 0;
+        if (duration === 0 && normalizedProgram !== "Other") {
+            console.warn(`Financials: Program "${booking.program}" (Normalized: "${normalizedProgram}", Coach: ${coachName}) not in PROGRAM_DURATIONS or duration is 0. Hours not added.`);
         }
         coachFinancials[coachName].totalHours += duration;
         // Pay for camp bookings is handled per session later
@@ -1963,4 +2025,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { app, pool };
+module.exports = { app, pool, normalizeProgramType };

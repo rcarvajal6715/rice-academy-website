@@ -459,6 +459,7 @@ legend {
       <div><label>Private Lesson Coach Pay:</label> <span id="display_private_lesson_coach_pay">$0.00</span></div>
       <div><label>Total Camp Coach Payroll:</label> <span id="display_total_camp_coach_payout">$0.00</span></div>
       <div><label>Total Coach Payroll:</label> <span id="display_total_coach_payroll">$0.00</span></div>
+      <div><label>Total Expenses:</label> <span id="display_total_expenses">$0.00</span></div>
       <hr>
       <div><label>Academy Commission (Private Lessons):</label> <span id="display_academy_commission_privates">$0.00</span></div>
       <div><label>Total Camp Academy Earnings:</label> <span id="display_total_camp_academy_earnings">$0.00</span></div>
@@ -774,7 +775,13 @@ document.addEventListener('DOMContentLoaded', () => {
         updateElement('display_academy_commission_privates', data.total_academy_commission_from_privates);
         updateElement('display_total_camp_academy_earnings', data.totalCampAcademyEarnings); // New field
 
+        updateElement('display_total_expenses', data.totalExpenses); // Added for total expenses
+
         updateElement('display_gross_profit', data.grossProfit);
+        const grossProfitLabel = document.getElementById('display_gross_profit').previousElementSibling;
+        if (grossProfitLabel && grossProfitLabel.tagName === 'LABEL') {
+            grossProfitLabel.textContent = 'Gross Profit (Revenue - Coach Payroll - Expenses):';
+        }
         // display_total_overhead is updated when director_salary or admin_expenses inputs change,
         // or could be updated here directly: updateElement('display_total_overhead', data.totalOverhead);
         // For now, let's explicitly update it from data.totalOverhead.

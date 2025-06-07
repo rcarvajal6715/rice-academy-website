@@ -737,8 +737,21 @@ FROM bookings
     // but NOT added to individual coachFinancials[coachName].totalPay as per subtask instructions.
     const overallTotalRevenue = kidsGroupRevenue + adultGroupRevenue + totalPrivateRevenue + totalCampRevenue;
     const overallTotalCoachPayroll = kidsGroupCoachPay + adultGroupCoachPay + totalCoachPayrollForPrivates + totalCampCoachPayout;
+
+    // Fetch total expenses for the period
+    let totalExpenses = 0;
+    const expensesQueryPeriod = period ? period : `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+    const expensesQuery = `
+      SELECT SUM(amount) AS total_expenses
+      FROM expenses
+      WHERE TO_CHAR(period, 'YYYY-MM') = $1
+    `;
+    const expensesResult = await pool.query(expensesQuery, [expensesQueryPeriod]);
+    if (expensesResult.rows.length > 0 && expensesResult.rows[0].total_expenses) {
+      totalExpenses = parseFloat(expensesResult.rows[0].total_expenses);
+    }
     
-    const grossProfit = overallTotalRevenue - overallTotalCoachPayroll;
+    const grossProfit = overallTotalRevenue - overallTotalCoachPayroll - totalExpenses;
     const totalOverhead = getSetting('director_salary') + getSetting('admin_expenses');
     const netProfit = grossProfit - totalOverhead;
     const profitMargin = overallTotalRevenue > 0 ? (netProfit / overallTotalRevenue) * 100 : 0;
@@ -826,7 +839,8 @@ FROM bookings
       // clinic_camp_revenue:    clinicCampRevenue, // Replaced by totalCampRevenue
       private_lesson_revenue: totalPrivateRevenue, 
       totalCampRevenue:       totalCampRevenue, // New: Revenue from camp-style programs
-      totalRevenue:           overallTotalRevenue, 
+      totalRevenue:           overallTotalRevenue,
+      totalExpenses:          totalExpenses, // Added total expenses
 
       kids_group_coach_pay:   kidsGroupCoachPay,
       adult_group_coach_pay:  adultGroupCoachPay,

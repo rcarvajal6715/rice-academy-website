@@ -324,6 +324,7 @@ legend {
         </fieldset>
     </div>
 
+    <!--
     <div class="input-group full-width">
       <fieldset>
         <legend>Lesson Price Inputs</legend>
@@ -345,7 +346,9 @@ legend {
         </div>
       </fieldset>
     </div>
+    -->
 
+    <!--
     <div class="input-group full-width">
       <fieldset>
         <legend>Enrollment / Hours Inputs</legend>
@@ -367,7 +370,9 @@ legend {
         </div>
       </fieldset>
     </div>
+    -->
     
+    <!--
     <div class="input-group full-width">
       <fieldset>
         <legend>Coach Payout Rates</legend>
@@ -385,17 +390,18 @@ legend {
         </div>
       </fieldset>
     </div>
+    -->
 
     <div class="input-group full-width">
       <fieldset>
-        <legend>Fixed Overhead Inputs</legend>
+        <legend>Fixed Overhead Inputs (Populated from API)</legend>
         <div>
           <label for="director_salary">Head Coach/Director Salary</label>
-          <input type="number" id="director_salary" placeholder="$ monthly" min="0" step="0.01">
+          <input type="number" id="director_salary" placeholder="$ monthly" min="0" step="0.01" readonly>
         </div>
         <div>
           <label for="admin_expenses">Office/Admin Expenses</label>
-          <input type="number" id="admin_expenses" placeholder="$ monthly" min="0" step="0.01">
+          <input type="number" id="admin_expenses" placeholder="$ monthly" min="0" step="0.01" readonly>
         </div>
         <div>
           <label>Total Overhead <span title="sums all monthly non-coach costs (Director salary + admin)">(?)</span>:</label> 
@@ -420,6 +426,8 @@ legend {
       <div><label>Clinic/Camp Coach Pay:</label> <span id="display_clinic_camp_coach_pay">$0.00</span></div>
       <div><label>Total Coach Payroll:</label> <span id="display_total_coach_payroll">$0.00</span></div>
       <hr>
+      <div><label>Academy Commission (Private Lessons):</label> <span id="display_academy_commission_privates">$0.00</span></div>
+      <hr>
       <div><label>Gross Profit (Revenue - Coach Payroll):</label> <span id="display_gross_profit">$0.00</span></div>
       <div><label>Net Profit (Gross Profit - Total Overhead):</label> <span id="display_net_profit">$0.00</span></div>
       <div><label>Profit Margin:</label> <span id="display_profit_margin">0.00%</span></div>
@@ -432,6 +440,7 @@ legend {
       <div class="dashboard-item"><span>Kids Group Revenue:</span> <span class="value" id="dash_kids_revenue">$0.00</span> | <span>Kids Group Coach Pay:</span> <span class="value" id="dash_kids_coach_pay">$0.00</span></div>
       <div class="dashboard-item"><span>Adult Group Revenue:</span> <span class="value" id="dash_adult_revenue">$0.00</span> | <span>Adult Group Coach Pay:</span> <span class="value" id="dash_adult_coach_pay">$0.00</span></div>
       <div class="dashboard-item"><span>Private Lesson Revenue:</span> <span class="value" id="dash_private_revenue">$0.00</span> | <span>Private Lesson Coach Pay:</span> <span class="value" id="dash_private_coach_pay">$0.00</span></div>
+      <div class="dashboard-item"><span>Academy Commission (Private Lessons):</span> <span class="value" id="dash_academy_commission_privates">$0.00</span></div>
       <div class="dashboard-item"><span>Clinic/Camp Revenue:</span> <span class="value" id="dash_camp_revenue">$0.00</span> | <span>Clinic/Camp Coach Pay:</span> <span class="value" id="dash_camp_coach_pay">$0.00</span></div>
       <hr>
       <div class="dashboard-item"><span>Total Revenue:</span> <span class="value" id="dash_total_revenue">$0.00</span> | <span>Total Coach Payroll:</span> <span class="value" id="dash_total_payroll">$0.00</span></div>
@@ -439,9 +448,12 @@ legend {
       <div class="dashboard-item"><span>Profit Margin (%):</span> <span class="value" id="dash_profit_margin">0.00%</span></div>
     </fieldset>
   </div>
-<!-- financials-form correctly ends further up. This closing tag was extraneous. -->
-
-  <div id="financial-dashboard" style="margin-top: 20px;"></div>
+  <!-- Note: The div with id="financial-dashboard" that was previously populated by renderFinancialDashboard is removed 
+       as its content is now directly part of the "Dashboard" fieldset above using specific span IDs.
+       If it was used for something else, it would need to be re-evaluated.
+       For this task, assuming the detailed spans in "Dashboard" fieldset replace its purpose.
+  -->
+  <!-- <div id="financial-dashboard" style="margin-top: 20px;"></div> -->
 
   <!-- New Expenses Section HTML -->
   <fieldset style="margin-top: 20px;">
@@ -659,12 +671,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const inputFieldIds = [
-        'kids_group_fee', 'adult_group_fee', 'private_lesson_rate', 'clinic_camp_fee',
-        'num_kids_enrolled', 'num_adults_enrolled', 'total_private_hours', 'num_clinic_participants',
-        'coach_kids_group_rate', 'coach_adult_group_rate', /* 'coach_private_hourly_pay' removed */ 'coach_clinic_camp_fee',
-        'director_salary', 'admin_expenses'
+        // These are commented out as the corresponding HTML fieldsets are commented out.
+        // 'kids_group_fee', 'adult_group_fee', 'private_lesson_rate', 'clinic_camp_fee',
+        // 'num_kids_enrolled', 'num_adults_enrolled', 'total_private_hours', 'num_clinic_participants',
+        // 'coach_kids_group_rate', 'coach_adult_group_rate', 'coach_clinic_camp_fee',
+        'director_salary', 'admin_expenses' // These are kept as they are made read-only and populated by API
     ];
 
+    // getFormValues is likely no longer needed if all display values come directly from API.
+    // If any calculation still relies on it, it would need to be reassessed.
+    // For now, commenting out its direct usage for calculations.
+    /*
     function getFormValues() {
         const values = {};
         inputFieldIds.forEach(id => {
@@ -674,74 +691,62 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         return values;
     }
-
-    // Removed existing updateFinancialDashboard function (if any was left from previous steps)
-    // The new renderFinancialDashboard from the previous step should be here.
-    // Assuming it is, just ensuring no duplication.
+    */
 
     function renderFinancialDashboard(data) {
-      const dashboardDiv = document.getElementById('financial-dashboard');
-      if (!dashboardDiv) {
-          console.error('Error: financial-dashboard div not found.');
-          return;
-      }
+        // Populate Financial Summary Spans directly from API data
+        updateElement('display_kids_group_revenue', data.kids_group_revenue);
+        updateElement('display_adult_group_revenue', data.adult_group_revenue);
+        updateElement('display_private_lesson_revenue', data.private_lesson_revenue);
+        updateElement('display_clinic_camp_revenue', data.clinic_camp_revenue);
+        updateElement('display_total_revenue', data.totalRevenue);
 
-      // Helper to create a display item
-      const createItem = (label, value, isCurrency = true, isPercentage = false) => {
-          let displayValue = value;
-          if (value === null || value === undefined || isNaN(value)) {
-              displayValue = 'N/A';
-          } else {
-              displayValue = isCurrency ? `$${Number(value).toFixed(2)}` : (isPercentage ? `${Number(value).toFixed(2)}%` : Number(value).toFixed(0));
-          }
-          return `<div class="dashboard-item"><span>${label}:</span> <span class="value">${displayValue}</span></div>`;
-      };
-      
-      // Calculate derived values
-      const kidsGroupRevenue = (data.kids_group_fee || 0) * (data.num_kids_enrolled || 0);
-      const adultGroupRevenue = (data.adult_group_fee || 0) * (data.num_adults_enrolled || 0);
-      // Private lesson revenue is directly from data.private_lesson_revenue
-      const clinicCampRevenue = (data.clinic_camp_fee || 0) * (data.num_clinic_participants || 0);
-      
-      const totalRevenue = kidsGroupRevenue + adultGroupRevenue + (data.private_lesson_revenue || 0) + clinicCampRevenue;
+        updateElement('display_kids_group_coach_pay', data.kids_group_coach_pay);
+        updateElement('display_adult_group_coach_pay', data.adult_group_coach_pay);
+        updateElement('display_private_lesson_coach_pay', data.total_private_coach_pay);
+        updateElement('display_clinic_camp_coach_pay', data.clinic_camp_coach_pay);
+        updateElement('display_total_coach_payroll', data.totalCoachPayroll);
+        
+        updateElement('display_academy_commission_privates', data.total_academy_commission_from_privates);
 
-      // Coach Payouts - Assuming these are calculated in backend or settings
-      // For this example, let's assume coach pay for group/clinic is also part of 'data' if applicable, or use settings
-      // For simplicity, we'll use placeholders if not directly in 'data'.
-      // The issue implies `total_private_coach_pay` comes from API.
-      // Other coach pays might need to be derived from num_enrolled * coach_rate from settings if not in `data`
-      const kidsGroupCoachPay = (data.coach_kids_group_rate || 0) * (data.num_kids_enrolled || 0);
-      const adultGroupCoachPay = (data.coach_adult_group_rate || 0) * (data.num_adults_enrolled || 0);
-      const clinicCampCoachPay = (data.coach_clinic_camp_fee || 0) * (data.num_clinic_participants || 0);
-      
-      const totalCoachPayroll = kidsGroupCoachPay + adultGroupCoachPay + (data.total_private_coach_pay || 0) + clinicCampCoachPay;
-      
-      const grossProfit = totalRevenue - totalCoachPayroll;
-      const totalOverhead = (data.director_salary || 0) + (data.admin_expenses || 0); // admin_expenses here is from settings, not the new table
-      const netProfit = grossProfit - totalOverhead;
-      const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+        updateElement('display_gross_profit', data.grossProfit);
+        // display_total_overhead is updated when director_salary or admin_expenses inputs change,
+        // or could be updated here directly: updateElement('display_total_overhead', data.totalOverhead);
+        // For now, let's explicitly update it from data.totalOverhead.
+        updateElement('display_total_overhead', data.totalOverhead); 
+        updateElement('display_net_profit', data.netProfit);
+        updateElement('display_profit_margin', data.profitMargin, false, true);
 
-      let html = '<fieldset><legend>Financial Dashboard (Calculated)</legend>';
-      html += createItem('Kids Group Revenue', kidsGroupRevenue);
-      html += createItem('Adult Group Revenue', adultGroupRevenue);
-      html += createItem('Private Lesson Revenue', data.private_lesson_revenue);
-      html += createItem('Clinic/Camp Revenue', clinicCampRevenue);
-      html += '<strong>Total Revenue: ' + createItem('Total Revenue', totalRevenue).replace(/<span>.*?<\/span>/, '') + '</strong><hr>'; // Simplified display
+        // Populate Dashboard Spans directly from API data
+        updateElement('dash_kids_revenue', data.kids_group_revenue);
+        updateElement('dash_kids_coach_pay', data.kids_group_coach_pay);
+        updateElement('dash_adult_revenue', data.adult_group_revenue);
+        updateElement('dash_adult_coach_pay', data.adult_group_coach_pay);
+        updateElement('dash_private_revenue', data.private_lesson_revenue);
+        updateElement('dash_private_coach_pay', data.total_private_coach_pay);
+        updateElement('dash_academy_commission_privates', data.total_academy_commission_from_privates);
+        updateElement('dash_camp_revenue', data.clinic_camp_revenue);
+        updateElement('dash_camp_coach_pay', data.clinic_camp_coach_pay);
+        
+        updateElement('dash_total_revenue', data.totalRevenue);
+        updateElement('dash_total_payroll', data.totalCoachPayroll);
+        updateElement('dash_gross_profit', data.grossProfit);
+        updateElement('dash_fixed_overhead', data.totalOverhead);
+        updateElement('dash_net_profit', data.netProfit);
+        updateElement('dash_profit_margin', data.profitMargin, false, true);
 
-      html += createItem('Kids Group Coach Pay', kidsGroupCoachPay);
-      html += createItem('Adult Group Coach Pay', adultGroupCoachPay);
-      html += createItem('Private Lesson Coach Pay', data.total_private_coach_pay);
-      html += createItem('Clinic/Camp Coach Pay', clinicCampCoachPay);
-      html += '<strong>Total Coach Payroll: ' + createItem('Total Coach Payroll', totalCoachPayroll).replace(/<span>.*?<\/span>/, '') + '</strong><hr>';
-
-      html += createItem('Gross Profit (Revenue - Coach Payroll)', grossProfit);
-      html += createItem('Fixed Overhead (Director + Admin Settings)', totalOverhead);
-      html += '<strong>Net Profit (Gross Profit - Overhead): ' + createItem('Net Profit', netProfit).replace(/<span>.*?<\/span>/, '') + '</strong>';
-      html += createItem('Profit Margin', profitMargin, false, true);
-      html += '</fieldset>';
-
-      dashboardDiv.innerHTML = html;
+        // Populate enrollment/informational data if spans exist (optional based on requirements)
+        // Example: updateElement('display_num_kids', data.num_kids_enrolled, false, false); // If a span with id 'display_num_kids' exists
+        // updateElement('display_num_adults', data.num_adults_enrolled, false, false);
+        // updateElement('display_private_lessons_count', data.total_private_hours, false, false); // 'total_private_hours' is lesson count
+        // updateElement('display_clinic_participants', data.num_clinic_participants, false, false);
     }
+    
+    // updateFinancialDashboard_OLD is no longer needed as renderFinancialDashboard now uses API data.
+    // Remove or comment out updateFinancialDashboard_OLD and its calls.
+    /*
+    function updateFinancialDashboard_OLD(apiData = null) { ... }
+    */
 
     // This is the new renderExpensesList
     function formatDollar(value) {
@@ -974,47 +979,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = await financialsResponse.json();
 
+            // Populate the read-only input fields from the API response.
+            // The inputFieldIds array now primarily lists these.
             inputFieldIds.forEach(id => {
                 const element = document.getElementById(id);
                 if (element && data[id] !== undefined) {
                     element.value = data[id];
                 } else if (element) {
-                    // Don't clear inputs if data for them isn't in API response,
-                    // might be manually set or from a different source.
-                    // element.value = ''; 
+                    // If data for a read-only field is not in API, clear it or set to default.
+                    // element.value = ''; // Or 0, or some placeholder
                 }
             });
             
-            // Directly update private lesson financial summary from API data
-            if (data.private_lesson_revenue !== undefined) {
-                updateElement('display_private_lesson_revenue', data.private_lesson_revenue);
-                updateElement('dash_private_revenue', data.private_lesson_revenue);
-            }
-            if (data.total_private_coach_pay !== undefined) {
-                updateElement('display_private_lesson_coach_pay', data.total_private_coach_pay);
-                updateElement('dash_private_coach_pay', data.total_private_coach_pay);
-            }
-            
-            // The call to updateFinancialDashboard_OLD() might be removed or adapted.
-            // For now, new renderFinancialDashboard will handle its display.
-            // The old display_ and dash_ spans will not be updated by this loop for private_lesson_revenue and total_private_coach_pay.
-            // renderFinancialDashboard will use the `data` object which has the correct values from API.
-            
+            // The main function to update all display spans using API data.
             renderFinancialDashboard(data); 
             
             // After financial data is fetched and dashboard rendered, load expenses for the same period
-            await loadExpensesForPeriod(periodToLoad); // Make sure this is awaited if it's async and setLoadingState(false) is at the very end
+            await loadExpensesForPeriod(periodToLoad);
 
         } catch (error) {
             console.error('Error during financial data processing:', error);
             displayError(`A network or processing error occurred: ${error.message}. Please try again.`);
         } finally {
-            setLoadingState(false); // This ensures inputs are re-enabled and loading message hidden
+            setLoadingState(false);
         }
     }
 
     if (financialsForm) {
-        // Pre-fill year and month with current date
         const now = new Date();
         const currentYear = now.getFullYear();
         const currentMonth = now.getMonth() + 1;
@@ -1022,27 +1013,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectMonth) selectMonth.value = currentMonth;
         
         const defaultPeriod = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
-        fetchFinancialData(defaultPeriod); // Initial load for current month
-        // loadExpensesForPeriod(defaultPeriod); // This is now called at the end of fetchFinancialData
+        fetchFinancialData(defaultPeriod);
 
-        // Add event listeners for live recalculation on data inputs (if still needed for old display parts)
+        // Remove event listeners from input fields that were for live recalculation,
+        // as calculations are now primarily from the API.
+        // The remaining input fields ('director_salary', 'admin_expenses') are read-only.
+        // If there was any specific live update tied to them (e.g. display_total_overhead),
+        // it's now handled by renderFinancialDashboard using data.totalOverhead from API.
+        /*
         inputFieldIds.forEach(id => {
             const inputElement = document.getElementById(id);
             if (inputElement) {
-                // Keep listeners on input fields if they are still used for live calculation for other parts,
-                // or if renderFinancialDashboard itself relies on these being up-to-date.
-                // For now, assume they might still be needed for parts of the old display or if renderFinancialDashboard uses getFormValues().
-                // If renderFinancialDashboard exclusively uses its `data` argument, these listeners might only affect the old summary spans.
-                inputElement.addEventListener('input', () => {
-                    // If the old updateFinancialDashboard_OLD is kept for some reason:
-                    // updateFinancialDashboard_OLD(getFormValues()); // Pass current form values if it relies on them.
-                    // Or, if new dashboard should also react live to input changes (outside of API refresh):
-                    // const currentDataFromForm = getFormValues(); // This gets values from inputs
-                    // const apiPeriodData = ???; // Need a way to store/recall last API data if mixing live input with API data
-                    // renderFinancialDashboard({...apiPeriodData, ...currentDataFromForm}); // Merge if needed
-                });
+                inputElement.removeEventListener('input', relevantHandlerFunction); // Need to ensure handler is referenceable
             }
         });
+        */
+        // For simplicity, the old 'input' event listeners on the few remaining (now readonly)
+        // inputFieldIds will not fire user-driven 'input' events. If they were for other event types,
+        // they might need explicit removal if they cause issues.
+        // The display_total_overhead span is updated by renderFinancialDashboard.
 
         // Event listener for the "Load Data" button
         if (loadPeriodDataButton) {

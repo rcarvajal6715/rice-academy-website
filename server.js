@@ -538,10 +538,12 @@ app.get('/api/financials', async (req, res) => {
     // const num_clinic_participants = parseInt(summaryRow.num_clinic_participants) || 0; // Replaced by new camp logic
 
     // 5) Fetch all private-lesson bookings for this period
+    // Modified to include coach, coach2, coach3 (coach2 and coach3 as NULL placeholders for now)
     const privateRows = (
       await pool.query(
         `
-            SELECT coach, lesson_cost, payout_type, referral_source, program
+            SELECT coach, lesson_cost, payout_type, referral_source, program,
+                   NULL AS coach2, NULL AS coach3
             FROM bookings
             WHERE (LOWER(program) LIKE '%private%') 
               AND date >= $1 AND date <= $2
@@ -550,6 +552,20 @@ app.get('/api/financials', async (req, res) => {
       )
     ).rows;
     const actualPrivateRows = privateRows.filter(booking => normalizeProgramType(booking.program) === "Private Lessons");
+
+    // Fetch data from admin_history
+    const adminHistoryQuery = `
+      SELECT coach1, coach2, coach3, program, referral_source, lesson_cost
+      FROM admin_history
+      WHERE date >= $1 AND date <= $2;
+    `;
+    const adminHistoryRows = (await pool.query(adminHistoryQuery, [sqlStartDate, sqlEndDate])).rows;
+    // Data merging and integration will be handled in the next steps.
+    // console.log('Admin History Rows:', adminHistoryRows); // For debugging, remove later
+
+    // Combine adminHistoryRows and actualPrivateRows
+    const combinedLessonData = [...adminHistoryRows, ...actualPrivateRows];
+    // console.log('Combined Lesson Data Count:', combinedLessonData.length); // For debugging
 
     // 6) coach_rates related logic removed.
     // const coachRateKeys = ... (removed)
@@ -562,17 +578,32 @@ app.get('/api/financials', async (req, res) => {
     let totalCoachPayrollForPrivates = 0;
     let totalAcademyCommissionForPrivates = 0;
 
-    for (const booking of actualPrivateRows) {
+    // Initialize coachFinancials earlier, as it's used in the commission loop
+    const coachFinancials = {};
+
+    // Define PROGRAM_DURATIONS earlier if needed by logic within the loop, or ensure it's before the second loop.
+    // For now, commission loop first.
+    
+    for (const booking of combinedLessonData) { // Iterate over combined data
   const lessonCost = parseFloat(booking.lesson_cost);
   if (isNaN(lessonCost) || lessonCost < 0) {
     // skip invalid/missing cost
     continue;
   }
-  totalPrivateRevenue += lessonCost;
+  totalPrivateRevenue += lessonCost; // This will now sum lesson_cost from both sources
 
-  const coachFullName = booking.coach || 'Unknown Coach'; // Default to prevent errors
-  const simpleCoachName = coachFullName.split(' ')[0];
+  // Use coach if present (from bookings), otherwise use coach1 (from admin_history)
+  const primaryCoachName = booking.coach || booking.coach1 || 'Unknown Coach'; 
+  const simpleCoachName = primaryCoachName.split(' ')[0];
   const referral = booking.referral_source ? booking.referral_source.trim() : '';
+  // Ensure program is read correctly, it should exist in both structures
+  const program = booking.program; 
+
+  // Filter to apply commission logic only to "Private Lessons"
+  // This check is important because combinedLessonData contains various program types.
+  if (normalizeProgramType(program) !== "Private Lessons") {
+    continue; // Skip if not a private lesson for this specific commission logic
+  }
 
   let coachGetsThisLesson = 0;
   let academyGetsThisLesson = 0;
@@ -620,13 +651,12 @@ app.get('/api/financials', async (req, res) => {
   totalAcademyCommissionForPrivates += academyGetsThisLesson;
 
       // Add to coachFinancials totalPay for private lessons
-      if (coachFullName !== 'Unknown Coach') {
-        // Ensure coachFinancials entry exists (it should from the loop above)
-        if (!coachFinancials[coachFullName]) {
-          coachFinancials[coachFullName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
-          console.warn(`Financials: Coach ${coachFullName} from private lessons not found in coachFinancials during pay calculation. Initializing.`);
+      if (primaryCoachName !== 'Unknown Coach') {
+        if (!coachFinancials[primaryCoachName]) {
+          coachFinancials[primaryCoachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
+          // console.warn(`Financials: Coach ${primaryCoachName} from commission loop not found in coachFinancials. Initializing.`);
         }
-        coachFinancials[coachFullName].totalPay += coachGetsThisLesson;
+        coachFinancials[primaryCoachName].totalPay += coachGetsThisLesson;
       }
     }
 
@@ -730,8 +760,8 @@ app.get('/api/financials', async (req, res) => {
     const netProfit = grossProfit - totalOverhead;
     const profitMargin = overallTotalRevenue > 0 ? (netProfit / overallTotalRevenue) * 100 : 0;
 
-    // Initialize coachFinancials
-    const coachFinancials = {};
+    // coachFinancials is already initialized before the commission loop.
+    // const coachFinancials = {}; // Remove re-initialization
 
     // Define PROGRAM_DURATIONS
     const PROGRAM_DURATIONS = {
@@ -743,41 +773,45 @@ app.get('/api/financials', async (req, res) => {
       // due to the `|| 0` fallback in the financial calculation logic.
     };
 
-    // Iterate through all bookings to calculate hours and lessons taught
-
-    // Process Private Lessons for hours and lessons taught
-    for (const booking of actualPrivateRows) {
-      const coachName = booking.coach || 'Unknown Coach';
-      if (!coachFinancials[coachName]) {
-        coachFinancials[coachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
-      }
-      coachFinancials[coachName].lessonsTaught += 1;
-      // Inside the loop for actualPrivateRows, when processing for coachFinancials:
+    // Iterate through combinedLessonData to calculate hours and lessons taught for Private Lessons
+    // Note: Camp/Group lesson hours and counts are handled by `filteredCampBookings` loop later.
+    // This loop should specifically add hours/lessons for "Private Lessons" from combinedLessonData.
+    for (const booking of combinedLessonData) {
+      const primaryCoachName = booking.coach || booking.coach1 || 'Unknown Coach';
       const normalizedProgram = normalizeProgramType(booking.program);
-      const duration = PROGRAM_DURATIONS[normalizedProgram] || 0;
-      if (duration === 0 && normalizedProgram !== "Other") {
-        console.warn(`Financials: Program "${booking.program}" (Normalized: "${normalizedProgram}", Coach: ${coachName}) not in PROGRAM_DURATIONS or duration is 0. Hours not added.`);
+
+      // Only count hours and lessons for "Private Lessons" here.
+      // Other program types (Summer Camp, Kids Camp, Group Lesson) are handled by filteredCampBookings loop.
+      if (normalizedProgram === "Private Lessons") {
+        if (!coachFinancials[primaryCoachName]) {
+          coachFinancials[primaryCoachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
+          // console.warn(`Financials: Coach ${primaryCoachName} from hours/lessons loop not found. Initializing.`);
+        }
+        coachFinancials[primaryCoachName].lessonsTaught += 1;
+        
+        const duration = PROGRAM_DURATIONS[normalizedProgram] || 0;
+        if (duration === 0 && normalizedProgram !== "Other") {
+          console.warn(`Financials: Program "${booking.program}" (Normalized: "${normalizedProgram}", Coach: ${primaryCoachName}) not in PROGRAM_DURATIONS or duration is 0 for private lesson. Hours not added.`);
+        }
+        coachFinancials[primaryCoachName].totalHours += duration;
       }
-      coachFinancials[coachName].totalHours += duration;
-      // Pay for private lessons is added in the existing loop that calculates totalCoachPayrollForPrivates
     }
 
-    // Process Camp Bookings for hours and lessons taught
+    // Process Camp Bookings for hours and lessons taught (this loop remains as is, operating on filteredCampBookings)
     for (const booking of filteredCampBookings) {
-        const coachName = booking.coach || 'Unknown Coach';
+        const coachName = booking.coach || 'Unknown Coach'; // This data comes from 'bookings' table, so 'booking.coach' is correct.
         if (!coachFinancials[coachName]) {
             coachFinancials[coachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
         }
         coachFinancials[coachName].lessonsTaught += 1; 
 
-        // Inside the loop for filteredCampBookings, when processing for coachFinancials:
         const normalizedProgram = normalizeProgramType(booking.program);
         const duration = PROGRAM_DURATIONS[normalizedProgram] || 0;
         if (duration === 0 && normalizedProgram !== "Other") {
-            console.warn(`Financials: Program "${booking.program}" (Normalized: "${normalizedProgram}", Coach: ${coachName}) not in PROGRAM_DURATIONS or duration is 0. Hours not added.`);
+            console.warn(`Financials: Program "${booking.program}" (Normalized: "${normalizedProgram}", Coach: ${coachName}) not in PROGRAM_DURATIONS or duration is 0 for camp/group. Hours not added.`);
         }
         coachFinancials[coachName].totalHours += duration;
-        // Pay for camp bookings is handled per session later
+        // Pay for camp bookings is handled per session later (in campSessions loop)
     }
 
     // 8) Build and send the JSON response

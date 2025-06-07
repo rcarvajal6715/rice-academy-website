@@ -520,7 +520,7 @@ app.get('/api/financials', async (req, res) => {
   }
   totalPrivateRevenue += lessonCost;
 
-  const coachFullName = booking.coach || '';
+  const coachFullName = booking.coach || 'Unknown Coach'; // Default to prevent errors
   const simpleCoachName = coachFullName.split(' ')[0];
   const referral = booking.referral_source ? booking.referral_source.trim() : '';
 
@@ -568,6 +568,16 @@ app.get('/api/financials', async (req, res) => {
 
   totalCoachPayrollForPrivates += coachGetsThisLesson;
   totalAcademyCommissionForPrivates += academyGetsThisLesson;
+
+      // Add to coachFinancials totalPay for private lessons
+      if (coachFullName !== 'Unknown Coach') {
+        // Ensure coachFinancials entry exists (it should from the loop above)
+        if (!coachFinancials[coachFullName]) {
+          coachFinancials[coachFullName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
+          console.warn(`Financials: Coach ${coachFullName} from private lessons not found in coachFinancials during pay calculation. Initializing.`);
+        }
+        coachFinancials[coachFullName].totalPay += coachGetsThisLesson;
+      }
     }
 
     // Calculate revenue and coach pay for other lesson types
@@ -626,21 +636,30 @@ app.get('/api/financials', async (req, res) => {
       const session = campSessions[sessionKey];
       totalCampRevenue += session.totalRevenue;
       const coachCount = session.coaches.size;
-      let sessionCoachPayoutPot = session.totalRevenue * 0.90;
-      
-      // The problem states "distribute 90% ... to the coach(es)"
-      // "If 1 coach, they get the full 90%."
-      // "If 2 or 3 coaches, they split the 90% evenly among them."
-      // This means the total payout from the session to *all* coaches combined is 90%
-      // The individual split is for information but for total payroll, it's just the 90%.
+      let sessionCoachPayoutPot = session.totalRevenue * 0.90; // 90% of session revenue goes to coaches
+
       if (coachCount > 0) {
-        totalCampCoachPayout += sessionCoachPayoutPot;
+        totalCampCoachPayout += sessionCoachPayoutPot; // Aggregate total payout for camps
+
+        const individualCoachPayout = sessionCoachPayoutPot / coachCount;
+        session.coaches.forEach(coachName => {
+          if (coachName && coachName !== 'Unknown Coach') {
+            if (!coachFinancials[coachName]) {
+              // This case should ideally not happen if campBookings loop ran correctly and initialized all coaches
+              coachFinancials[coachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
+              console.warn(`Financials: Coach ${coachName} from campSessions not found in coachFinancials during pay distribution. Initializing.`);
+            }
+            coachFinancials[coachName].totalPay += individualCoachPayout;
+          }
+        });
       }
       // The remaining 10% goes to academy
       totalCampAcademyEarnings += session.totalRevenue * 0.10;
     }
     
     // Overall totals
+    // Note: kidsGroupCoachPay and adultGroupCoachPay are part of overallTotalCoachPayroll,
+    // but NOT added to individual coachFinancials[coachName].totalPay as per subtask instructions.
     const overallTotalRevenue = kidsGroupRevenue + adultGroupRevenue + totalPrivateRevenue + totalCampRevenue;
     const overallTotalCoachPayroll = kidsGroupCoachPay + adultGroupCoachPay + totalCoachPayrollForPrivates + totalCampCoachPayout;
     
@@ -648,6 +667,56 @@ app.get('/api/financials', async (req, res) => {
     const totalOverhead = getSetting('director_salary') + getSetting('admin_expenses');
     const netProfit = grossProfit - totalOverhead;
     const profitMargin = overallTotalRevenue > 0 ? (netProfit / overallTotalRevenue) * 100 : 0;
+
+    // Initialize coachFinancials
+    const coachFinancials = {};
+
+    // Define PROGRAM_DURATIONS
+    const PROGRAM_DURATIONS = {
+      "Private Lesson": 1,
+      "Tennis Private": 1, // Alias for Private Lesson
+      "Summer Camp": 2.5,
+      "Kids Camp": 1.5,
+      "Adult Clinic": 1,
+      "Adult Clinics": 1, 
+      "Group Lessons": 1,
+      "Summer Camp / Group Lessons": 1, 
+      "High Performance Training": 1.5, 
+      // Add other program types and their durations as needed
+    };
+
+    // Iterate through all bookings to calculate hours and lessons taught
+
+    // Process Private Lessons for hours and lessons taught
+    for (const booking of privateRows) {
+      const coachName = booking.coach || 'Unknown Coach';
+      if (!coachFinancials[coachName]) {
+        coachFinancials[coachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
+      }
+      coachFinancials[coachName].lessonsTaught += 1;
+      const duration = PROGRAM_DURATIONS[booking.program] || 0;
+      if (duration === 0) {
+        console.warn(`Financials: Program "${booking.program}" (Coach: ${coachName}) not in PROGRAM_DURATIONS or duration is 0. Hours not added.`);
+      }
+      coachFinancials[coachName].totalHours += duration;
+      // Pay for private lessons is added in the existing loop that calculates totalCoachPayrollForPrivates
+    }
+
+    // Process Camp Bookings for hours and lessons taught
+    for (const booking of campBookings) {
+        const coachName = booking.coach || 'Unknown Coach';
+        if (!coachFinancials[coachName]) {
+            coachFinancials[coachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
+        }
+        coachFinancials[coachName].lessonsTaught += 1; 
+
+        const duration = PROGRAM_DURATIONS[booking.program] || 0;
+        if (duration === 0) {
+            console.warn(`Financials: Program "${booking.program}" (Coach: ${coachName}) not in PROGRAM_DURATIONS or duration is 0. Hours not added.`);
+        }
+        coachFinancials[coachName].totalHours += duration;
+        // Pay for camp bookings is handled per session later
+    }
 
     // 8) Build and send the JSON response
     const financialData = {
@@ -693,7 +762,15 @@ app.get('/api/financials', async (req, res) => {
       grossProfit:            grossProfit,
       totalOverhead:          totalOverhead, // Sum of director_salary and admin_expenses from settings
       netProfit:              netProfit,
-      profitMargin:           profitMargin
+      profitMargin:           profitMargin,
+
+      // Coach details
+      coachDetails: Object.entries(coachFinancials).map(([coachName, data]) => ({
+        coachName,
+        lessonsTaught: data.lessonsTaught || 0,
+        totalHours: data.totalHours || 0,
+        totalPay: data.totalPay || 0,
+      })).sort((a, b) => b.totalPay - a.totalPay) // Sort by pay, descending
     };
 
     return res.json(financialData);

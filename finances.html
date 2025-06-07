@@ -148,7 +148,8 @@
         padding: 20px 10px; /* Reduce padding for smaller screens */
       }
 
-      #all-lessons-container {
+      #all-lessons-container,
+      #coach-payroll-table-fieldset { /* Targeting the fieldset for scroll */
         overflow-x: auto; /* Allow horizontal scrolling only for the table container */
         -webkit-overflow-scrolling: touch; /* Optional: for smoother scrolling on iOS */
       }
@@ -252,6 +253,39 @@ legend {
 .dashboard-item .value {
     font-weight: bold;
     margin-left: 5px;
+}
+.coach-summary-item {
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+.coach-summary-item p {
+    margin: 5px 0;
+}
+
+/* Loading messages styling */
+#coach-payroll-loading, 
+#coach-table-loading { /* This ID is on a TD */
+    text-align: center;
+    padding: 15px;
+    color: #555;
+    font-style: italic;
+}
+/* Ensure the loading TD spans columns if its parent TR is still there */
+#coach-table-loading[colspan="4"] {
+    text-align: center;
+}
+
+/* Table cell alignment for Coach Payroll Table */
+#coach-payroll-table-body td:nth-child(1) { /* Coach Name */
+    text-align: left;
+}
+#coach-payroll-table-body td:nth-child(2), /* Lessons Taught */
+#coach-payroll-table-body td:nth-child(3), /* Total Hours */
+#coach-payroll-table-body td:nth-child(4) { /* Total Pay */
+    text-align: right;
 }
   </style>
 </head>
@@ -434,6 +468,32 @@ legend {
       <div><label>Profit Margin:</label> <span id="display_profit_margin">0.00%</span></div>
     </fieldset>
   </div>
+
+  <fieldset class="display-group full-width">
+    <legend>Coach Payroll Summary</legend>
+    <div id="coach-payroll-summary-container">
+      <p id="coach-payroll-loading">Loading coach payroll data...</p>
+      <!-- Coach data will be populated here by JavaScript -->
+    </div>
+  </fieldset>
+
+  <fieldset class="display-group full-width" id="coach-payroll-table-fieldset">
+    <legend>Coach Payroll Table</legend>
+    <table id="coach-payroll-table">
+      <thead>
+        <tr>
+          <th>Coach Name</th>
+          <th>Lessons Taught</th>
+          <th>Total Hours</th>
+          <th>Total Pay</th>
+        </tr>
+      </thead>
+      <tbody id="coach-payroll-table-body">
+        <tr><td colspan="4" id="coach-table-loading" style="text-align: center;">Loading table data...</td></tr>
+        <!-- Coach data rows will be populated here by JavaScript -->
+      </tbody>
+    </table>
+  </fieldset>
 
   <div class="display-group full-width">
     <fieldset>
@@ -1002,6 +1062,101 @@ document.addEventListener('DOMContentLoaded', () => {
             // The main function to update all display spans using API data.
             renderFinancialDashboard(data); 
             
+            // Populate Coach Payroll Summary
+            const coachPayrollContainer = document.getElementById('coach-payroll-summary-container');
+            const coachLoadingP = document.getElementById('coach-payroll-loading');
+
+            if (coachPayrollContainer) {
+                if (coachLoadingP) coachLoadingP.style.display = 'none'; // Hide loading message
+                coachPayrollContainer.innerHTML = ''; // Clear any previous content (or just the loading message)
+
+                if (data.coachDetails && Array.isArray(data.coachDetails)) {
+                    if (data.coachDetails.length > 0) {
+                        data.coachDetails.forEach(coach => {
+                            const coachDiv = document.createElement('div');
+                            coachDiv.className = 'coach-summary-item'; // For styling
+                            coachDiv.style.marginBottom = '10px';
+                            coachDiv.style.padding = '10px';
+                            coachDiv.style.border = '1px solid #eee';
+                            coachDiv.style.borderRadius = '5px';
+
+                            const nameP = document.createElement('p');
+                            nameP.innerHTML = `<strong>Coach:</strong> ${coach.coachName}`;
+                            nameP.style.margin = '5px 0';
+                            
+                            const lessonsP = document.createElement('p');
+                            lessonsP.innerHTML = `<strong>Lessons Taught:</strong> ${coach.lessonsTaught}`;
+                            lessonsP.style.margin = '5px 0';
+
+                            const hoursP = document.createElement('p');
+                            hoursP.innerHTML = `<strong>Total Hours:</strong> ${coach.totalHours.toFixed(1)} hrs`;
+                            hoursP.style.margin = '5px 0';
+
+                            const payP = document.createElement('p');
+                            payP.innerHTML = `<strong>Total Pay:</strong> $${coach.totalPay.toFixed(2)}`;
+                            payP.style.margin = '5px 0';
+
+                            coachDiv.appendChild(nameP);
+                            coachDiv.appendChild(lessonsP);
+                            coachDiv.appendChild(hoursP);
+                            coachDiv.appendChild(payP);
+                            coachPayrollContainer.appendChild(coachDiv);
+                        });
+                    } else {
+                        coachPayrollContainer.textContent = 'No coach payroll data available for this period.';
+                    }
+                } else {
+                    coachPayrollContainer.textContent = 'Coach payroll data is not available or in an unexpected format.';
+                }
+            }
+            
+            // Populate Coach Payroll Table
+            const coachTableBody = document.getElementById('coach-payroll-table-body');
+            const coachTableLoadingRow = document.getElementById('coach-table-loading'); // This is a TD, parent TR needs to be removed
+
+            if (coachTableBody) {
+                if (coachTableLoadingRow && coachTableLoadingRow.parentNode) {
+                     coachTableLoadingRow.parentNode.remove(); // Remove the loading row
+                }
+                coachTableBody.innerHTML = ''; // Clear any previous content
+
+                if (data.coachDetails && Array.isArray(data.coachDetails)) {
+                    if (data.coachDetails.length > 0) {
+                        data.coachDetails.forEach(coach => {
+                            const row = coachTableBody.insertRow();
+                            
+                            const nameCell = row.insertCell();
+                            nameCell.textContent = coach.coachName;
+                            nameCell.style.textAlign = 'left';
+
+                            const lessonsCell = row.insertCell();
+                            lessonsCell.textContent = coach.lessonsTaught;
+                            lessonsCell.style.textAlign = 'right';
+
+                            const hoursCell = row.insertCell();
+                            hoursCell.textContent = `${coach.totalHours.toFixed(1)} hrs`;
+                            hoursCell.style.textAlign = 'right';
+
+                            const payCell = row.insertCell();
+                            payCell.textContent = `$${coach.totalPay.toFixed(2)}`;
+                            payCell.style.textAlign = 'right';
+                        });
+                    } else {
+                        const row = coachTableBody.insertRow();
+                        const cell = row.insertCell();
+                        cell.colSpan = 4;
+                        cell.textContent = 'No coach payroll data available for this period.';
+                        cell.style.textAlign = 'center';
+                    }
+                } else {
+                    const row = coachTableBody.insertRow();
+                    const cell = row.insertCell();
+                    cell.colSpan = 4;
+                    cell.textContent = 'Coach payroll table data is not available or in an unexpected format.';
+                    cell.style.textAlign = 'center';
+                }
+            }
+
             // After financial data is fetched and dashboard rendered, load expenses for the same period
             await loadExpensesForPeriod(periodToLoad);
 

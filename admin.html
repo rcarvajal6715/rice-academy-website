@@ -596,7 +596,7 @@ ul.nav-links-mobile li a {
     <!-- All Scheduled Lessons -->
     <h2>Scheduled Lessons Overview</h2>
     <div id="save-all-btn-container"> <!-- Inline styles removed -->
-        <button id="save-all-btn" class="universal-update-prices-btn" disabled>Update All Changed Prices</button>
+        <button id="save-all-btn" class="universal-update-prices-btn" disabled>Save All Changes</button>
     </div>
     <button id="enable-editing-btn">Enable Editing</button> <!-- Inline style removed -->
     <div id="private-lessons-section" style="margin-bottom: 30px;">
@@ -1067,6 +1067,26 @@ ul.nav-links-mobile li a {
                 break;
             }
         }
+        if (hasOverallChanges) break;
+
+        // Check time inputs
+        const timeInputs = container.querySelectorAll('.editable-time');
+        for (const inputField of timeInputs) {
+            const originalTime = inputField.getAttribute('data-original-time'); // HH:MM:SS or empty
+            const newTime = inputField.value; // HH:MM or empty
+
+            // Change detection logic (consistent with handleSaveChanges)
+            if (!originalTime && newTime) { // Was empty, now has value
+                hasOverallChanges = true;
+                break;
+            } else if (originalTime && !newTime) { // Had value, now empty
+                hasOverallChanges = true;
+                break;
+            } else if (originalTime && newTime && originalTime.substring(0,5) !== newTime) { // Both have values, and they differ
+                hasOverallChanges = true;
+                break;
+            }
+        }
         if (hasOverallChanges) break; 
     }
     saveBtn.disabled = !hasOverallChanges;
@@ -1139,7 +1159,7 @@ ul.nav-links-mobile li a {
       }
 
       const timeCellContent = isAdminEditing
-        ? `<input type="time" class="lesson-time-input" value="${les.time ? les.time.substring(0,5) : ''}" data-booking-id="${currentLessonIdOrIds}" data-original-time="${les.time || ''}">`
+        ? `<input type="time" class="editable-time" value="${les.time ? les.time.substring(0,5) : ''}" data-id="${currentLessonIdOrIds}" data-original-time="${les.time || ''}">`
         : formattedTime;
 
       html += `
@@ -1151,12 +1171,12 @@ ul.nav-links-mobile li a {
           <td style="padding:8px; border:1px solid #ddd;">${ isCampTable ? 'N/A' : (les.student || '—')}</td>
           <td style="padding:8px; border:1px solid #ddd;">${ isCampTable ? 'N/A' : (les.email || '—')}</td>
           <td style="padding:8px; border:1px solid #ddd;">${ isCampTable ? 'N/A' : (les.phone || '—')}</td>
-          <td style="padding:8px; border:1px solid #ddd;">$<input type="number" class="lesson-cost-input" data-booking-id="${isCampTable && les.booking_ids ? les.booking_ids[0] : les.id}" value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" data-original-cost="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" placeholder="N/A" style="width: 70px;" disabled></td>`;
+          <td style="padding:8px; border:1px solid #ddd;">$<input type="number" class="lesson-cost-input" data-booking-id="${isCampTable && les.booking_ids ? les.booking_ids[0] : les.id}" value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" data-original-cost="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" placeholder="N/A" style="width: 70px;" ${!isAdminEditing ? 'disabled' : ''}></td>`;
           
       if (containerId === 'private-lessons-table-container') {
         html += `
           <td style="padding:8px; border:1px solid #ddd;">
-            <select class="referral-select" data-booking-id="${les.id}" data-original-referral="${refVal}" style="min-width:140px;" disabled>
+            <select class="referral-select" data-booking-id="${les.id}" data-original-referral="${refVal}" style="min-width:140px;" ${!isAdminEditing ? 'disabled' : ''}>
               <option value="" ${refVal === '' ? 'selected' : ''}>None</option>
               <option value="Ricardo" ${refVal === 'Ricardo' ? 'selected' : ''}>Referred by Ricardo ($20)</option>
               <option value="Jacob" ${refVal === 'Jacob' ? 'selected' : ''}>Jacob’s Own ($10)</option>
@@ -1452,6 +1472,7 @@ ul.nav-links-mobile li a {
     ];
     const pendingUpdates = [];
     const referralUpdates = []; // To store referral changes
+    const timeUpdates = []; // To store time changes
     const results = { successes: [], failures: [] };
 
     for (const containerId of allTableContainerIds) {
@@ -1503,9 +1524,36 @@ ul.nav-links-mobile li a {
                 referralUpdates.push({ id: sel.dataset.bookingId, newReferral: sel.value });
             }
         });
+
+        // Collect time updates from editable-time inputs within this container
+        const timeInputFields = container.querySelectorAll('.editable-time');
+        timeInputFields.forEach(inputField => {
+            const idsString = inputField.getAttribute('data-id');
+            const originalTime = inputField.getAttribute('data-original-time'); // HH:MM:SS or empty
+            const newTime = inputField.value; // HH:MM or empty
+
+            let isChanged = false;
+            if (!originalTime && newTime) {
+                isChanged = true;
+            } else if (originalTime && !newTime) {
+                isChanged = true;
+            } else if (originalTime && newTime && originalTime.substring(0,5) !== newTime) {
+                isChanged = true;
+            }
+
+            if (isChanged) {
+                const ids = idsString.split(',');
+                ids.forEach(idStr => {
+                    const id = parseInt(idStr, 10);
+                    if (!isNaN(id)) {
+                        timeUpdates.push({ id: id, field: 'time', value: newTime === '' ? null : newTime });
+                    }
+                });
+            }
+        });
     }
 
-    if (pendingUpdates.length === 0 && referralUpdates.length === 0) {
+    if (pendingUpdates.length === 0 && referralUpdates.length === 0 && timeUpdates.length === 0) {
         alert("No changes detected to update.");
         if (saveButton) saveButton.disabled = true; // Should already be, but ensure
         if (enableBtn) enableBtn.disabled = false; // Re-enable editing if nothing was changed
@@ -1528,14 +1576,39 @@ ul.nav-links-mobile li a {
         })
     );
 
-    const allPromises = [...costPromises, ...referralPromises];
+    const timePromises = timeUpdates.map(item =>
+        fetch(`/api/admin/history/${item.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
+            body: JSON.stringify({ field: item.field, value: item.value }) // field is 'time'
+        })
+    );
+
+    const allPromises = [...costPromises, ...referralPromises, ...timePromises];
     const allSettledResults = await Promise.allSettled(allPromises);
 
     allSettledResults.forEach((result, index) => {
         const isCostUpdate = index < costPromises.length;
-        const originalItem = isCostUpdate ? pendingUpdates[index] : referralUpdates[index - costPromises.length];
-        const id = isCostUpdate ? originalItem.bookingId : originalItem.id;
-        const type = isCostUpdate ? "Cost" : "Referral";
+        const isReferralUpdate = !isCostUpdate && (index < costPromises.length + referralPromises.length);
+        // const isTimeUpdate = !isCostUpdate && !isReferralUpdate; // This can be inferred
+
+        let originalItem;
+        let id;
+        let type;
+
+        if (isCostUpdate) {
+            originalItem = pendingUpdates[index];
+            id = originalItem.bookingId;
+            type = "Cost";
+        } else if (isReferralUpdate) {
+            originalItem = referralUpdates[index - costPromises.length];
+            id = originalItem.id;
+            type = "Referral";
+        } else { // isTimeUpdate
+            originalItem = timeUpdates[index - costPromises.length - referralPromises.length];
+            id = originalItem.id;
+            type = "Time";
+        }
 
         if (result.status === 'fulfilled') {
             if (result.value.ok) {
@@ -1564,7 +1637,7 @@ ul.nav-links-mobile li a {
             summaryMessage += `- ${failure}\n`;
         });
     }
-    if (results.successes.length === 0 && results.failures.length === 0 && (pendingUpdates.length > 0 || referralUpdates.length > 0)) {
+    if (results.successes.length === 0 && results.failures.length === 0 && (pendingUpdates.length > 0 || referralUpdates.length > 0 || timeUpdates.length > 0)) {
         // This case handles if all promises resolved but none were 'ok' and .json() parsing is pending
         // However, the current logic pushes to failures if not .ok, so this might be less common
         // For now, ensure some message is shown if updates were attempted.
@@ -1858,43 +1931,24 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
       loadAllLessons(); // Initial load of lesson data
 
       let isAdminEditing = false;
-      let originalFieldStates = {};
+      // let originalFieldStates = {}; // Removed
 
       const enableEditingBtn = document.getElementById('enable-editing-btn');
       if (enableEditingBtn) {
         enableEditingBtn.addEventListener('click', () => {
-          if (!isAdminEditing) {
+          isAdminEditing = !isAdminEditing; // Toggle the state
+
+          if (isAdminEditing) {
             // Enable editing mode
-            isAdminEditing = true;
             enableEditingBtn.textContent = 'Disable Editing';
-            document.querySelectorAll('.referral-select, .lesson-cost-input').forEach(el => {
-              const fieldId = el.dataset.bookingId + (el.classList.contains('referral-select') ? '_referral' : '_cost');
-              originalFieldStates[fieldId] = {
-                disabled: el.disabled,
-                value: el.value
-              };
-              el.disabled = false; // enable editing
-            });
-            checkGlobalInputChanges(); // Call after enabling to set initial state of save button
+            // Manual enabling loop removed
           } else {
             // Disable editing mode
-            isAdminEditing = false;
             enableEditingBtn.textContent = 'Enable Editing';
-            document.querySelectorAll('.referral-select, .lesson-cost-input').forEach(el => {
-              const fieldId = el.dataset.bookingId + (el.classList.contains('referral-select') ? '_referral' : '_cost');
-              if (originalFieldStates[fieldId]) {
-                el.disabled = originalFieldStates[fieldId].disabled;
-                // Value is intentionally not reverted: el.value = originalFieldStates[fieldId].value;
-              } else {
-                // Fallback if somehow the original state wasn't stored (should not happen)
-                el.disabled = true; 
-              }
-            });
-            // Clear originalFieldStates as we are no longer in editing mode
-            // and want to capture fresh states if editing is re-enabled.
-            originalFieldStates = {}; 
-            checkGlobalInputChanges(); // Update save button state
+            // Manual disabling loop removed
           }
+          loadAllLessons(); // Re-render tables with new isAdminEditing state
+          // checkGlobalInputChanges() is called by renderLessonsTable indirectly.
         });
       } else {
         console.warn('Enable Editing button not found on initial load.');

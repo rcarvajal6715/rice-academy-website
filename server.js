@@ -1257,7 +1257,7 @@ app.post('/api/admin/lessons', async (req, res) => {
   }
   console.log('Received student_names:', student_names, 'Processed for DB:', studentValueForDb);
 
-  const campLikePrograms = ["Summer Camp / Group Lessons", "High Performance Training", "Adult Clinics"];
+  const campLikePrograms = ["Summer Camp - Day Pass", "Summer Camp - Week Pass", "Kids Camp - Day Pass", "Kids Camp - Week Pass", "Adult Clinics"];
   const isCampLikeProgram = campLikePrograms.includes(program);
 
   // Ensure referral_source is null if empty string, otherwise use its value.

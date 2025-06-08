@@ -1158,7 +1158,7 @@ ul.nav-links-mobile li a {
         coachDisplay = les.coach || 'N/A';
       }
 
-      const timeCellContent = isAdminEditing
+      const timeCellContent = editingEnabled
         ? `<input type="time" class="editable-time" value="${les.time ? les.time.substring(0,5) : ''}" data-id="${currentLessonIdOrIds}" data-original-time="${les.time || ''}">`
         : formattedTime;
 
@@ -1171,12 +1171,12 @@ ul.nav-links-mobile li a {
           <td style="padding:8px; border:1px solid #ddd;">${ isCampTable ? 'N/A' : (les.student || '—')}</td>
           <td style="padding:8px; border:1px solid #ddd;">${ isCampTable ? 'N/A' : (les.email || '—')}</td>
           <td style="padding:8px; border:1px solid #ddd;">${ isCampTable ? 'N/A' : (les.phone || '—')}</td>
-          <td style="padding:8px; border:1px solid #ddd;">$<input type="number" class="lesson-cost-input" data-booking-id="${isCampTable && les.booking_ids ? les.booking_ids[0] : les.id}" value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" data-original-cost="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" placeholder="N/A" style="width: 70px;" ${!isAdminEditing ? 'disabled' : ''}></td>`;
+          <td style="padding:8px; border:1px solid #ddd;">$<input type="number" class="lesson-cost-input" data-booking-id="${isCampTable && les.booking_ids ? les.booking_ids[0] : les.id}" value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" data-original-cost="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" placeholder="N/A" style="width: 70px;" ${!editingEnabled ? 'disabled' : ''}></td>`;
           
       if (containerId === 'private-lessons-table-container') {
         html += `
           <td style="padding:8px; border:1px solid #ddd;">
-            <select class="referral-select" data-booking-id="${les.id}" data-original-referral="${refVal}" style="min-width:140px;" ${!isAdminEditing ? 'disabled' : ''}>
+            <select class="referral-select" data-booking-id="${les.id}" data-original-referral="${refVal}" style="min-width:140px;" ${!editingEnabled ? 'disabled' : ''}>
               <option value="" ${refVal === '' ? 'selected' : ''}>None</option>
               <option value="Ricardo" ${refVal === 'Ricardo' ? 'selected' : ''}>Referred by Ricardo ($20)</option>
               <option value="Jacob" ${refVal === 'Jacob' ? 'selected' : ''}>Jacob’s Own ($10)</option>
@@ -1930,15 +1930,15 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
       checkSession();
       loadAllLessons(); // Initial load of lesson data
 
-      let isAdminEditing = false;
+      let editingEnabled = false;
       // let originalFieldStates = {}; // Removed
 
       const enableEditingBtn = document.getElementById('enable-editing-btn');
       if (enableEditingBtn) {
         enableEditingBtn.addEventListener('click', () => {
-          isAdminEditing = !isAdminEditing; // Toggle the state
+          editingEnabled = !editingEnabled; // Toggle the state
 
-          if (isAdminEditing) {
+          if (editingEnabled) {
             // Enable editing mode
             enableEditingBtn.textContent = 'Disable Editing';
             // Manual enabling loop removed
@@ -1947,7 +1947,7 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
             enableEditingBtn.textContent = 'Enable Editing';
             // Manual disabling loop removed
           }
-          loadAllLessons(); // Re-render tables with new isAdminEditing state
+          loadAllLessons(); // Re-render tables with new editingEnabled state
           // checkGlobalInputChanges() is called by renderLessonsTable indirectly.
         });
       } else {

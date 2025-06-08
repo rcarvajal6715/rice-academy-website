@@ -357,6 +357,78 @@ function formatTime_12hr(timeStr) {
   return hours + ':' + minutesStr + ' ' + ampm;
 }
 
+// Function to convert HH:MM string to total minutes since midnight
+function timeToMinutes(timeStr) {
+  if (!timeStr || !timeStr.includes(':')) return null;
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+// Function to convert total minutes since midnight to HH:MM string (24-hour format)
+function minutesToHHMM(totalMinutes) {
+  if (totalMinutes === null || isNaN(totalMinutes)) return '';
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+// New helper function to populate time options
+function populateTimeOptions(selectElement, originalTime24hr) {
+  selectElement.innerHTML = ''; // Clear existing options
+
+  const startTime = 7 * 60; // 7:00 AM in minutes
+  const endTime = 21 * 60; // 9:00 PM in minutes
+  const interval = 30; // 30 minutes
+
+  // Add a default empty option
+  const defaultOption = document.createElement('option');
+  defaultOption.value = "";
+  defaultOption.textContent = "-- Select Time --";
+  selectElement.appendChild(defaultOption);
+
+  let originalTimeSelected = false;
+  for (let minutes = startTime; minutes <= endTime; minutes += interval) {
+    const option = document.createElement('option');
+    const time24hr = minutesToHHMM(minutes); // HH:MM format for value
+    option.value = time24hr;
+    option.textContent = formatTime_12hr(time24hr); // H:MM AM/PM format for display
+
+    if (originalTime24hr && time24hr === originalTime24hr) {
+      option.selected = true;
+      originalTimeSelected = true;
+    }
+    selectElement.appendChild(option);
+  }
+
+  // If the originalTime24hr was something like "15:17" (not an exact 30-min interval)
+  // or outside the standard 7 AM - 9 PM range, add it as an option and select it.
+  if (originalTime24hr && !originalTimeSelected) {
+    const originalOption = document.createElement('option');
+    originalOption.value = originalTime24hr;
+    originalOption.textContent = formatTime_12hr(originalTime24hr) + " (Custom)"; // Indicate it's custom
+    originalOption.selected = true;
+    
+    // Try to insert it in a sorted manner or append. For simplicity, append or prepend.
+    // Prepending makes it more visible if it's an unusual time.
+    selectElement.insertBefore(originalOption, selectElement.children[1]); // Insert after "-- Select Time --"
+  }
+}
+
+// New helper function to generate the entire select element
+function generateTimeSelectElement(lessonId, originalTime24hr) {
+  const select = document.createElement('select');
+  select.className = 'history-time-select';
+  select.dataset.id = lessonId;
+  // Store original time in HH:MM format. Ensure `les.time` is consistently HH:MM.
+  // If `les.time` can be null/undefined, handle it (e.g., default to empty string).
+  select.dataset.originalTime = originalTime24hr || ""; 
+  select.disabled = !editing; // Use global 'editing' variable state
+
+  populateTimeOptions(select, originalTime24hr || "");
+
+  return select;
+}
+
 function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
   const container = document.getElementById(containerId);
   if (!container) {
@@ -482,10 +554,16 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
   } else { // Original logic for non-camp views
     lessonsArray.forEach(les => {
       const dateStr = les.date ? new Date(les.date).toLocaleDateString() : 'N/A';
-      const formattedTime = les.time ? formatTime_12hr(les.time) : 'N/A';
+      // const formattedTime = les.time ? formatTime_12hr(les.time) : 'N/A'; // No longer directly used here for non-grouped
       const referralSourceDisplay = les.referral_source || '—';
       const originalDate = les.date ? les.date.substring(0,10) : '';
       const isPaid = les.paid === true || String(les.paid).toLowerCase() === 'true';
+
+      // Create a temporary div to hold the select element and get its outerHTML
+      const tempDiv = document.createElement('div');
+      const timeSelectElement = generateTimeSelectElement(les.id, les.time || ""); // les.time is HH:MM
+      tempDiv.appendChild(timeSelectElement);
+      const timeSelectHTML = tempDiv.innerHTML; // This gets the <select>...</select> HTML
 
       tableHTML += `
         <tr data-id="${les.id}">
@@ -493,7 +571,7 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
           <td class="history-cell" data-id="${les.id}" data-field="program" data-original-value="${les.program || ''}" style="padding:8px; border:1px solid #ddd;">${les.program || '—'}</td>
           <td class="history-cell" data-id="${les.id}" data-field="coach" data-original-value="${les.coach || ''}" style="padding:8px; border:1px solid #ddd;">${les.coach || '—'}</td>
           <td class="history-cell" data-id="${les.id}" data-field="date" data-original-value="${originalDate}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
-          <td class="history-cell" data-id="${les.id}" data-field="time" data-original-value="${les.time || ''}" style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
+          <td style="padding:8px; border:1px solid #ddd;">${timeSelectHTML}</td>
           <td class="history-cell" data-id="${les.id}" data-field="student" data-original-value="${les.student || ''}" style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td>
@@ -825,6 +903,11 @@ window.addEventListener('DOMContentLoaded', () => {
           }
         }
       });
+
+      // Add this part:
+      document.querySelectorAll('select.history-time-select').forEach(select => {
+        select.disabled = !editing;
+      });
     });
   }
 
@@ -961,6 +1044,51 @@ window.addEventListener('DOMContentLoaded', () => {
           if (changed) {
             updates.push({ bookingId, fieldName, newValue, originalValueForDebug: originalValue });
           }
+        }
+      });
+
+      document.querySelectorAll('select.history-time-select').forEach(select => {
+        const bookingId = select.dataset.id;
+        const originalTime = select.dataset.originalTime; // Should be HH:MM
+        let newValue = select.value; // Value from select is HH:MM
+
+        // Handle cases where "-- Select Time --" (empty value) might be chosen
+        if (newValue === "") {
+          newValue = null; // Or whatever the backend expects for clearing a time
+        }
+
+        // Compare newValue with originalTime.
+        // Note: If originalTime was an empty string from dataset and newValue is null,
+        // they might not be strictly equal. Adjust comparison if needed.
+        // For example, treat empty string and null as equivalent for "no change".
+        const hasChanged = (newValue === null && originalTime !== "") || 
+                           (newValue !== null && newValue !== originalTime) ||
+                           (newValue === null && originalTime === "") || // Handles case where original was empty and new is null (no change)
+                           (newValue !== originalTime); // General case for actual change
+
+        // Refined hasChanged logic:
+        // A change occurs if:
+        // 1. New value is null AND original time was not an empty string (it was set, now cleared)
+        // 2. New value is not null AND it's different from originalTime
+        // This logic needs to be careful about (null vs "")
+        let trulyChanged = false;
+        if (newValue === null) { // User selected "-- Select Time --" or it was programmatically set to null
+            if (originalTime !== "" && originalTime !== null) { // Original time was actually set
+                trulyChanged = true;
+            }
+        } else { // User selected a specific time
+            if (newValue !== originalTime) {
+                trulyChanged = true;
+            }
+        }
+
+        if (trulyChanged) {
+          updates.push({
+            bookingId: bookingId,
+            fieldName: 'time',
+            newValue: newValue, // This will be HH:MM string or null
+            originalValueForDebug: originalTime
+          });
         }
       });
 

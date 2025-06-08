@@ -1422,35 +1422,41 @@ timeInputs.forEach(i => {
   // Placeholder for the new function
   async function deleteGroupedCampLesson(bookingIdsString) {
     console.log("Attempting to delete grouped camp session with Booking IDs:", bookingIdsString);
-    const bookingIds = bookingIdsString.split(',');
-    if (!confirm(`Are you sure you want to delete this entire camp session? This will delete ${bookingIds.length} booking(s). This action cannot be undone.`)) {
+    
+    const bookingIds = bookingIdsString.split(',').map(idStr => parseInt(idStr.trim(), 10)).filter(id => !isNaN(id) && id > 0);
+
+    if (bookingIds.length === 0) {
+      alert('No valid booking IDs found to delete.');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete this entire camp session? This will delete ${bookingIds.length} lesson(s). This action cannot be undone.`)) {
         return;
     }
-    // Actual deletion logic will involve iterating IDs and calling deleteAdminLesson or a new batch delete API endpoint.
-    // For now, just logging and potentially refreshing.
+
     try {
-        let allSucceeded = true;
-        for (const id of bookingIds) {
-            const res = await fetch(`/api/admin/lessons/${id}`, {
-                method: 'DELETE',
-                credentials: 'include'
-            });
-            if (!res.ok) {
-                allSucceeded = false;
-                console.error(`Failed to delete booking ID ${id}: ${await res.text()}`);
-                // Decide if to stop or continue on error
-            }
-        }
-        if (allSucceeded) {
-            alert('Entire camp session deleted successfully.');
+        const res = await fetch('/api/admin/lessons/bulk', {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ ids: bookingIds })
+        });
+
+        const responseData = await res.json(); // Try to parse JSON regardless of status for error messages
+
+        if (res.ok) {
+            alert(responseData.message || `Entire camp session deleted successfully. ${bookingIds.length} lessons removed.`);
+            loadAllLessons(); // Refresh the table
         } else {
-            alert('Some bookings in the camp session could not be deleted. Please check the console and refresh.');
+            alert(`Failed to delete camp session: ${responseData.message || 'Unknown server error.'}`);
+            console.error('Error deleting grouped camp session:', responseData);
         }
     } catch (err) {
-        alert('An error occurred while trying to delete the camp session. Check console.');
+        alert('An error occurred while trying to delete the camp session. Check console for details.');
         console.error('Error in deleteGroupedCampLesson:', err);
     }
-    loadAllLessons(); // Refresh
   }
 
 

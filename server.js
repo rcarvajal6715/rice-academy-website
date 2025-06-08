@@ -182,6 +182,35 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+// ---- Admin Bulk Delete Lessons Route ----
+app.delete('/api/admin/lessons/bulk', async (req, res) => {
+  if (!req.session?.user?.isAdmin) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+
+  const { ids } = req.body;
+
+  if (!Array.isArray(ids) || !ids.every(id => typeof id === 'number' && Number.isInteger(id) && id > 0)) {
+    return res.status(400).json({ message: 'Invalid input: "ids" must be an array of positive integers.' });
+  }
+
+  if (ids.length === 0) {
+    return res.status(400).json({ message: 'No lesson IDs provided for deletion.' });
+  }
+
+  const client = await pool.connect();
+  try {
+    const result = await client.query('DELETE FROM bookings WHERE id = ANY($1::int[])', [ids]);
+    const deletedCount = result.rowCount;
+    res.status(200).json({ message: `Successfully deleted ${deletedCount} lessons.` });
+  } catch (err) {
+    console.error('Error bulk deleting lessons by admin:', err);
+    res.status(500).json({ message: 'Failed to delete lessons due to a server error.' });
+  } finally {
+    client.release();
+  }
+});
+
 function normalizeProgramType(program) {
   if (!program || typeof program !== 'string') {
     return "Other";

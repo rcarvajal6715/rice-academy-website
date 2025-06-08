@@ -1253,6 +1253,13 @@ ul.nav-links-mobile li a {
 
     html += `</tbody></table>`;
     container.innerHTML = html;
+
+// **NEW** time-picker listeners:
+const timeInputs = container.querySelectorAll('.editable-time');
+timeInputs.forEach(i => {
+  // use 'input' or 'change' — either will work for <input type="time">
+  i.addEventListener('change', checkGlobalInputChanges);
+});
     checkGlobalInputChanges(); // Add this line
     console.log('ADMIN.HTML: Rendering actual table into:', containerId, 'HTML length:', html.length > 0 ? html.length : 'EMPTY!');
 

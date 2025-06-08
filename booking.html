@@ -212,6 +212,68 @@ ul.nav-links-desktop li a.highlighted-nav {
 ul.nav-links-mobile li a {
   border-radius: 9999px;
 }
+
+    /* === Styles for Program and Coach Tiles === */
+    .program-tiles-grid,
+    .coach-tiles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Responsive columns */
+      gap: 20px; /* Space between tiles */
+      margin-top: 10px; /* Space above the grid */
+      margin-bottom: 20px; /* Space below the grid */
+    }
+
+    .program-tile,
+    .coach-tile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      cursor: pointer;
+      padding: 10px;
+      border: 2px solid transparent; /* For selection outline */
+      border-radius: 8px; /* Rounded corners for the tile itself */
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease; /* Smooth transitions */
+    }
+
+    .program-tile img,
+    .coach-tile img {
+      width: 150px;   /* Fixed width */
+      height: 100px;  /* Fixed height */
+      object-fit: cover; /* Cover the area, cropping if necessary */
+      border-radius: 8px; /* Rounded corners for images */
+      margin-bottom: 8px; /* Space between image and caption */
+    }
+
+    .program-tile:hover,
+    .coach-tile:hover {
+      transform: scale(1.05); /* Slightly smaller scale for tile vs just image */
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Subtle shadow */
+    }
+
+    .program-tile span,
+    .coach-tile span {
+      font-weight: bold;
+      font-size: 0.9em;
+      color: #333; /* Darker text for captions */
+    }
+
+    .selected-tile {
+      border: 3px solid #0c3c78; /* Blue border, matching site theme */
+      box-shadow: 0 0 10px rgba(12, 60, 120, 0.5); /* Optional: add a glow effect */
+    }
+
+    @media (max-width: 400px) { /* Adjust breakpoint if needed, 150px tile + gap might need ~350px for two columns */
+      .program-tiles-grid,
+      .coach-tiles-grid {
+        grid-template-columns: 1fr; /* Single column */
+      }
+      .program-tile img, /* Optionally make images a bit smaller on very small screens */
+      .coach-tile img {
+        width: 120px;
+        height: 80px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -274,15 +336,8 @@ ul.nav-links-mobile li a {
           <label for="student">Student Name</label>
         <input type="text" id="student" placeholder="Enter student name" required />
 
-          <label for="program">Program</label>
-      <select id="program" name="program" required>
-          <option value="" disabled selected>Select a program</option>
-          <option value="Private Lesson">Private Lesson — $80</option>
-         <option value="Summer Camp - Day Pass">Summer Camp - Day Pass — $30</option>
-         <option value="Summer Camp - Week Pass">Summer Camp - Week Pass — $130</option>
-         <option value="Kids Camp - Day Pass">Kids Camp - Day Pass — $40</option>
-         <option value="Kids Camp - Week Pass">Kids Camp - Week Pass — $110</option>
-      </select>
+          <div id="programTilesContainer" class="program-tiles-grid"></div>
+          <input type="hidden" id="selectedProgram" name="program">
           <label for="campDay" id="campDayLabel" style="display:none;">Choose Camp Day</label>
           <input type="text" id="campDay" placeholder="Select a weekday" style="display:none;" readonly />
           <label for="weekStart" id="weekStartLabel" style="display:none;">Select Week Start (Monday only)</label>
@@ -297,6 +352,8 @@ ul.nav-links-mobile li a {
             <option value="Matthew Abbey">Matthew Abbey</option>
             <option value="Paula Carvajalino">Paula Carvajalino</option>
           </select>
+          <div id="coachTilesContainer" class="coach-tiles-grid" style="display:none;"></div>
+          <input type="hidden" id="selectedCoach" name="coach">
 
           <label for="date" id="dateLabel" style="display:none;">Preferred Date</label>
           <input type="text" id="date" placeholder="Select a date" style="display:none;" readonly />
@@ -344,6 +401,9 @@ function fmtTime(mins) {
   if (h === 0) h = 12;
   return `${h}:${m.toString().padStart(2,'0')} ${mer}`;
 }
+window.parseTime = parseTime; // Make global
+window.fmtTime = fmtTime; // Make global
+
 const availability = {
   'Jacob Capone':        { days: [4,5,6], times: { 4:{min:'3:00 PM',max:'8:00 PM'},5:{min:'3:00 PM',max:'8:00 PM'},6:{min:'8:00 AM',max:'4:00 PM'} } },
   'Zachary Capone':      { days: [1,2,3,4,5,6], times: { default:{min:'9:00 AM',max:'7:00 PM'},6:{min:'9:00 AM',max:'5:00 PM'} } },
@@ -351,137 +411,460 @@ const availability = {
   'Paula Carvajalino':   { days: [1,2,3,4,5], times: { default:{min:'9:00 AM',max:'7:00 PM'} } },
   'Matthew Abbey':       { days: [1,2,3,4,5], times: { default:{min:'9:00 AM',max:'7:00 PM'} } }
 };
+window.availability = availability; // Make global
 </script>
 
   <script>
-  // Empty script block from original - preserved
-</script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- START PROGRAM SELECTION LOGIC ---
 
-  <script>
-  // Main Booking Logic (Unchanged from previous correct version)
-  const programEl     = document.getElementById('program');
-  const coachEl       = document.getElementById('coach');
-  const coachLbl      = document.getElementById('coachLabel');
-  const dateEl        = document.getElementById('date');
-  const dateLbl       = document.getElementById('dateLabel');
-  const timeEl        = document.getElementById('time');
-  const timeLbl       = document.getElementById('timeLabel');
-  const campDayInput  = document.getElementById('campDay');
-  const campDayLabel  = document.getElementById('campDayLabel');
-  const weekStartInput  = document.getElementById('weekStart');
-  const weekStartLabel  = document.getElementById('weekStartLabel');
-  let datePicker = null;
+    const programTilesContainer = document.getElementById('programTilesContainer');
+    const selectedProgramInput = document.getElementById('selectedProgram');
 
-  programEl.addEventListener('change', () => {
-    const program    = programEl.value;
-    const isCampDay  = program === 'Summer Camp - Day Pass' || program === 'Kids Camp - Day Pass';
-    const isCampWeek = program === 'Summer Camp - Week Pass' || program === 'Kids Camp - Week Pass';
-    const showCoach  = program === 'Private Lesson';
+    // Original form elements (still needed for their logic)
+    // const originalProgramEl = document.getElementById('program'); // No longer exists
+    const coachEl = document.getElementById('coach'); // Original coach select, kept for now but hidden
+    const coachLbl = document.getElementById('coachLabel'); // Original coach label
+    const dateEl = document.getElementById('date');
+    const dateLbl = document.getElementById('dateLabel');
+    const timeEl = document.getElementById('time');
+    const timeLbl = document.getElementById('timeLabel');
+    const campDayInput = document.getElementById('campDay');
+    const campDayLabel = document.getElementById('campDayLabel');
+    const weekStartInput = document.getElementById('weekStart');
+    const weekStartLabel = document.getElementById('weekStartLabel');
+    // let datePicker = null; // This will be replaced by window.datePickerInstance
 
-    coachEl.style.display = showCoach ? 'block' : 'none';
-    coachLbl.style.display = showCoach ? 'block' : 'none';
-    dateEl.style.display  = showCoach ? 'block' : 'none';
-    dateLbl.style.display = showCoach ? 'block' : 'none';
-    timeEl.style.display  = showCoach ? 'block' : 'none';
-    timeLbl.style.display = showCoach ? 'block' : 'none';
+    // Coach tiles container and input
+    const coachTilesContainer = document.getElementById('coachTilesContainer');
+    const selectedCoachInput = document.getElementById('selectedCoach');
 
-    if (datePicker) {
-      datePicker.destroy();
-      datePicker = null;
-      timeEl.innerHTML = '<option value="">-- Select Time --</option>';
-      dateEl.value = '';
-    }
+    // Program data
+    const programTileElements = []; // To store program tile DOM elements for keyboard navigation
+    const programs = [
+        { name: "Private Lesson", value: "Private Lesson", image: "images/private.jpg", price: "$80" },
+        { name: "Summer Camp Day", value: "Summer Camp - Day Pass", image: "images/camp.png", price: "$30" },
+        { name: "Summer Camp Week", value: "Summer Camp - Week Pass", image: "images/camp.png", price: "$130" },
+        { name: "Kids Camp Day", value: "Kids Camp - Day Pass", image: "images/camp.png", price: "$40" },
+        { name: "Kids Camp Week", value: "Kids Camp - Week Pass", image: "images/camp.png", price: "$110" }
+    ];
 
-    if (isCampDay) {
-      campDayLabel.style.display = campDayInput.style.display = 'block';
-      setTimeout(() => {
-        flatpickr(campDayInput, {
-          dateFormat: 'Y-m-d', minDate: 'today',
-          disable: [
-            ...(program === 'Summer Camp - Day Pass' ? [d => d.getDay() === 0 || d.getDay() === 6] : []),
-            ...(program === 'Kids Camp - Day Pass' ? [d => d.getDay() < 1 || d.getDay() > 3] : [])
-          ]
-        });
-      }, 10);
-    } else {
-      campDayLabel.style.display = campDayInput.style.display = 'none';
-      campDayInput.value = '';
-    }
+    const coaches = [
+        { name: "Ricardo Carvajalino", value: "Ricardo Carvajalino", image: "ricky.jpg" },
+        { name: "Zachary Capone", value: "Zachary Capone", image: "zach.jpg" },
+        { name: "Jacob Capone", value: "Jacob Capone", image: "Jacob.jpg" },
+        { name: "Matthew Abbey", value: "Matthew Abbey", image: "matthew.jpg" },
+        { name: "Paula Carvajalino", value: "Paula Carvajalino", image: "paula.png" }
+    ];
 
-    if (isCampWeek) {
-      weekStartLabel.style.display = weekStartInput.style.display = 'block';
-      setTimeout(() => {
-        flatpickr(weekStartInput, {
-          dateFormat: 'Y-m-d', minDate: 'today',
-          disable: [(date) => date.getDay() !== 1],
-          clickOpens: true, allowInput: false
-        });
-      }, 10);
-    } else {
-      weekStartLabel.style.display = weekStartInput.style.display = 'none';
-      weekStartInput.value = '';
-    }
-  });
+    async function handleCoachSelection(coachValue) {
+        const selectedCoachInputField = document.getElementById('selectedCoach'); 
+        const datePickerEl = document.getElementById('date');
+        const timePickerEl = document.getElementById('time');
+        const dateLabelEl = document.getElementById('dateLabel');
+        const timeLabelEl = document.getElementById('timeLabel');
 
-  let blockedDays = [];
-  let timeBlocks = [];
+        if (!coachValue) return;
+        if (selectedCoachInputField) selectedCoachInputField.value = coachValue;
 
-  coachEl.addEventListener('change', async () => {
-    if (!coachEl.value) return;
-    try {
-      const res = await fetch(`/api/public-availability?coach=${encodeURIComponent(coachEl.value)}`);
-      const data = await res.json();
-      blockedDays = data.days || [];
-      timeBlocks = data.times || [];
-    } catch (err) {
-      console.error('❌ Failed to fetch public availability:', err);
-      blockedDays = []; timeBlocks = [];
-    }
+        let blockedDays = [];
+        let timeBlocks = [];
 
-    if (datePicker) datePicker.destroy();
-    dateEl.value = '';
-    timeEl.innerHTML = '<option value="">-- Select Time --</option>';
-    dateLbl.style.display = dateEl.style.display = 'block';
-    timeLbl.style.display = timeEl.style.display = 'none';
-
-    const avail = availability[coachEl.value];
-    datePicker = flatpickr(dateEl, {
-      dateFormat: 'Y-m-d', minDate: 'today',
-      disable: [
-        d => !avail.days.includes(d.getDay()),
-        ...blockedDays.map(d => new Date(d))
-      ],
-      onChange(selectedDates) {
-        const d = selectedDates[0];
-        const dow = d.getDay();
-        const slot = avail.times[dow] || avail.times.default;
-        timeEl.innerHTML = '<option value="">-- Select Time --</option>';
-        const selectedDateStr = d.toISOString().split('T')[0];
-        const blockedTimesForDate = timeBlocks
-          .filter(tb => tb.date === selectedDateStr)
-          .map(tb => [parseTime(tb.start), parseTime(tb.end)]);
-        for (let t = parseTime(slot.min); t + 30 <= parseTime(slot.max); t += 30) {
-          const isBlocked = blockedTimesForDate.some(([start, end]) => t >= start && t < end);
-          if (!isBlocked) {
-            const opt = document.createElement('option');
-            opt.value = fmtTime(t); opt.textContent = fmtTime(t);
-            timeEl.appendChild(opt);
-          }
+        try {
+            const response = await fetch(`/api/public-availability?coach=${encodeURIComponent(coachValue)}`);
+            if (!response.ok) {
+                let errorDetail = response.statusText;
+                try {
+                    const errorData = await response.json();
+                    if (errorData && errorData.message) errorDetail = errorData.message;
+                } catch(e) { /* ignore parsing error */ }
+                throw new Error(`Failed to fetch availability: ${errorDetail}`);
+            }
+            const data = await response.json();
+            blockedDays = data.days || [];
+            timeBlocks = data.times || [];
+        } catch (err) {
+            console.error('❌ Failed to fetch public availability:', err);
+            alert(`Could not load availability for ${coachValue}. Please try another coach or contact support.`);
+            blockedDays = []; timeBlocks = [];
         }
-        timeLbl.style.display = timeEl.style.display = 'block';
-      }
-    });
-  });
+
+        if (window.datePickerInstance) { 
+            window.datePickerInstance.destroy();
+            window.datePickerInstance = null;
+        }
+        if (datePickerEl) datePickerEl.value = '';
+        if (timePickerEl) timePickerEl.innerHTML = '<option value="">-- Select Time --</option>';
+        
+        if (dateLabelEl && datePickerEl) {
+            dateLabelEl.style.display = 'block';
+            datePickerEl.style.display = 'block';
+        }
+        if (timeLabelEl && timePickerEl) { 
+            timeLabelEl.style.display = 'none';
+            timePickerEl.style.display = 'none';
+        }
+
+        const coachAvailabilityData = window.availability[coachValue]; 
+        if (!coachAvailabilityData) {
+            console.error(`Availability data not found for coach: ${coachValue}`);
+            if (datePickerEl) datePickerEl.disabled = true;
+            alert(`Availability data not found for ${coachValue}. They may not be available for Private Lessons.`);
+            return;
+        }
+        if (datePickerEl) datePickerEl.disabled = false;
+
+        if (datePickerEl) {
+           window.datePickerInstance = flatpickr(datePickerEl, {
+                dateFormat: 'Y-m-d',
+                minDate: 'today',
+                disable: [
+                    d => !coachAvailabilityData.days.includes(d.getDay()),
+                    ...blockedDays.map(dStr => {
+                        const dateObj = new Date(dStr);
+                        return new Date(dateObj.getUTCFullYear(), dateObj.getUTCMonth(), dateObj.getUTCDate());
+                    })
+                ],
+                onChange(selectedDates) {
+                    if (!selectedDates.length) return;
+                    const d = selectedDates[0];
+                    const dow = d.getDay();
+                    const slot = coachAvailabilityData.times[dow] || coachAvailabilityData.times.default;
+
+                    if (!slot) {
+                        console.error(`No time slots defined for coach ${coachValue} on day ${dow}`);
+                        if (timePickerEl) timePickerEl.innerHTML = '<option value="">No slots available</option>';
+                         if (timeLabelEl && timePickerEl) {
+                             timeLabelEl.style.display = 'block'; 
+                             timePickerEl.style.display = 'block'; 
+                        }
+                        return;
+                    }
+
+                    if (timePickerEl) timePickerEl.innerHTML = '<option value="">-- Select Time --</option>';
+
+                    const selectedDateStr = d.toISOString().split('T')[0];
+                    const blockedTimesForDate = timeBlocks
+                        .filter(tb => tb.date === selectedDateStr)
+                        .map(tb => [window.parseTime(tb.start), window.parseTime(tb.end)]); 
+
+                    for (let t = window.parseTime(slot.min); t + 30 <= window.parseTime(slot.max); t += 30) {
+                        const isBlocked = blockedTimesForDate.some(([start, end]) => t >= start && t < end);
+                        if (!isBlocked) {
+                            const opt = document.createElement('option');
+                            opt.value = window.fmtTime(t); 
+                            opt.textContent = window.fmtTime(t);
+                            if (timePickerEl) timePickerEl.appendChild(opt);
+                        }
+                    }
+                    if (timeLabelEl && timePickerEl) {
+                        timeLabelEl.style.display = 'block';
+                        timePickerEl.style.display = 'block';
+                    }
+                }
+            });
+        }
+    }
+
+    function populateCoachTiles() {
+        const coachTilesContainerEl = document.getElementById('coachTilesContainer'); 
+        if (!coachTilesContainerEl) {
+            console.error('Coach tiles container not found.');
+            return;
+        }
+        coachTilesContainerEl.innerHTML = ''; 
+
+        coaches.forEach(coach => {
+            const tile = document.createElement('div');
+            tile.classList.add('coach-tile');
+            tile.setAttribute('data-value', coach.value);
+            tile.setAttribute('role', 'button');
+            // Set tabindex for the first tile to 0, others to -1
+            tile.setAttribute('tabindex', index === 0 ? '0' : '-1');
+            currentCoachTileElements.push(tile);
+
+            const img = document.createElement('img');
+            img.src = coach.image; 
+            img.alt = coach.name; 
+
+            const caption = document.createElement('span');
+            caption.textContent = coach.name;
+
+            tile.appendChild(img);
+            tile.appendChild(caption);
+
+            tile.addEventListener('click', () => {
+                // Correctly select all coach tiles within their container for modification
+                const allCoachTiles = coachTilesContainerEl.querySelectorAll('.coach-tile');
+                allCoachTiles.forEach(ct => { 
+                    ct.classList.remove('selected-tile');
+                    ct.setAttribute('tabindex', '-1');
+                }); // End of forEach for coach tiles
+
+                // Apply changes to the clicked coach tile
+                tile.classList.add('selected-tile');
+                tile.setAttribute('tabindex', '0');
+
+                // Call the handler function for coach selection
+                handleCoachSelection(coach.value); 
+            });
+
+            tile.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    // tile.click() will trigger the click handler above,
+                    // which now correctly handles tabindex for all tiles.
+                    tile.click(); 
+                } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                    event.preventDefault();
+                    const allCoachTiles = Array.from(coachTilesContainerEl.querySelectorAll('.coach-tile'));
+                    const currentIndex = allCoachTiles.indexOf(tile);
+                    let nextIndex;
+
+                    if (event.key === 'ArrowLeft') {
+                        nextIndex = currentIndex > 0 ? currentIndex - 1 : allCoachTiles.length - 1;
+                    } else { // ArrowRight
+                        nextIndex = currentIndex < allCoachTiles.length - 1 ? currentIndex + 1 : 0;
+                    }
+
+                    if (allCoachTiles[currentIndex]) allCoachTiles[currentIndex].setAttribute('tabindex', '-1');
+                    if (allCoachTiles[nextIndex]) {
+                        allCoachTiles[nextIndex].setAttribute('tabindex', '0');
+                        allCoachTiles[nextIndex].focus();
+                    }
+                }
+            });
+            coachTilesContainerEl.appendChild(tile);
+        });
+        coachTilesContainerEl.style.display = 'grid';
+        if (currentCoachTileElements.length > 0) {
+            currentCoachTileElements[0].focus(); // Focus the first coach tile
+        }
+    }
+
+    function handleProgramSelection(programValue) {
+        if (selectedProgramInput) selectedProgramInput.value = programValue;
+
+        const isCampDay = programValue === 'Summer Camp - Day Pass' || programValue === 'Kids Camp - Day Pass';
+        const isCampWeek = programValue === 'Summer Camp - Week Pass' || programValue === 'Kids Camp - Week Pass';
+        const showCoachSelection = programValue === 'Private Lesson';
+
+        // Get fresh references to elements that might be affected
+        const currentProgramTilesContainer = document.getElementById('programTilesContainer');
+        const currentCoachLbl = document.getElementById('coachLabel');
+        const currentCoachTilesContainer = document.getElementById('coachTilesContainer');
+        const currentSelectedCoachInput = document.getElementById('selectedCoach');
+        const currentDateEl = document.getElementById('date');
+        const currentDateLbl = document.getElementById('dateLabel');
+        const currentTimeEl = document.getElementById('time');
+        const currentTimeLbl = document.getElementById('timeLabel');
+        const currentCampDayInput = document.getElementById('campDay');
+        const currentCampDayLabel = document.getElementById('campDayLabel');
+        const currentWeekStartInput = document.getElementById('weekStart');
+        const currentWeekStartLabel = document.getElementById('weekStartLabel');
+
+        if (showCoachSelection) {
+            if (currentProgramTilesContainer) currentProgramTilesContainer.style.display = 'none';
+            if (currentCoachLbl) currentCoachLbl.style.display = 'block';
+            
+            populateCoachTiles(); // This will make coachTilesContainer visible and focus the first tile
+            
+            // Date/time pickers are hidden until a coach is selected.
+            if (currentDateEl) currentDateEl.style.display = 'none';
+            if (currentDateLbl) currentDateLbl.style.display = 'none';
+            if (currentTimeEl) currentTimeEl.style.display = 'none';
+            if (currentTimeLbl) currentTimeLbl.style.display = 'none';
+            if (window.datePickerInstance) {
+                 window.datePickerInstance.destroy();
+                 window.datePickerInstance = null;
+                 if(currentDateEl) currentDateEl.value = '';
+                 if(currentTimeEl) currentTimeEl.innerHTML = '<option value="">-- Select Time --</option>';
+            }
+        } else {
+            // Not "Private Lesson"
+            if (currentProgramTilesContainer) currentProgramTilesContainer.style.display = 'grid';
+            programTileElements.forEach((pt, idx) => {
+                if (pt.classList.contains('selected-tile')) {
+                    pt.setAttribute('tabindex', '0');
+                    pt.focus();
+                } else if (idx === 0 && !document.querySelector('.program-tile.selected-tile')) {
+                    // If no tile is selected, focus the first one
+                    pt.setAttribute('tabindex', '0');
+                    pt.focus();
+                } else {
+                    pt.setAttribute('tabindex', '-1');
+                }
+            });
+            if (currentCoachLbl) currentCoachLbl.style.display = 'none';
+            if (currentCoachTilesContainer) currentCoachTilesContainer.style.display = 'none';
+            if (currentSelectedCoachInput) currentSelectedCoachInput.value = '';
+
+            if (currentDateEl) currentDateEl.style.display = 'none';
+            if (currentDateLbl) currentDateLbl.style.display = 'none';
+            if (currentTimeEl) currentTimeEl.style.display = 'none';
+            if (currentTimeLbl) currentTimeLbl.style.display = 'none';
+            if (window.datePickerInstance) {
+                window.datePickerInstance.destroy();
+                window.datePickerInstance = null;
+                if(currentDateEl) currentDateEl.value = '';
+                if(currentTimeEl) currentTimeEl.innerHTML = '<option value="">-- Select Time --</option>';
+            }
+        }
+
+        // Camp day selection logic - ensure elements are accessed via current references
+        if (currentCampDayInput && currentCampDayLabel) {
+            currentCampDayLabel.style.display = isCampDay ? 'block' : 'none';
+            currentCampDayInput.style.display = isCampDay ? 'block' : 'none';
+            if (isCampDay) {
+                setTimeout(() => { 
+                    if (currentCampDayInput._flatpickr) currentCampDayInput._flatpickr.destroy();
+                    flatpickr(currentCampDayInput, {
+                        dateFormat: 'Y-m-d', minDate: 'today',
+                        disable: [
+                            ...(programValue === 'Summer Camp - Day Pass' ? [d => d.getDay() === 0 || d.getDay() === 6] : []), // No weekends for Summer Camp
+                            ...(programValue === 'Kids Camp - Day Pass' ? [d => d.getDay() < 1 || d.getDay() > 3] : [])     // Mon-Wed for Kids Camp
+                        ]
+                    });
+                }, 10);
+            } else {
+                if (currentCampDayInput._flatpickr) currentCampDayInput._flatpickr.destroy(); 
+                currentCampDayInput.value = '';
+            }
+        }
+
+        // Week start selection logic - ensure elements are accessed via current references
+        if (currentWeekStartInput && currentWeekStartLabel) {
+            currentWeekStartLabel.style.display = isCampWeek ? 'block' : 'none';
+            currentWeekStartInput.style.display = isCampWeek ? 'block' : 'none';
+            if (isCampWeek) {
+                setTimeout(() => {
+                    if (currentWeekStartInput._flatpickr) currentWeekStartInput._flatpickr.destroy();
+                    flatpickr(currentWeekStartInput, {
+                        dateFormat: 'Y-m-d', minDate: 'today',
+                        disable: [(date) => date.getDay() !== 1], // Only Mondays
+                        clickOpens: true, allowInput: false
+                    });
+                }, 10);
+            } else {
+                if (currentWeekStartInput._flatpickr) currentWeekStartInput._flatpickr.destroy();
+                currentWeekStartInput.value = '';
+            }
+        }
+    }
+
+    if (programTilesContainer && selectedProgramInput) { // Check programTilesContainer exists
+        programs.forEach((program, index) => {
+            const tile = document.createElement('div');
+            tile.classList.add('program-tile');
+            tile.setAttribute('data-value', program.value); 
+            tile.setAttribute('role', 'button');
+            tile.setAttribute('tabindex', index === 0 ? '0' : '-1'); // First tile focusable
+
+            programTileElements.push(tile); // Store the tile element
+
+            const img = document.createElement('img');
+            img.src = program.image; 
+            img.alt = program.name; // program.name used here for alt text
+
+            const caption = document.createElement('span');
+            caption.textContent = `${program.name} - ${program.price}`; // program.name and program.price
+
+            tile.appendChild(img);
+            tile.appendChild(caption);
+
+            tile.addEventListener('click', () => {
+                // Correctly select all program tiles within their container for modification
+                const allProgramTiles = programTilesContainer.querySelectorAll('.program-tile');
+                allProgramTiles.forEach(pt => {
+                    pt.classList.remove('selected-tile');
+                    pt.setAttribute('tabindex', '-1');
+                }); // End of forEach
+
+                // Apply changes to the clicked tile
+                tile.classList.add('selected-tile');
+                tile.setAttribute('tabindex', '0');
+
+                // Call the handler function
+                handleProgramSelection(program.value);
+            });
+
+            tile.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault(); 
+                    // tile.click() will trigger the click handler above,
+                    // which now correctly handles tabindex for all tiles.
+                    tile.click(); 
+                } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                    event.preventDefault();
+                    const currentIndex = programTileElements.indexOf(tile); // programTileElements should be in scope
+                    let nextIndex;
+
+                    if (event.key === 'ArrowLeft') {
+                        nextIndex = currentIndex > 0 ? currentIndex - 1 : programTileElements.length - 1;
+                    } else { // ArrowRight
+                        nextIndex = currentIndex < programTileElements.length - 1 ? currentIndex + 1 : 0;
+                    }
+                    
+                    if (programTileElements[currentIndex]) programTileElements[currentIndex].setAttribute('tabindex', '-1');
+                    if (programTileElements[nextIndex]) {
+                        programTileElements[nextIndex].setAttribute('tabindex', '0');
+                        programTileElements[nextIndex].focus();
+                    }
+                }
+            });
+
+            programTilesContainer.appendChild(tile);
+        });
+        // Optionally, focus the first program tile on page load if no other element has autofocus
+        // For now, just ensuring tabindex is set.
+        // if (programTileElements.length > 0 && !document.querySelector('[autofocus]')) {
+        //    programTileElements[0].focus();
+        // }
+    } else {
+        console.error('Program tiles container or selected program input not found.');
+    }
+
+    // Initial hide for coach tiles and related elements
+    if (coachLbl) coachLbl.style.display = 'none';
+    if (coachTilesContainer) coachTilesContainer.style.display = 'none';
+    if (coachEl) coachEl.style.display = 'none'; // Ensure original dropdown is hidden
+});
+</script>
+
+  <script>
+  // Main Booking Logic (Submit and supporting consts)
+  // Note: programEl and its listener have been removed as the element is gone.
+  // coachEl listener has been removed as its functionality is replaced by tile selection.
+  // const programEl     = document.getElementById('program'); // Removed
+  const coachEl       = document.getElementById('coach'); // Kept for now, but hidden and not primary interaction
+  const coachLbl      = document.getElementById('coachLabel'); // Referenced by new logic
+  const dateEl        = document.getElementById('date'); // Referenced by new logic and submission
+  const dateLbl       = document.getElementById('dateLabel'); // Referenced by new logic
+  const timeEl        = document.getElementById('time'); // Referenced by new logic and submission
+  const timeLbl       = document.getElementById('timeLabel'); // Referenced by new logic
+  const campDayInput  = document.getElementById('campDay'); // Referenced by new logic and submission
+  const campDayLabel  = document.getElementById('campDayLabel'); // Referenced by new logic
+  const weekStartInput  = document.getElementById('weekStart'); // Referenced by new logic and submission
+  const weekStartLabel  = document.getElementById('weekStartLabel'); // Referenced by new logic
+  // let datePicker = null; // Superseded by window.datePickerInstance for private lessons
+
+  // Obsolete programEl.addEventListener('change', ...) has been removed.
+  // Obsolete coachEl.addEventListener('change', ...) has been removed.
 
   document.getElementById('bookingForm').addEventListener('submit', async e => {
     e.preventDefault();
     const student = document.getElementById('student').value;
-    const program = programEl.value;
-    const coach   = coachEl.value || '';
+    const program = document.getElementById('selectedProgram').value; // Updated
+    const coach   = document.getElementById('selectedCoach').value || ''; // Updated
     let date;
-    if (program.includes('Week Pass')) date = weekStartInput.value;
-    else if (program.includes('Day Pass')) date = campDayInput.value;
-    else date = dateEl.value;
+    // Date selection logic based on program type - uses selectedProgram.value
+    if (program.includes('Week Pass')) {
+        date = weekStartInput.value;
+    } else if (program.includes('Day Pass')) {
+        date = campDayInput.value;
+    } else { // Assumes Private Lesson or other types that use the main date picker
+        date = dateEl.value;
+    }
     const time  = timeEl.value;
     const email = document.getElementById('email').value;
     const phone = document.getElementById('phone').value;

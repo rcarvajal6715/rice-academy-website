@@ -70,6 +70,28 @@ ensureExpensesSchema().catch(err => {
   // process.exit(1); // Optionally exit if schema setup is critical
 });
 
+// Function to check and add 'coach2' and 'coach3' columns to 'bookings' table
+async function ensureBookingsSchema() {
+  const client = await pool.connect();
+  try {
+    await client.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS coach2 TEXT;');
+    console.log('Executed: ALTER TABLE bookings ADD COLUMN IF NOT EXISTS coach2 TEXT;');
+    await client.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS coach3 TEXT;');
+    console.log('Executed: ALTER TABLE bookings ADD COLUMN IF NOT EXISTS coach3 TEXT;');
+    console.log('"coach2" and "coach3" columns check/addition process completed for "bookings" table.');
+  } catch (err) {
+    console.error('Error during schema check/modification for "bookings" table (coach2, coach3 columns):', err.stack);
+  } finally {
+    client.release();
+  }
+}
+
+// Call this function at startup
+ensureBookingsSchema().catch(err => {
+  console.error('Failed to ensure bookings schema for coach2/coach3 columns:', err.stack);
+  // process.exit(1); // Optionally exit if schema setup is critical
+});
+
 // Ensure 'expenses' table exists
 (async () => {
   const createExpensesTableQuery = `
@@ -1332,11 +1354,11 @@ app.post('/api/admin/lessons', async (req, res) => {
     if (!coachName || coachName.trim() === '') {
       return res.status(400).json({ message: 'Coach name is required for this program type.' });
     }
-    console.log('🎾 Adding non-camp lesson via admin for coach:', coachName, 'Program:', program, 'Referral:', referral_source, 'Cost:', costForDb);
+    console.log('🎾 Adding non-camp lesson via admin for coach(es):', coachName, coachName2, coachName3, 'Program:', program, 'Referral:', referral_source, 'Cost:', costForDb);
     try {
       await pool.query(
-        'INSERT INTO bookings (email, program, coach, date, time, student, paid, session_id, referral_source, lesson_cost) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
-        ['', program, coachName, date, time, studentValueForDb, false, null, referralSourceForDb, costForDb]
+        'INSERT INTO bookings (email, program, coach, coach2, coach3, date, time, student, paid, session_id, referral_source, lesson_cost) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
+        ['', program, coachName || null, coachName2 || null, coachName3 || null, date, time, studentValueForDb, false, null, referralSourceForDb, costForDb]
       );
       res.status(200).send('Lesson added successfully');
     } catch (err) {
@@ -1353,7 +1375,7 @@ app.get('/api/admin/lessons', async (req, res) => {
   try {
     // Ensure referral_source is included in the SELECT query if it's not already
     const { rows } = await pool.query(`
-      SELECT id, program, coach, date, time, student, paid, email, phone, lesson_cost, total_lessons, used_lessons, referral_source
+      SELECT id, program, coach, coach2, coach3, date, time, student, paid, email, phone, lesson_cost, total_lessons, used_lessons, referral_source
       FROM bookings
       ORDER BY date DESC, time DESC
     `);
@@ -1804,7 +1826,7 @@ app.put('/api/admin/history/:id', async (req, res) => {
   // Value can be null or other types, so typeof value === 'undefined' might be too strict if null is a valid input.
   // The validation below will handle specific types.
 
-  const allowedFields = ['program', 'coach', 'date', 'time', 'student', 'lesson_cost', 'referral_source', 'paid', 'payout_type'];
+  const allowedFields = ['program', 'coach', 'coach2', 'coach3', 'date', 'time', 'student', 'lesson_cost', 'referral_source', 'paid', 'payout_type'];
   if (!allowedFields.includes(field)) {
     return res.status(400).json({ message: `Field '${field}' is not allowed for update.` });
   }

@@ -559,11 +559,8 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
       const originalDate = les.date ? les.date.substring(0,10) : '';
       const isPaid = les.paid === true || String(les.paid).toLowerCase() === 'true';
 
-      // Create a temporary div to hold the select element and get its outerHTML
-      const tempDiv = document.createElement('div');
-      const timeSelectElement = generateTimeSelectElement(les.id, les.time ? les.time.substring(0,5) : '');
-      tempDiv.appendChild(timeSelectElement);
-      const timeSelectHTML = tempDiv.innerHTML; // This gets the <select>...</select> HTML
+      // Placeholder for time select element
+      const timeSelectPlaceholderId = `time-select-cell-${les.id}`;
 
       tableHTML += `
         <tr data-id="${les.id}">
@@ -571,7 +568,7 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
           <td class="history-cell" data-id="${les.id}" data-field="program" data-original-value="${les.program || ''}" style="padding:8px; border:1px solid #ddd;">${les.program || '—'}</td>
           <td class="history-cell" data-id="${les.id}" data-field="coach" data-original-value="${les.coach || ''}" style="padding:8px; border:1px solid #ddd;">${les.coach || '—'}</td>
           <td class="history-cell" data-id="${les.id}" data-field="date" data-original-value="${originalDate}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${timeSelectHTML}</td>
+          <td id="${timeSelectPlaceholderId}" style="padding:8px; border:1px solid #ddd;"></td>
           <td class="history-cell" data-id="${les.id}" data-field="student" data-original-value="${les.student || ''}" style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td>
           <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td>
@@ -587,6 +584,17 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
   }
   tableHTML += `</tbody></table>`;
   container.innerHTML = tableHTML;
+
+  // After table HTML is set, populate the time select cells
+  if (activeCategoryFilter !== 'Camps') { // Only do this for non-grouped rows
+    lessonsArray.forEach(les => {
+      const timeSelectCell = document.getElementById(`time-select-cell-${les.id}`);
+      if (timeSelectCell) {
+        const timeSelectElement = generateTimeSelectElement(les.id, les.time ? les.time.substring(0,5) : '');
+        timeSelectCell.appendChild(timeSelectElement);
+      }
+    });
+  }
 
   const selectAllCheckbox = document.getElementById('selectAllHistoryRows');
   if (selectAllCheckbox) {

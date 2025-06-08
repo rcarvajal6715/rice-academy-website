@@ -793,21 +793,20 @@ FROM bookings
       }
     }
 
-    // Process Camp Bookings for hours and lessons taught (this loop remains as is, operating on filteredCampBookings)
-    for (const booking of filteredCampBookings) {
-        const coachName = booking.coach || 'Unknown Coach'; // This data comes from 'bookings' table, so 'booking.coach' is correct.
-        if (!coachFinancials[coachName]) {
-            coachFinancials[coachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
-        }
-        coachFinancials[coachName].lessonsTaught += 1; 
+    for (const sessionKey in campSessions) {
+      const session = campSessions[sessionKey];
+      const duration = PROGRAM_DURATIONS[session.program] || 0; // e.g. 1.5 for Kids Camp
 
-        const normalizedProgram = normalizeProgramType(booking.program);
-        const duration = PROGRAM_DURATIONS[normalizedProgram] || 0;
-        if (duration === 0 && normalizedProgram !== "Other") {
-            console.warn(`Financials: Program "${booking.program}" (Normalized: "${normalizedProgram}", Coach: ${coachName}) not in PROGRAM_DURATIONS or duration is 0 for camp/group. Hours not added.`);
+      session.coaches.forEach(coachName => {
+        // Make sure the coach has an entry
+        if (!coachFinancials[coachName]) {
+          coachFinancials[coachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
         }
-        coachFinancials[coachName].totalHours += duration;
-        // Pay for camp bookings is handled per session later (in campSessions loop)
+
+        // **Count one lesson per session, not per child**
+        coachFinancials[coachName].lessonsTaught += 1;
+        coachFinancials[coachName].totalHours     += duration;
+      });
     }
 
     // 8) Build and send the JSON response

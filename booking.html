@@ -314,18 +314,7 @@ ul.nav-links-mobile li a {
           <input type="tel" id="phone" name="phone" required />
         </div>
 
-   <div id="payment-options-container">
-     <label style="margin-top: 20px; margin-bottom: 10px;">Payment Option</label>
-     <div>
-       <input type="radio" id="payNow" name="paymentOption" value="payNow" checked style="width: auto; margin-right: 5px;">
-       <label for="payNow" style="display: inline; font-weight: normal;">Pay Now (Card)</label>
-     </div>
-     <div style="margin-top: 5px;">
-       <input type="radio" id="payLater" name="paymentOption" value="payLater" style="width: auto; margin-right: 5px;">
-       <label for="payLater" style="display: inline; font-weight: normal;">Pay Later (Zelle, Venmo, Cash)</label>
-     </div>
-   </div>
-          <button type="submit" id="submitBookingBtn">Pay &amp; Book</button>
+          <button type="submit" id="submitBookingBtn">Book Session</button>
         </form>
       </div>
     </section>
@@ -496,18 +485,17 @@ const availability = {
     const time  = timeEl.value;
     const email = document.getElementById('email').value;
     const phone = document.getElementById('phone').value;
-    const paymentOption = document.querySelector('input[name="paymentOption"]:checked').value;
 
     try {
-      if (paymentOption === 'payNow') {
-        const res = await fetch('/api/create-payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ student, email, phone, program, coach, date, time })
+        const bookingData = { student, program, coach, date, time, email, phone }; // Ensure only specified fields
+        const res = await fetch('/api/book-session', { // Changed endpoint
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', // Keep credentials
+            body: JSON.stringify(bookingData)
         });
         if (!res.ok) {
-            let errorMsg = 'Payment failed. Please try again.';
+            let errorMsg = 'Booking failed. Please try again.'; // Generic error
             try {
                 const errorData = await res.json();
                 if (errorData && errorData.message) {
@@ -515,36 +503,13 @@ const availability = {
                 } else if (res.statusText) {
                     errorMsg = res.statusText;
                 }
-            } catch (e) { /* ignore parsing error */ }
+            } catch (parseErr) { /* ignore parsing error */ }
             throw new Error(errorMsg);
         }
-        const { url } = await res.json();
-        window.location.href = url;
-      } else if (paymentOption === 'payLater') {
-        const payLaterBody = { student, email, phone, program, coach, date, time };
-        const payLaterRes = await fetch('/api/book-pay-later', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(payLaterBody)
-        });
-        if (!payLaterRes.ok) {
-          let errorMsg = 'Booking for pay later failed. Please try again.';
-          try {
-              const errorData = await payLaterRes.json();
-              if (errorData && errorData.message) {
-                  errorMsg = errorData.message;
-              } else if (payLaterRes.statusText) {
-                  errorMsg = payLaterRes.statusText;
-              }
-          } catch (e) { /* ignore parsing error, use generic message */ }
-          throw new Error(errorMsg);
-        }
-        window.location.href = 'pay-later-success.html';
-      }
+        window.location.href = 'contact-success.html'; // Changed success redirect
     } catch (err) {
-      console.error('Booking/Payment error:', err.message); // Log the actual error message
-      alert(err.message); // Show more specific error to user
+        console.error('Booking error:', err.message);
+        alert(err.message);
     }
   });
 </script>
@@ -701,24 +666,5 @@ document.addEventListener('DOMContentLoaded', () => {
     checkSession();
 });
 </script>
-   <script>
-     document.addEventListener('DOMContentLoaded', () => {
-       const payNowRadio = document.getElementById('payNow');
-       const payLaterRadio = document.getElementById('payLater');
-       const submitButton = document.getElementById('submitBookingBtn');
-
-       if (payNowRadio && payLaterRadio && submitButton) {
-         const updateButtonText = () => {
-           if (payLaterRadio.checked) {
-             submitButton.innerHTML = 'Book (Pay Later)';
-           } else {
-             submitButton.innerHTML = 'Pay &amp; Book';
-           }
-         };
-         payNowRadio.addEventListener('change', updateButtonText);
-         payLaterRadio.addEventListener('change', updateButtonText);
-       }
-     });
-   </script>
 </body>
 </html>

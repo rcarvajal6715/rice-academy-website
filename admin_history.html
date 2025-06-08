@@ -561,7 +561,7 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
 
       // Create a temporary div to hold the select element and get its outerHTML
       const tempDiv = document.createElement('div');
-      const timeSelectElement = generateTimeSelectElement(les.id, les.time || ""); // les.time is HH:MM
+      const timeSelectElement = generateTimeSelectElement(les.id, les.time ? les.time.substring(0,5) : '');
       tempDiv.appendChild(timeSelectElement);
       const timeSelectHTML = tempDiv.innerHTML; // This gets the <select>...</select> HTML
 

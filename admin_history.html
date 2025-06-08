@@ -343,7 +343,6 @@ const validCoaches = [
 let enableHistoryEditingBtn;
 let saveHistoryBtn;
 let historyTableContainer; 
-let bulkUpdateButton; // Added for the new bulk update button
 
 function formatTime_12hr(timeStr) {
   if (!timeStr || !timeStr.includes(':')) { return timeStr; }
@@ -451,7 +450,6 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
     <table style="width:100%; border-collapse:collapse; margin-top:10px;">
       <thead>
         <tr style="background:#0c3c78; color:white;">
-          <th style="padding:8px; border:1px solid #ddd;"><input type="checkbox" id="selectAllHistoryRows"></th>
           <th style="padding:8px; border:1px solid #ddd;">Program</th>
           <th style="padding:8px; border:1px solid #ddd;">Coach</th>
           <th style="padding:8px; border:1px solid #ddd;">Date</th>
@@ -533,7 +531,6 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
             data-email="${group.email || ''}"
             data-phone="${group.phone || ''}"
             data-lesson-cost="${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}">
-          <td style="padding:8px; border:1px solid #ddd;"><input type="checkbox" class="history-row-checkbox" data-id="group-${groupDisplayId}"></td>
           <td class="history-cell" data-id="${rowDataId}" data-field="program" data-original-value="${group.program || ''}" style="padding:8px; border:1px solid #ddd;">${group.program || '—'}</td>
           <td class="history-cell" data-id="${rowDataId}" data-field="coach" data-original-value="${coachesDisplay}" style="padding:8px; border:1px solid #ddd;">${coachesDisplay}</td>
           <td class="history-cell" data-id="${rowDataId}" data-field="date" data-original-value="${group.date || ''}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
@@ -564,7 +561,6 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
 
       tableHTML += `
         <tr data-id="${les.id}">
-          <td style="padding:8px; border:1px solid #ddd;"><input type="checkbox" class="history-row-checkbox" data-id="${les.id}"></td>
           <td class="history-cell" data-id="${les.id}" data-field="program" data-original-value="${les.program || ''}" style="padding:8px; border:1px solid #ddd;">${les.program || '—'}</td>
           <td class="history-cell" data-id="${les.id}" data-field="coach" data-original-value="${les.coach || ''}" style="padding:8px; border:1px solid #ddd;">${les.coach || '—'}</td>
           <td class="history-cell" data-id="${les.id}" data-field="date" data-original-value="${originalDate}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
@@ -596,27 +592,6 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
     });
   }
 
-  const selectAllCheckbox = document.getElementById('selectAllHistoryRows');
-  if (selectAllCheckbox) {
-    selectAllCheckbox.addEventListener('change', (event) => {
-      document.querySelectorAll('.history-row-checkbox').forEach(checkbox => {
-        checkbox.checked = event.target.checked;
-      });
-      if (bulkUpdateButton) bulkUpdateButton.disabled = !event.target.checked && !Array.from(document.querySelectorAll('.history-row-checkbox')).some(cb => cb.checked);
-    });
-  }
-
-  document.querySelectorAll('.history-row-checkbox').forEach(checkbox => {
-    checkbox.addEventListener('change', () => {
-        if (bulkUpdateButton) {
-            const anyChecked = Array.from(document.querySelectorAll('.history-row-checkbox')).some(cb => cb.checked);
-            bulkUpdateButton.disabled = !anyChecked;
-        }
-        if (selectAllCheckbox && !checkbox.checked) {
-            selectAllCheckbox.checked = false;
-        }
-    });
-  });
 }
 
 async function loadHistory() {
@@ -726,31 +701,6 @@ window.addEventListener('DOMContentLoaded', () => {
   enableHistoryEditingBtn = document.getElementById('enable-history-editing-btn');
   saveHistoryBtn = document.getElementById('save-history-btn');
   historyTableContainer = document.getElementById('past-lessons-table-container');
-  bulkUpdateButton = document.getElementById('bulkUpdateButton'); // Initialize new button
-
-  if(bulkUpdateButton) {
-    bulkUpdateButton.disabled = true; // Initially disabled
-    bulkUpdateButton.addEventListener('click', async () => {
-        const selectedIds = Array.from(document.querySelectorAll('.history-row-checkbox:checked')).map(cb => cb.dataset.id);
-        if(selectedIds.length === 0) {
-            alert('No lessons selected for bulk update.');
-            return;
-        }
-        // Placeholder for bulk update action type
-        const actionType = prompt("Enter action type for selected lessons (e.g., 'markPaid', 'archive'):");
-        if (!actionType) {
-            alert('No action specified.');
-            return;
-        }
-        alert(`Bulk updating ${selectedIds.length} lessons with action: ${actionType}. IDs: ${selectedIds.join(', ')}.\n(Actual update logic not yet implemented)`);
-        // Example: await bulkUpdateLessons(selectedIds, actionType);
-        // After action, potentially reload history or update UI
-        // loadHistory(); 
-        // document.getElementById('selectAllHistoryRows').checked = false; // Uncheck select all
-        // bulkUpdateButton.disabled = true; // Disable button again
-    });
-  }
-
 
   loadHistory();
 

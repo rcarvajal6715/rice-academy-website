@@ -349,8 +349,6 @@ ul.nav-links-mobile li a {
             <option value="Ricardo Carvajalino">Ricardo Carvajalino</option>
             <option value="Zachary Capone">Zachary Capone</option>
             <option value="Jacob Capone">Jacob Capone</option>
-            <option value="Matthew Abbey">Matthew Abbey</option>
-            <option value="Paula Carvajalino">Paula Carvajalino</option>
           </select>
           <div id="coachTilesContainer" class="coach-tiles-grid" style="display:none;"></div>
           <input type="hidden" id="selectedCoach" name="coach">
@@ -407,9 +405,7 @@ window.fmtTime = fmtTime; // Make global
 const availability = {
   'Jacob Capone':        { days: [4,5,6], times: { 4:{min:'3:00 PM',max:'8:00 PM'},5:{min:'3:00 PM',max:'8:00 PM'},6:{min:'8:00 AM',max:'4:00 PM'} } },
   'Zachary Capone':      { days: [1,2,3,4,5,6], times: { default:{min:'9:00 AM',max:'7:00 PM'},6:{min:'9:00 AM',max:'5:00 PM'} } },
-  'Ricardo Carvajalino': { days: [1,2,3,4,5,6], times: { default:{min:'8:00 AM',max:'2:00 PM'} } },
-  'Paula Carvajalino':   { days: [1,2,3,4,5], times: { default:{min:'9:00 AM',max:'7:00 PM'} } },
-  'Matthew Abbey':       { days: [1,2,3,4,5], times: { default:{min:'9:00 AM',max:'7:00 PM'} } }
+  'Ricardo Carvajalino': { days: [1,2,3,4,5,6], times: { default:{min:'8:00 AM',max:'2:00 PM'} } }
 };
 window.availability = availability; // Make global
 </script>
@@ -442,19 +438,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Program data
     const programTileElements = []; // To store program tile DOM elements for keyboard navigation
     const programs = [
-        { name: "Private Lesson", value: "Private Lesson", image: "images/private.jpg", price: "$80" },
-        { name: "Summer Camp Day", value: "Summer Camp - Day Pass", image: "images/camp.png", price: "$30" },
-        { name: "Summer Camp Week", value: "Summer Camp - Week Pass", image: "images/camp.png", price: "$130" },
-        { name: "Kids Camp Day", value: "Kids Camp - Day Pass", image: "images/camp.png", price: "$40" },
-        { name: "Kids Camp Week", value: "Kids Camp - Week Pass", image: "images/camp.png", price: "$110" }
+      { name: "Private Lesson",       value: "Private Lesson",       image: "/images/programs/private-lesson.jpg",    price: "$80"  },
+      { name: "Adult Camp",           value: "Adult Camp",           image: "/images/programs/adult-camp.jpg",        price: "$50"  },
+      { name: "Summer Camp Day Pass", value: "Summer Camp - Day Pass",  image: "/images/programs/summer-camp-day.jpg",  price: "$30"  },
+      { name: "Summer Camp Week Pass",value: "Summer Camp - Week Pass", image: "/images/programs/summer-camp-week.jpg", price: "$130" },
+      { name: "Kids Camp Day Pass",   value: "Kids Camp - Day Pass",   image: "/images/programs/kids-camp-day.jpg",    price: "$40"  },
+      { name: "Kids Camp Week Pass",  value: "Kids Camp - Week Pass",  image: "/images/programs/kids-camp-week.jpg",   price: "$110" }
     ];
 
     const coaches = [
-        { name: "Ricardo Carvajalino", value: "Ricardo Carvajalino", image: "ricky.jpg" },
-        { name: "Zachary Capone", value: "Zachary Capone", image: "zach.jpg" },
-        { name: "Jacob Capone", value: "Jacob Capone", image: "Jacob.jpg" },
-        { name: "Matthew Abbey", value: "Matthew Abbey", image: "matthew.jpg" },
-        { name: "Paula Carvajalino", value: "Paula Carvajalino", image: "paula.png" }
+      { name: "Ricardo Carvajalino", value: "Ricardo Carvajalino", image: "/images/coaches/ricardo.jpg" },
+      { name: "Zachary Capone",      value: "Zachary Capone",      image: "/images/coaches/zachary.jpg" },
+      { name: "Jacob Capone",        value: "Jacob Capone",        image: "/images/coaches/jacob.jpg"     }
     ];
 
     async function handleCoachSelection(coachValue) {

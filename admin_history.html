@@ -829,6 +829,45 @@ window.addEventListener('DOMContentLoaded', () => {
                 td.textContent = selectedText || '—';
               }
             }
+          } else if (fieldName === 'coach') {
+            if (editing) {
+              const currentCellText = td.innerText.trim();
+              // Determine the first coach's name. Fallback to an empty string or first valid coach if needed.
+              let firstCoachName = '';
+              if (currentCellText && currentCellText !== '—') {
+                firstCoachName = currentCellText.split(',')[0].trim();
+              } else if (validCoaches.length > 0) {
+                // Optional: fallback to the first valid coach if cell is empty and that's desired.
+                // firstCoachName = validCoaches[0]; // Uncomment if this behavior is needed.
+              }
+
+              td.innerHTML = ''; // Clear the cell's current content.
+
+              const selectEl = document.createElement('select');
+              selectEl.className = 'history-coach-select'; // Reuse class if appropriate or define new one
+
+              validCoaches.forEach(coachName => {
+                const optionEl = document.createElement('option');
+                optionEl.value = coachName;
+                optionEl.textContent = coachName;
+                if (coachName === firstCoachName) {
+                  optionEl.selected = true;
+                }
+                selectEl.appendChild(optionEl);
+              });
+
+              td.appendChild(selectEl);
+              td.contentEditable = false; // Ensure contentEditable is false as we are using a select.
+            } else {
+              // Disabling editing for the coach cell
+              const selectEl = td.querySelector('select.history-coach-select');
+              if (selectEl) {
+                const selectedCoachName = selectEl.value;
+                td.innerHTML = ''; // Clear the select element.
+                td.innerText = selectedCoachName || '—'; // Set text to selected coach or '—' if empty.
+              }
+              // td.contentEditable = false; // Should remain false or be explicitly set if needed.
+            }
           } else { // For other editable cells in non-grouped rows
             td.contentEditable = editing;
             if (!editing) td.blur();
@@ -938,20 +977,32 @@ window.addEventListener('DOMContentLoaded', () => {
           let cellValueChanged = false;
           let processedNewValue;
 
-          if (fieldName === 'referral_source') { // Dropdown, not contentEditable
+          if (fieldName === 'coach') {
+            const selectEl = td.querySelector('select.history-coach-select');
+            if (selectEl) { // Editing is active for this cell, read from select
+                processedNewValue = selectEl.value;
+            } else { // Editing was disabled, cell is plain text
+                processedNewValue = td.innerText.trim();
+            }
+            // Ensure originalValue is a string before splitting
+            const firstOriginalCoach = ((originalValue || '').split(',')[0] || '').trim();
+            if (processedNewValue !== firstOriginalCoach) {
+                cellValueChanged = true;
+            }
+          } else if (fieldName === 'referral_source') { // Dropdown, not contentEditable
             const selectEl = td.querySelector('select.history-referral-select');
             if (selectEl) {
               processedNewValue = selectEl.value;
               const normalizedOriginalValue = originalValue === '—' ? '' : originalValue;
               if (processedNewValue !== normalizedOriginalValue) cellValueChanged = true;
             }
-          } else if (td.contentEditable === 'true') { // For directly editable fields (now includes 'coach')
+          } else if (td.contentEditable === 'true') { // For other directly editable fields
             processedNewValue = td.innerText.trim();
             
-            // Type-specific processing for non-coach fields
-            if (fieldName === 'time') { // This might be redundant if time is only via select
+            // Type-specific processing
+            if (fieldName === 'time') { 
               if (processedNewValue === '' || processedNewValue.toLowerCase() === 'n/a') processedNewValue = null;
-            } else if (fieldName === 'program' || fieldName === 'student') { // coach is handled separately below
+            } else if (fieldName === 'program' || fieldName === 'student') { 
               if (processedNewValue === '' || processedNewValue.toLowerCase() === 'null') processedNewValue = null;
             } else if (fieldName === 'date' && td.innerText.includes('/')) {
               const parts = processedNewValue.split('/');
@@ -963,38 +1014,25 @@ window.addEventListener('DOMContentLoaded', () => {
                 console.warn(`Invalid cost for booking ${bookingId}: ${processedNewValue}. Skipping update.`);
                 return; // Skip this cell's update
               } else if (processedNewValue !== '') {
-                processedNewValue = Number(processedNewValue); // Store as number if valid
+                processedNewValue = Number(processedNewValue); 
               }
             } else if (fieldName === 'paid') {
               const lowerNewValue = processedNewValue.toLowerCase();
               processedNewValue = (lowerNewValue === 'yes' || lowerNewValue === 'true');
             }
-            // General change check for all fields including 'coach' (as a string)
+            // General change check for these other fields
             if (String(processedNewValue) !== String(originalValue)) cellValueChanged = true;
           }
 
           if (cellValueChanged) {
-            if (fieldName === 'coach') {
-              const newCoachString = processedNewValue; // This is the comma-separated string
-              const originalCoachString = originalValue;
-
-              const newCoachesArray = newCoachString.split(',').map(s => s.trim()).filter(s => s !== '');
-              const originalCoachesArray = originalCoachString.split(',').map(s => s.trim()).filter(s => s !== '');
-              const coachFieldNames = ['coach', 'coach2', 'coach3'];
-
-              for (let i = 0; i < coachFieldNames.length; i++) {
-                const nc = newCoachesArray[i] || null;
-                const oc = originalCoachesArray[i] || null;
-                if (nc !== oc) {
-                  updates.push({
+            if (fieldName === 'coach') { // For non-grouped rows, coach field
+                updates.push({
                     bookingId: bookingId,
-                    fieldName: coachFieldNames[i],
-                    newValue: nc,
-                    originalValueForDebug: `(Original ${coachFieldNames[i]}: ${oc}) From combined: ${originalCoachString}`
-                  });
-                }
-              }
-            } else { // For all other fields
+                    fieldName: 'coach', // Explicitly 'coach'
+                    newValue: processedNewValue, // The single selected coach
+                    originalValueForDebug: originalValue // The full original string "CoachA, CoachB"
+                });
+            } else { // For all other fields in non-grouped rows
               updates.push({ bookingId, fieldName, newValue: processedNewValue, originalValueForDebug: originalValue });
             }
           }

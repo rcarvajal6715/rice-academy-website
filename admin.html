@@ -1671,6 +1671,7 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
   <script>
   // This entire block to be added as a new script, or integrated if a single DOMContentLoaded is preferred.
   document.addEventListener('DOMContentLoaded', () => {
+      let editingEnabled = false;
       // Attach listener for the universal update button
       const saveBtn = document.getElementById('save-all-btn');
       if (saveBtn) {

@@ -786,33 +786,39 @@ ul.nav-links-mobile li a {
       }
 
       // Coach visibility and requirement logic
-      const campOrGroupPrograms = ["Summer Camp / Group Lessons", "High Performance Training", "Adult Clinics"];
+      const multiCoachPrograms = [
+        "Summer Camp - Day Pass",
+        "Summer Camp - Week Pass",
+        "Kids Camp - Day Pass",
+        "Kids Camp - Week Pass",
+        "Adult Clinics",
+        "High Performance Training"
+      ];
 
-      if (selectedProgram === "Private Lessons") {
-        coach1Container.style.display = 'block';
+      if (privateLessonPrograms.includes(selectedProgram)) {
+        // single-coach UI
+        coach1Container.style.display = "block";
+        coach2Container.style.display = "none";
+        coach3Container.style.display = "none";
         coach1Select.required = true;
-        coach2Container.style.display = 'none';
-        coach2Select.required = false;
-        coach2Select.value = "";
-        coach3Container.style.display = 'none';
-        coach3Select.required = false;
-        coach3Select.value = "";
-      } else if (campOrGroupPrograms.includes(selectedProgram)) {
-        coach1Container.style.display = 'block';
+        coach2Select.required = coach3Select.required = false;
+        coach2Select.value = coach3Select.value = "";
+      } else if (multiCoachPrograms.includes(selectedProgram)) {
+        // allow up to 3 coaches
+        coach1Container.style.display =
+        coach2Container.style.display =
+        coach3Container.style.display = "block";
         coach1Select.required = true;
-        coach2Container.style.display = 'block';
-        coach2Select.required = false; // Optional
-        coach3Container.style.display = 'block';
-        coach3Select.required = false; // Optional
-      } else { // Default for other programs or if no program is selected
-        coach1Container.style.display = 'block';
+        // 2 & 3 optional
+        coach2Select.required = coach3Select.required = false;
+      } else {
+        // for anything else (e.g. other one-off group programs), default to single
+        coach1Container.style.display = "block";
+        coach2Container.style.display =
+        coach3Container.style.display = "none";
         coach1Select.required = true;
-        coach2Container.style.display = 'none';
-        coach2Select.required = false;
-        coach2Select.value = "";
-        coach3Container.style.display = 'none';
-        coach3Select.required = false;
-        coach3Select.value = "";
+        coach2Select.required = coach3Select.required = false;
+        coach2Select.value = coach3Select.value = "";
       }
       updatePrice(); // Update price when program changes
     };

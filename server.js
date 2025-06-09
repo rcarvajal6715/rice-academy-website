@@ -649,32 +649,31 @@ app.get('/api/financials', async (req, res) => {
   // console.log('WARN: /api/financials auth bypassed for testing.'); // Auth enabled
 
   try {
-    // 2) Determine period → startDate/endDate (YYYY-MM or default to current month)
-    const period = req.query.period;
-    let startDate, endDate;
-    if (period) {
-      if (!/^\d{4}-\d{2}$/.test(period)) {
-        return res.status(400).json({ message: 'Invalid period format. Use YYYY-MM.' });
+  // 2) Determine period → startDate/endDate (YYYY-MM-DD or default to current month)
+  const { start_date: startDateQuery, end_date: endDateQuery } = req.query;
+  let sqlStartDate, sqlEndDate;
+
+  if (startDateQuery && endDateQuery) {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (dateRegex.test(startDateQuery) && dateRegex.test(endDateQuery)) {
+      const parsedStartDate = new Date(startDateQuery);
+      const parsedEndDate = new Date(endDateQuery);
+      if (!isNaN(parsedStartDate.getTime()) && !isNaN(parsedEndDate.getTime()) && parsedStartDate <= parsedEndDate) {
+        // Ensure the date strings are not mutated by Date object timezone adjustments if directly using toISOString().slice(0,10) from them
+        // Since they are already validated as YYYY-MM-DD, we can use them directly.
+        sqlStartDate = startDateQuery;
+        sqlEndDate = endDateQuery;
       }
-      const [year, month] = period.split('-').map(Number);
-      if (month < 1 || month > 12) {
-        return res.status(400).json({ message: 'Invalid month in period.' });
       }
-      startDate = new Date(year, month - 1, 1);
-      endDate   = new Date(year, month, 0);
-      if (startDate.getFullYear() !== year || startDate.getMonth() !== month - 1) {
-        return res.status(400).json({ message: 'Invalid year or month in period.' });
-      }
-    } else {
+  }
+
+  if (!sqlStartDate || !sqlEndDate) { // If validation failed or dates were not provided
       const now = new Date();
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      endDate   = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const firstDayCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDayCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    sqlStartDate = firstDayCurrentMonth.toISOString().slice(0, 10);
+    sqlEndDate = lastDayCurrentMonth.toISOString().slice(0, 10);
     }
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      return res.status(400).json({ message: 'Invalid date calculated from period.' });
-    }
-    const sqlStartDate = startDate.toISOString().slice(0, 10); // "YYYY-MM-DD"
-    const sqlEndDate   = endDate.toISOString().slice(0, 10);
 
     // 3) Fetch fee/rate/overhead values from settings.value_numeric
     const settingsKeys = [
@@ -699,19 +698,14 @@ app.get('/api/financials', async (req, res) => {
     const getSetting = key => (settings[key] || 0);
 
     // 4) Fetch enrollment totals from enrollments_summary (kids/adults/clinic)
-    const summaryPeriod = period ? (period + '-01') : (
-      (() => {
-        const y = startDate.getFullYear();
-        const m = String(startDate.getMonth() + 1).padStart(2, '0');
-        return `${y}-${m}-01`;
-      })()
-    );
+    // Derive summaryPeriodForQuery (YYYY-MM-01) from sqlStartDate for enrollments_summary
+    const summaryPeriodForQuery = sqlStartDate.substring(0, 8) + '01';
     const summaryQuery = `
-      SELECT num_kids_enrolled, num_adults_enrolled, total_private_hours --, num_clinic_participants removed
+      SELECT num_kids_enrolled, num_adults_enrolled, total_private_hours
       FROM enrollments_summary
       WHERE period = $1
     `;
-    const summaryResult = await pool.query(summaryQuery, [summaryPeriod]);
+    const summaryResult = await pool.query(summaryQuery, [summaryPeriodForQuery]);
     const summaryRow = summaryResult.rows[0] || {};
     const num_kids_enrolled       = parseInt(summaryRow.num_kids_enrolled)       || 0;
     const num_adults_enrolled     = parseInt(summaryRow.num_adults_enrolled)     || 0;
@@ -955,15 +949,14 @@ FROM bookings
     const overallTotalRevenue = summer_camp_revenue + kids_camp_revenue + adultGroupRevenue + totalPrivateRevenue;
     const overallTotalCoachPayroll = kidsGroupCoachPay + adultGroupCoachPay + totalCoachPayrollForPrivates + totalCampCoachPayout;
 
-    // Fetch total expenses for the period
+    // Fetch total expenses for the date range using expense_date
     let totalExpenses = 0;
-    const expensesQueryPeriod = period ? period : `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
     const expensesQuery = `
       SELECT SUM(amount) AS total_expenses
       FROM expenses
-      WHERE TO_CHAR(period, 'YYYY-MM') = $1
+      WHERE expense_date >= $1 AND expense_date <= $2
     `;
-    const expensesResult = await pool.query(expensesQuery, [expensesQueryPeriod]);
+    const expensesResult = await pool.query(expensesQuery, [sqlStartDate, sqlEndDate]);
     if (expensesResult.rows.length > 0 && expensesResult.rows[0].total_expenses) {
       totalExpenses = parseFloat(expensesResult.rows[0].total_expenses);
     }
@@ -1033,7 +1026,7 @@ FROM bookings
 
     // 8) Build and send the JSON response
     const financialData = {
-      period: period || `${startDate.getFullYear()}-${String(startDate.getMonth()+1).padStart(2,'0')}`,
+      // period: period || `${sqlStartDate.substring(0,7)}`, // Old period field removed
       startDate: sqlStartDate,
       endDate:   sqlEndDate,
       

@@ -344,12 +344,12 @@ legend {
             <legend>Select Data Period</legend>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <div style="flex: 1;">
-                    <label for="select_year">Year:</label>
-                    <input type="number" id="select_year" placeholder="YYYY" min="2000" max="2100">
+                    <label for="start_date">Start Date:</label>
+                    <input type="date" id="start_date">
                 </div>
                 <div style="flex: 1;">
-                    <label for="select_month">Month:</label>
-                    <input type="number" id="select_month" placeholder="MM" min="1" max="12">
+                    <label for="end_date">End Date:</label>
+                    <input type="date" id="end_date">
                 </div>
                 <div style="align-self: flex-end; flex-basis: 200px;">
                     <button type="button" id="load_period_data_button" style="margin-top: 0;">Load Data for Selected Period</button>
@@ -709,8 +709,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorBanner = document.getElementById('error-banner');
     
     // Period selection elements
-    const selectYear = document.getElementById('select_year');
-    const selectMonth = document.getElementById('select_month');
+    // const selectYear = document.getElementById('select_year'); // Old input
+    // const selectMonth = document.getElementById('select_month'); // Old input
+    const startDateInput = document.getElementById('start_date');
+    const endDateInput = document.getElementById('end_date');
     const loadPeriodDataButton = document.getElementById('load_period_data_button');
 
     // Adjusted formInputs to exclude the load period button from general disabling if needed,
@@ -966,15 +968,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // The updateElement function that was previously nested here is now defined globally above.
     // Calls to updateElement from within updateFinancialDashboard_OLD will now use the global function.
 
-    let currentPeriod = null; // To store YYYY-MM string
+    let currentPeriod = null; // To store YYYY-MM string, derived from start_date
 
-    async function loadExpensesForPeriod(period) {
+    async function loadExpensesForPeriod(period) { // period is expected to be YYYY-MM
         if (!period) {
             console.warn('loadExpensesForPeriod called without a period.');
             renderExpensesList([]); // Render empty list if no period
             return;
         }
-        currentPeriod = period; // Store the currently loaded period
+        // currentPeriod is already set before this function is called, typically from start date
+        // No need to set currentPeriod = period here, it's set in fetchFinancialData
         setLoadingState(true);
         try {
             const response = await fetch(`/api/admin/expenses?period=${period}`, { credentials: 'include' });
@@ -995,28 +998,51 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function fetchFinancialData(selectedPeriod = null) {
+    async function fetchFinancialData(selectedPeriod = null, customApiUrl = null) { // selectedPeriod can be deprecated or derived
         setLoadingState(true);
         if (errorBanner) errorBanner.style.display = 'none';
 
-        let periodToLoad = selectedPeriod;
-        if (!periodToLoad) {
+        let periodToLoad; // This will be YYYY-MM, derived from start_date for summary update and expenses
+        let apiUrl = customApiUrl;
+
+        if (!apiUrl) { // Logic for initial load or if customApiUrl is not provided
             const now = new Date();
-            const currentYear = now.getFullYear();
-            const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
-            periodToLoad = `${currentYear}-${currentMonth}`;
+            const firstDayCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const lastDayCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+            const defaultStartDate = firstDayCurrentMonth.toISOString().split('T')[0];
+            const defaultEndDate = lastDayCurrentMonth.toISOString().split('T')[0];
+
+            if (startDateInput) startDateInput.value = defaultStartDate;
+            if (endDateInput) endDateInput.value = defaultEndDate;
+            
+            periodToLoad = defaultStartDate.substring(0, 7); // YYYY-MM for summary and expenses
+            apiUrl = `/api/financials?start_date=${defaultStartDate}&end_date=${defaultEndDate}`;
+        } else {
+            // If customApiUrl is provided, derive periodToLoad from the start_date input for summary and expenses
+            const startDateValue = startDateInput ? startDateInput.value : null;
+            if (startDateValue) {
+                periodToLoad = startDateValue.substring(0, 7); // YYYY-MM
+            } else {
+                // Fallback or error if start date isn't available when a custom URL is used
+                // This case should ideally not happen if UI ensures start_date is populated
+                const now = new Date();
+                periodToLoad = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                console.warn("fetchFinancialData called with customApiUrl but start_date input was empty. Defaulting periodToLoad.");
+            }
         }
-        currentPeriod = periodToLoad; // Update currentPeriod global
+        
+        currentPeriod = periodToLoad; // Update currentPeriod global (YYYY-MM)
 
         try {
-            // Step 1: Update enrollments summary for the target period
+            // Step 1: Update enrollments summary for the derived periodToLoad (YYYY-MM)
             const summaryUpdateResponse = await fetch('/api/admin/update-enrollments-summary', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    credentials: 'include' 
+                    credentials: 'include'
                 },
-                body: JSON.stringify({ period: periodToLoad })
+                body: JSON.stringify({ period: periodToLoad }) // period is YYYY-MM
             });
 
             if (!summaryUpdateResponse.ok) {
@@ -1034,11 +1060,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // Step 2: Fetch financial data for the target period
-            let apiUrl = '/api/financials';
-            if (periodToLoad) {
-                apiUrl += '?period=' + periodToLoad;
-            }
-            
+            // apiUrl is now either customApiUrl or the default constructed one.
             const financialsResponse = await fetch(apiUrl, { credentials: 'include' });
 
             if (financialsResponse.status === 401) {
@@ -1177,14 +1199,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (financialsForm) {
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth() + 1;
-        if (selectYear) selectYear.value = currentYear;
-        if (selectMonth) selectMonth.value = currentMonth;
-        
-        const defaultPeriod = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
-        fetchFinancialData(defaultPeriod);
+        // Initial load: fetchFinancialData will set default dates and call itself
+        fetchFinancialData(); // No arguments needed, it will use its default date logic
 
         // Remove event listeners from input fields that were for live recalculation,
         // as calculations are now primarily from the API.
@@ -1207,21 +1223,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // Event listener for the "Load Data" button
         if (loadPeriodDataButton) {
             loadPeriodDataButton.addEventListener('click', () => {
-                const year = parseInt(selectYear.value);
-                const month = parseInt(selectMonth.value);
+                const startDateValue = startDateInput ? startDateInput.value : '';
+                const endDateValue = endDateInput ? endDateInput.value : '';
 
-                if (isNaN(year) || year < 2000 || year > 2100) {
-                    displayError('Please enter a valid year (2000-2100).');
+                if (!startDateValue || !endDateValue) {
+                    displayError('Please select both a start and end date.');
                     return;
                 }
-                if (isNaN(month) || month < 1 || month > 12) {
-                    displayError('Please enter a valid month (1-12).');
-                    return;
-                }
-
-                const monthStr = String(month).padStart(2, '0');
-                const period = year + '-' + monthStr;
-                fetchFinancialData(period);
+                // Basic validation for YYYY-MM-DD can be added if necessary, but type="date" helps.
+                
+                const apiUrl = `/api/financials?start_date=${startDateValue}&end_date=${endDateValue}`;
+                fetchFinancialData(null, apiUrl); // Pass null for selectedPeriod, use customApiUrl
             });
         }
 

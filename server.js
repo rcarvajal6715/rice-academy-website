@@ -872,6 +872,7 @@ FROM bookings
         campSessions[sessionKey] = {
           // program: booking.program, // Original
           program: normalizedCampProgram, // Use the same normalized variable
+          originalProgram: booking.program, // Add this line
           date: sessionDateString,
           coaches: new Set(),
           totalRevenue: 0,
@@ -1011,7 +1012,12 @@ FROM bookings
 
     for (const sessionKey in campSessions) {
       const session = campSessions[sessionKey];
-      const duration = PROGRAM_DURATIONS[session.program] || 0; // e.g. 1.5 for Kids Camp
+      let duration;
+      if (session.program === "Kids Camp" && session.originalProgram && session.originalProgram.toLowerCase().includes("week pass")) {
+        duration = 4.5;
+      } else {
+        duration = PROGRAM_DURATIONS[session.program] || 0;
+      }
 
       session.coaches.forEach(coachName => {
         // Make sure the coach has an entry

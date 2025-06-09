@@ -319,17 +319,17 @@ ul.nav-links-mobile li a {
     </div>
   </section>
 
-  <!-- Contact Details Modal -->
-  <div id="contactDetailsModal" class="modal">
+  <!-- View Contact Modal -->
+  <div id="viewContactModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
         <h2>Contact Details</h2>
       </div>
       <div class="modal-body">
-        <!-- JavaScript will populate this -->
+        <div id="contact-details-container"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" id="closeContactModalBtn" class="cancel-btn">Close</button>
+        <button type="button" id="closeViewContactBtn" class="btn cancel-btn">Close</button>
       </div>
     </div>
   </div>
@@ -575,7 +575,7 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
         <td class="history-cell" data-id="${rowDataId}" data-field="date" data-original-value="${group.date}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
         <td class="history-cell" data-id="${rowDataId}" data-field="time" data-original-value="${group.time ? group.time.substring(0,5) : ''}" style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
         <td class="history-cell" data-id="${rowDataId}" data-field="student" data-original-value="${studentDisplay}" style="padding:8px; border:1px solid #ddd;">${studentDisplay}</td>
-        <td style="padding:8px; border:1px solid #ddd;"><button class="view-contact-btn" data-student-details='${studentDetailsJSON.replace(/'/g, "&apos;")}'>View Contact (${studentCount})</button></td>
+        <td style="padding:8px; border:1px solid #ddd;"><button class="view-contact-btn" data-students='${studentDetailsJSON.replace(/'/g, "&apos;")}'>View Contact (${studentCount})</button></td>
         <td class="history-cell" data-id="${rowDataId}" data-field="lesson_cost" data-original-value="${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}</td>
         <td class="history-cell" data-id="${rowDataId}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
         <td class="history-cell" data-id="${rowDataId}" data-field="paid" data-original-value="${String(group.paid)}" style="padding:8px; border:1px solid #ddd;">${group.paid ? 'Yes' : 'No'}</td>
@@ -610,7 +610,7 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
         <td class="history-cell" data-id="${les.id}" data-field="date" data-original-value="${originalDate}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
         <td id="${timeSelectPlaceholderId}" style="padding:8px; border:1px solid #ddd;"></td>
         <td class="history-cell" data-id="${les.id}" data-field="student" data-original-value="${les.student || ''}" style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
-        <td style="padding:8px; border:1px solid #ddd;"><button class="view-contact-btn" data-student-details='${studentDetailsJSON.replace(/'/g, "&apos;")}'>View Contact (${studentCount})</button></td>
+        <td style="padding:8px; border:1px solid #ddd;"><button class="view-contact-btn" data-students='${studentDetailsJSON.replace(/'/g, "&apos;")}'>View Contact (${studentCount})</button></td>
         <td class="history-cell" data-id="${les.id}" data-field="lesson_cost" data-original-value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}</td>
         <td class="history-cell" data-id="${les.id}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
         <td class="history-cell" data-id="${les.id}" data-field="paid" data-original-value="${String(isPaid)}" style="padding:8px; border:1px solid #ddd;">${isPaid ? 'Yes' : 'No'}</td>
@@ -1416,105 +1416,6 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 });
 // Corrected JavaScript logic provided by the user ends here
-</script>
-<script>
-// --- Contact Details Modal Logic ---
-const contactDetailsModal = document.getElementById('contactDetailsModal');
-const closeContactModalBtn = document.getElementById('closeContactModalBtn');
-const contactModalBody = contactDetailsModal.querySelector('.modal-body');
-
-// Function to open the contact modal and populate it
-function openContactModal(studentDetailsArray) {
-  if (!contactModalBody || !contactDetailsModal) {
-    console.error('Contact modal elements not found');
-    return;
-  }
-
-  contactModalBody.innerHTML = ''; // Clear previous content
-
-  if (!studentDetailsArray || studentDetailsArray.length === 0) {
-    contactModalBody.innerHTML = '<p>No contact details available for this session.</p>';
-  } else {
-    const list = document.createElement('ul');
-    list.style.listStyleType = 'none'; // Optional: remove bullet points
-    list.style.padding = '0';
-
-    studentDetailsArray.forEach(student => {
-      const listItem = document.createElement('li');
-      listItem.style.marginBottom = '10px'; // Add some spacing
-      listItem.style.paddingBottom = '10px'; // Add some spacing
-      listItem.style.borderBottom = '1px solid #eee'; // Separator
-
-      const nameEl = document.createElement('strong');
-      nameEl.textContent = student.name || 'N/A';
-      
-      const emailEl = document.createElement('p');
-      emailEl.textContent = `Email: ${student.email || 'N/A'}`;
-      emailEl.style.margin = '5px 0';
-      
-      const phoneEl = document.createElement('p');
-      phoneEl.textContent = `Phone: ${student.phone || 'N/A'}`;
-      phoneEl.style.margin = '5px 0';
-
-      listItem.appendChild(nameEl);
-      listItem.appendChild(emailEl);
-      listItem.appendChild(phoneEl);
-      list.appendChild(listItem);
-    });
-    // Remove border from the last item
-    if (list.lastChild) {
-      list.lastChild.style.borderBottom = 'none';
-      list.lastChild.style.marginBottom = '0';
-      list.lastChild.style.paddingBottom = '0';
-    }
-    contactModalBody.appendChild(list);
-  }
-  contactDetailsModal.style.display = 'block';
-}
-
-// Event listener for "Close" button in the contact modal
-if (closeContactModalBtn) {
-  closeContactModalBtn.onclick = function() {
-    if (contactDetailsModal) {
-      contactDetailsModal.style.display = 'none';
-    }
-  }
-}
-
-// Event listener for closing the modal by clicking outside of it
-window.addEventListener('click', function(event) {
-  if (event.target == contactDetailsModal) {
-    contactDetailsModal.style.display = 'none';
-  }
-});
-
-// Add event listeners to "View Contact (N)" buttons
-// This needs to be done after the table is rendered or use event delegation.
-// Modifying to use event delegation on the table container for dynamically added buttons.
-const pastLessonsTableContainer = document.getElementById('past-lessons-table-container');
-if (pastLessonsTableContainer) {
-  pastLessonsTableContainer.addEventListener('click', function(event) {
-    if (event.target.classList.contains('view-contact-btn')) {
-      const studentDetailsJSON = event.target.getAttribute('data-student-details');
-      if (studentDetailsJSON) {
-        try {
-          const studentDetailsArray = JSON.parse(studentDetailsJSON);
-          openContactModal(studentDetailsArray);
-        } catch (e) {
-          console.error('Failed to parse student details JSON:', e, studentDetailsJSON);
-          // Optionally, display an error in the modal or via an alert
-          openContactModal([{ name: 'Error loading details', email: 'Please check console', phone: '' }]);
-        }
-      } else {
-        console.warn('View contact button clicked, but no student details found.');
-        openContactModal([]); // Show modal with "No details" message
-      }
-    }
-  });
-} else {
-  console.error('past-lessons-table-container not found for attaching contact button listeners.');
-}
-// --- End Contact Details Modal Logic ---
 </script>
   <script>
   // This entire block is for mobile menu and session management, remains unchanged.

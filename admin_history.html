@@ -551,113 +551,32 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
     });
 
   } else { // Original logic for non-camp views
-    const groupedLessons = {};
     lessonsArray.forEach(les => {
-      const program = les.program || 'Unknown Program';
-      const originalDate = les.date ? les.date.substring(0, 10) : 'nodate';
-      const originalTime = les.time || 'notime'; // HH:MM or 'notime'
-      const isLessonPaid = les.paid === true || String(les.paid).toLowerCase() === 'true';
+      const dateStr = les.date ? new Date(les.date).toLocaleDateString() : 'N/A';
+      // const formattedTime = les.time ? formatTime_12hr(les.time) : 'N/A'; // No longer directly used here for non-grouped
+      const referralSourceDisplay = les.referral_source || '—';
+      const originalDate = les.date ? les.date.substring(0,10) : '';
+      const isPaid = les.paid === true || String(les.paid).toLowerCase() === 'true';
 
-      let compositeKey;
-      if (program.toLowerCase().includes('week pass')) {
-        compositeKey = program; // group all week-pass bookings by program only
-      } else {
-        compositeKey = `${program}-${originalDate}`; // group daily bookings by program + date (and time if applicable)
-      }
-
-      if (!groupedLessons[compositeKey]) {
-        const lessonCoaches = new Set();
-        [les.coach, les.coach2, les.coach3].filter(Boolean).forEach(c => lessonCoaches.add(c));
-
-        groupedLessons[compositeKey] = {
-          program: program,
-          date: originalDate, // Store raw date for data-attributes
-          time: originalTime, // Store raw time for data-attributes
-          student: les.student || '',
-          // For simplicity, take email/phone from the first lesson encountered for the group.
-          // If individual emails/phones per student are needed later, this needs more complex handling.
-          email: les.email || '—',
-          phone: les.phone || '—',
-          lesson_cost: les.lesson_cost, // Assuming cost is per student or per group entry. If per student, this might need summing or averaging.
-          referral_source: les.referral_source || '—',
-          coaches: lessonCoaches,
-          originalBookingIds: [les.id],
-          paid: isLessonPaid,
-          // displayDate and displayTime for rendering
-          displayDate: les.date ? new Date(les.date).toLocaleDateString() : 'N/A',
-          displayTime: les.time ? formatTime_12hr(les.time) : 'N/A',
-        };
-      } else {
-        // Group exists, append student, add ID, update paid status, add coaches
-        if (les.student && !groupedLessons[compositeKey].student.toLowerCase().includes(les.student.toLowerCase())) {
-            groupedLessons[compositeKey].student += `, ${les.student}`;
-        }
-        groupedLessons[compositeKey].originalBookingIds.push(les.id);
-        if (isLessonPaid) {
-          groupedLessons[compositeKey].paid = true;
-        }
-        [les.coach, les.coach2, les.coach3].filter(Boolean).forEach(c => groupedLessons[compositeKey].coaches.add(c));
-        // Note: Email, phone, lesson_cost, referral_source are taken from the first encountered lesson.
-        // If time varies within a day for the same program-date group (not 'Week Pass'),
-        // the first encountered time is used for display. This matches the compositeKey logic.
-      }
-    });
-
-    Object.values(groupedLessons).forEach(group => {
-      const groupDisplayId = group.originalBookingIds.join('-'); // For potential checkbox logic if needed
-      const firstBookingId = group.originalBookingIds[0]; // Used for row data-id and delete function
-      const coachesDisplay = Array.from(group.coaches).join(', ') || '—';
-      const referralSourceDisplay = group.referral_source || '—';
-      
-      // For 'Week Pass' groups, date and time might not be relevant or could be 'N/A'
-      // The displayDate and displayTime are from the first lesson in the group.
-      // If it's a 'Week Pass', group.date might be 'nodate' and group.time 'notime'.
-      let dateStrToDisplay = group.displayDate;
-      let timeStrToDisplay = group.displayTime;
-      let originalDateAttr = group.date; // YYYY-MM-DD or 'nodate'
-      let originalTimeAttr = group.time; // HH:MM or 'notime'
-
-      if (group.program.toLowerCase().includes('week pass')) {
-          dateStrToDisplay = 'N/A (Week Pass)';
-          timeStrToDisplay = 'N/A';
-          originalDateAttr = ''; // Or some other indicator that it's not applicable for week pass
-          originalTimeAttr = '';
-      }
-
-      // Placeholder for time select element - individual time editing for grouped non-camp lessons is tricky.
-      // For now, grouped rows won't have individual time editability like single rows.
-      // If time editing is needed for groups, it would likely be at the group level,
-      // or the group would need to be ungrouped/handled differently.
-      // The `generateTimeSelectElement` is for individual rows.
-      // For grouped rows, we display the time of the first lesson or N/A.
-      const timeCellContent = editing && !group.program.toLowerCase().includes('week pass') && (activeCategoryFilter !== 'SummerCamp' && activeCategoryFilter !== 'KidsCamp')
-          ? `<span id="time-display-${firstBookingId}">${timeStrToDisplay}</span>` // Placeholder for future if group time editing is added
-          : timeStrToDisplay;
-
+      // Placeholder for time select element
+      const timeSelectPlaceholderId = `time-select-cell-${les.id}`;
+      const coaches = [les.coach, les.coach2, les.coach3].filter(Boolean).join(', ');
+      const originalCoachesValue = [les.coach || '', les.coach2 || '', les.coach3 || ''].filter(Boolean).join(', ');
 
       tableHTML += `
-        <tr data-id="${firstBookingId}" 
-            data-is-grouped="true" 
-            data-original-ids='${JSON.stringify(group.originalBookingIds)}'
-            data-program="${group.program || ''}"
-            data-date="${originalDateAttr}" 
-            data-time="${originalTimeAttr}" 
-            data-student="${group.student || ''}" 
-            data-email="${group.email || ''}"
-            data-phone="${group.phone || ''}"
-            data-lesson-cost="${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}">
-          <td class="history-cell" data-id="${firstBookingId}" data-field="program" data-original-value="${group.program || ''}" style="padding:8px; border:1px solid #ddd;">${group.program || '—'}</td>
-          <td class="history-cell" data-id="${firstBookingId}" data-field="coach" data-original-value="${coachesDisplay}" style="padding:8px; border:1px solid #ddd;">${coachesDisplay}</td>
-          <td class="history-cell" data-id="${firstBookingId}" data-field="date" data-original-value="${originalDateAttr}" style="padding:8px; border:1px solid #ddd;">${dateStrToDisplay}</td>
-          <td class="history-cell" data-id="${firstBookingId}" data-field="time" data-original-value="${originalTimeAttr}" style="padding:8px; border:1px solid #ddd;">${timeCellContent}</td>
-          <td class="history-cell" data-id="${firstBookingId}" data-field="student" data-original-value="${group.student || ''}" style="padding:8px; border:1px solid #ddd;">${group.student || '—'}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${group.email || '—'}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${group.phone || '—'}</td>
-          <td class="history-cell" data-id="${firstBookingId}" data-field="lesson_cost" data-original-value="${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}</td>
-          <td class="history-cell" data-id="${firstBookingId}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
-          <td class="history-cell" data-id="${firstBookingId}" data-field="paid" data-original-value="${String(group.paid)}" style="padding:8px; border:1px solid #ddd;">${group.paid ? 'Yes' : 'No'}</td>
+        <tr data-id="${les.id}">
+          <td class="history-cell" data-id="${les.id}" data-field="program" data-original-value="${les.program || ''}" style="padding:8px; border:1px solid #ddd;">${les.program || '—'}</td>
+          <td class="history-cell" data-id="${les.id}" data-field="coach" data-original-value="${originalCoachesValue}" style="padding:8px; border:1px solid #ddd;">${coaches || '—'}</td>
+          <td class="history-cell" data-id="${les.id}" data-field="date" data-original-value="${originalDate}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
+          <td id="${timeSelectPlaceholderId}" style="padding:8px; border:1px solid #ddd;"></td>
+          <td class="history-cell" data-id="${les.id}" data-field="student" data-original-value="${les.student || ''}" style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
+          <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td>
+          <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td>
+          <td class="history-cell" data-id="${les.id}" data-field="lesson_cost" data-original-value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}</td>
+          <td class="history-cell" data-id="${les.id}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
+          <td class="history-cell" data-id="${les.id}" data-field="paid" data-original-value="${String(isPaid)}" style="padding:8px; border:1px solid #ddd;">${isPaid ? 'Yes' : 'No'}</td>
           <td style="padding:8px; border:1px solid #ddd;">
-            <button onclick="deleteAdminLesson(${firstBookingId}, true)">Delete Group</button>
+            <button onclick="deleteAdminLesson(${les.id})">Delete</button>
           </td>
         </tr>
       `;
@@ -666,30 +585,16 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
   tableHTML += `</tbody></table>`;
   container.innerHTML = tableHTML;
 
-  // After table HTML is set, populate the time select cells for NON-GROUPED rows if any are rendered
-  // The new logic above groups everything when not 'SummerCamp' or 'KidsCamp'.
-  // So, this specific loop for time-selects on individual rows might not be needed here
-  // if ALL rows in this 'else' branch are now grouped.
-  // However, if there's a scenario where some rows might still be individual under 'All' (e.g. if a lesson fails to group),
-  // this would still be relevant. Given the current grouping logic, all lessons *should* fall into a group.
-  // Let's assume for now that individual time selects are only for truly individual rows, which are not expected in this branch.
-  // If editing time for these new groups becomes a requirement, it will need a different approach
-  // than `generateTimeSelectElement` which is designed for single lesson IDs.
-  // For now, the time cell for these groups will just display text.
-
-  // Consider if `generateTimeSelectElement` is needed for any rows when activeCategoryFilter is NOT SummerCamp/KidsCamp
-  // If all rows are grouped, then this specific post-rendering step for time selects might only apply to
-  // a scenario where a row *isn't* grouped, which shouldn't happen with the new logic in this 'else' block.
-  // If individual row editing (like time) is still needed for some items in the "All" or other non-camp views,
-  // those rows would need to be rendered without the `data-is-grouped="true"` attribute,
-  // and the `generateTimeSelectElement` call would need to target them specifically.
-
-  // Given the current refactoring, all rows in this 'else' block are from `Object.values(groupedLessons)`.
-  // Thus, they are all "grouped" in some sense.
-  // The original `generateTimeSelectElement` was for `lessonsArray.forEach(les => ...)` which iterated individual lessons.
-  // This part needs careful review based on whether any rows in this block are *not* considered "grouped" for editing purposes.
-  // For now, I will remove the explicit loop for time selects here, as all rows are from `groupedLessons`.
-  // Time editing for these groups is not part of the current specific subtask beyond displaying the group's time.
+  // After table HTML is set, populate the time select cells
+  if (activeCategoryFilter !== 'SummerCamp' && activeCategoryFilter !== 'KidsCamp') { // Only do this for non-grouped rows
+    lessonsArray.forEach(les => {
+      const timeSelectCell = document.getElementById(`time-select-cell-${les.id}`);
+      if (timeSelectCell) {
+        const timeSelectElement = generateTimeSelectElement(les.id, les.time ? les.time.substring(0,5) : '');
+        timeSelectCell.appendChild(timeSelectElement);
+      }
+    });
+  }
 
 }
 

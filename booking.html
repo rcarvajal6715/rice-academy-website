@@ -447,9 +447,9 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
 
     const coaches = [
-      { name: "Ricardo Carvajalino", value: "Ricardo Carvajalino", image: "images/Ricardo.jpg" },
-      { name: "Zachary Capone",      value: "Zachary Capone",      image: "images/Zachary.jpg" },
-      { name: "Jacob Capone",        value: "Jacob Capone",        image: "images/Jacob.jpg"     }
+      { name: "Ricardo Carvajalino", value: "Ricardo Carvajalino", image: "ricky.jpg" },
+      { name: "Zachary Capone",      value: "Zachary Capone",      image: "zach.jpg" },
+      { name: "Jacob Capone",        value: "Jacob Capone",        image: "Jacob.jpg"     }
     ];
 
     async function handleCoachSelection(coachValue) {
@@ -658,8 +658,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentWeekStartInput = document.getElementById('weekStart');
         const currentWeekStartLabel = document.getElementById('weekStartLabel');
 
+        // Ensure program tiles remain visible or are set to their default display
+        if (currentProgramTilesContainer) {
+            // Assuming 'grid' is the default/desired display. Adjust if it's 'block' or other.
+            currentProgramTilesContainer.style.display = 'grid'; 
+        }
+
         if (showCoachSelection) {
-            if (currentProgramTilesContainer) currentProgramTilesContainer.style.display = 'none';
+            // if (currentProgramTilesContainer) currentProgramTilesContainer.style.display = 'none'; // This line is removed
             if (currentCoachLbl) currentCoachLbl.style.display = 'block';
             
             populateCoachTiles(); // This will make coachTilesContainer visible and focus the first tile

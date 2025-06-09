@@ -825,12 +825,11 @@ FROM bookings
     }
 
     // Calculate revenue and coach pay for other lesson types
-    const kidsGroupRevenue = getSetting('kids_group_fee') * num_kids_enrolled;
-    const adultGroupRevenue = getSetting('adult_group_fee') * num_adults_enrolled;
-    // const clinicCampRevenue = getSetting('clinic_camp_fee') * num_clinic_participants; // Replaced by totalCampRevenue
+    // const kidsGroupRevenue = getSetting('kids_group_fee') * num_kids_enrolled; // Removed, no longer used for display
+    const adultGroupRevenue = getSetting('adult_group_fee') * num_adults_enrolled; // This maps to "Adult Clinic Revenue" on frontend
 
-    const kidsGroupCoachPay = getSetting('coach_kids_group_rate') * num_kids_enrolled;
-    const adultGroupCoachPay = getSetting('coach_adult_group_rate') * num_adults_enrolled;
+    const kidsGroupCoachPay = getSetting('coach_kids_group_rate') * num_kids_enrolled; // Still needed for total coach payroll
+    const adultGroupCoachPay = getSetting('coach_adult_group_rate') * num_adults_enrolled; // Still needed for total coach payroll
     // const clinicCampCoachPay = getSetting('coach_clinic_camp_fee') * num_clinic_participants; // Replaced by totalCampCoachPayout
 
     // New Camp Financial Logic
@@ -884,18 +883,45 @@ FROM bookings
       // campSessions[sessionKey].bookings.push(booking);
     }
 
-    let totalCampRevenue = 0;
+    let totalCampRevenue = 0; // This will be the sum of specific camp types for coach payout and academy earnings logic
+    let summer_camp_revenue = 0;
+    let kids_camp_revenue = 0;
+    let other_camp_revenue_for_payout_logic = 0; // To keep payout logic consistent if other camps were part of totalCampRevenue
+
     let totalCampCoachPayout = 0;
     let totalCampAcademyEarnings = 0;
 
     for (const sessionKey in campSessions) {
       const session = campSessions[sessionKey];
-      totalCampRevenue += session.totalRevenue;
+      // totalCampRevenue += session.totalRevenue; // Accumulate total for payout logic below
+
+      if (session.program === "Summer Camp") {
+        summer_camp_revenue += session.totalRevenue;
+      } else if (session.program === "Kids Camp") {
+        kids_camp_revenue += session.totalRevenue;
+      } else {
+        // For any other camp types that were part of the old totalCampRevenue,
+        // their revenue still needs to be part of the pot for coach payouts/academy earnings
+        // if the 90/10 split logic applied to them.
+        // For this task, we are only explicitly displaying Summer and Kids camp revenue.
+        // If 'Group Lesson' was part of the old 'totalCampRevenue' for payout, it would go here.
+        // For now, let's assume only Summer and Kids camps were the primary drivers of 'totalCampRevenue'
+        // or that other types (like "Group Lesson") are handled by adultGroupRevenue for display.
+        // If "Group Lesson" revenue from bookings (not settings) was part of old totalCampRevenue, add it here:
+        // other_camp_revenue_for_payout_logic += session.totalRevenue;
+      }
+      
+      // The total revenue for camp payout logic should sum all relevant camp types
+      // that were previously part of the generic 'totalCampRevenue' for payout calculation.
+      // For now, let's assume it's just summer and kids camps.
+      // If other normalized types like "Group Lesson" were part of totalCampRevenue, add them to this sum.
+      const currentSessionRevenueForPayout = session.totalRevenue; // Use the actual revenue of the current session for its payout
+
       const coachCount = session.coaches.size;
-      let sessionCoachPayoutPot = session.totalRevenue * 0.90; // 90% of session revenue goes to coaches
+      let sessionCoachPayoutPot = currentSessionRevenueForPayout * 0.90; // 90% of this specific session's revenue
 
       if (coachCount > 0) {
-        totalCampCoachPayout += sessionCoachPayoutPot; // Aggregate total payout for camps
+        totalCampCoachPayout += sessionCoachPayoutPot; // Aggregate total payout for all camps
 
         const individualCoachPayout = sessionCoachPayoutPot / coachCount;
         session.coaches.forEach(coachName => {
@@ -913,10 +939,19 @@ FROM bookings
       totalCampAcademyEarnings += session.totalRevenue * 0.10;
     }
     
+    // Sum of all specific camp revenues for the old totalCampRevenue variable's role in payouts
+    totalCampRevenue = summer_camp_revenue + kids_camp_revenue + other_camp_revenue_for_payout_logic;
+
+
     // Overall totals
     // Note: kidsGroupCoachPay and adultGroupCoachPay are part of overallTotalCoachPayroll,
     // but NOT added to individual coachFinancials[coachName].totalPay as per subtask instructions.
-    const overallTotalRevenue = kidsGroupRevenue + adultGroupRevenue + totalPrivateRevenue + totalCampRevenue;
+    // kidsGroupRevenue is removed from overallTotalRevenue as it's no longer displayed.
+    // adultGroupRevenue is "Adult Clinic Revenue"
+    // totalPrivateRevenue is "Private Lesson Revenue"
+    // summer_camp_revenue is "Summer Camp Revenue"
+    // kids_camp_revenue is "Kids Camp Revenue"
+    const overallTotalRevenue = summer_camp_revenue + kids_camp_revenue + adultGroupRevenue + totalPrivateRevenue;
     const overallTotalCoachPayroll = kidsGroupCoachPay + adultGroupCoachPay + totalCoachPayrollForPrivates + totalCampCoachPayout;
 
     // Fetch total expenses for the period
@@ -1014,11 +1049,12 @@ FROM bookings
       // num_clinic_participants: num_clinic_participants, // This metric might still be useful for display, but not for these financial calculations
 
       // Calculated financial metrics
-      kids_group_revenue:     kidsGroupRevenue,
-      adult_group_revenue:    adultGroupRevenue,
-      // clinic_camp_revenue:    clinicCampRevenue, // Replaced by totalCampRevenue
+      // kids_group_revenue:     kidsGroupRevenue, // Removed
+      adult_group_revenue:    adultGroupRevenue, // This is "Adult Clinic Revenue"
       private_lesson_revenue: totalPrivateRevenue, 
-      totalCampRevenue:       totalCampRevenue, // New: Revenue from camp-style programs
+      summer_camp_revenue:    summer_camp_revenue, // New
+      kids_camp_revenue:      kids_camp_revenue,   // New
+      // totalCampRevenue:       totalCampRevenue, // Old generic one removed from response
       totalRevenue:           overallTotalRevenue,
       totalExpenses:          totalExpenses, // Added total expenses
 

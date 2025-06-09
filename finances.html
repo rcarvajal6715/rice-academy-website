@@ -448,10 +448,10 @@ legend {
   <div class="display-group full-width">
     <fieldset>
       <legend>Financial Summary</legend>
-      <div><label>Kids Group Revenue:</label> <span id="display_kids_group_revenue">$0.00</span></div>
-      <div><label>Adult Group Revenue:</label> <span id="display_adult_group_revenue">$0.00</span></div>
+      <div><label>Summer Camp Revenue:</label> <span id="display_summer_camp_revenue">$0.00</span></div>
+      <div><label>Kids Camp Revenue:</label> <span id="display_kids_camp_revenue">$0.00</span></div>
+      <div><label>Adult Clinic Revenue:</label> <span id="display_adult_group_revenue">$0.00</span></div>
       <div><label>Private Lesson Revenue:</label> <span id="display_private_lesson_revenue">$0.00</span></div>
-      <div><label>Total Camp Revenue:</label> <span id="display_total_camp_revenue">$0.00</span></div> 
       <div><label>Total Revenue:</label> <span id="display_total_revenue">$0.00</span></div>
       <hr>
       <div><label>Kids Group Coach Pay:</label> <span id="display_kids_group_coach_pay">$0.00</span></div>
@@ -759,11 +759,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderFinancialDashboard(data) {
         // Populate Financial Summary Spans directly from API data
-        updateElement('display_kids_group_revenue', data.kids_group_revenue);
+        updateElement('display_summer_camp_revenue', data.summer_camp_revenue);
+        updateElement('display_kids_camp_revenue', data.kids_camp_revenue);
         updateElement('display_adult_group_revenue', data.adult_group_revenue);
         updateElement('display_private_lesson_revenue', data.private_lesson_revenue);
-        // updateElement('display_clinic_camp_revenue', data.clinic_camp_revenue); // Old field
-        updateElement('display_total_camp_revenue', data.totalCampRevenue); // New field
         updateElement('display_total_revenue', data.totalRevenue);
 
         updateElement('display_kids_group_coach_pay', data.kids_group_coach_pay);

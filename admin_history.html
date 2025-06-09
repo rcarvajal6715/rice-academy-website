@@ -644,30 +644,99 @@ async function loadHistory() {
 
 async function deleteAdminLesson(id, isGroup = false) {
   if (isGroup) {
-    // Placeholder for group deletion logic
-    // For now, we can use the ID of the first lesson in the group for confirmation,
-    // but actual deletion will need to handle all originalBookingIds.
-    console.log(`Attempting to delete group. Main ID displayed: ${id}. Full group deletion logic pending.`);
-    if (!confirm(`Are you sure you want to delete this entire group (associated with lesson ID ${id})? This will affect multiple bookings.`)) return;
-    // TODO: Implement actual group deletion by fetching originalBookingIds from the row's data attribute
-    // and then iterating through them to delete each one, or a new backend endpoint for group deletion.
-    alert(`Group deletion for (first) ID ${id} initiated. Backend functionality for deleting multiple IDs is required.`);
-    // For now, we'll prevent actual deletion of single ID if it's a group, to avoid partial data removal.
-    // loadHistory(); // Or reload after actual multi-delete
-    return; 
-  }
+    console.log(`Group deletion initiated for ID (first ID of group): ${id}`);
+    const row = document.querySelector(`tr[data-id='${id}']`);
 
-  if (!confirm('Are you sure you want to delete this lesson?')) return;
-  try {
-    const res = await fetch(`/api/admin/lessons/${id}`, { method: 'DELETE', credentials: 'include' });
-    if (res.ok) {
-      loadHistory();
-    } else {
-      alert('Delete failed: ' + await res.text());
+    if (!row) {
+      alert('Error: Could not find the lesson row in the table.');
+      return;
     }
-  } catch (err) {
-    console.error('Error deleting lesson:', err);
-    alert('Delete failed due to a network error.');
+
+    const originalIdsJSON = row.getAttribute('data-original-ids');
+    let ids;
+    try {
+      ids = JSON.parse(originalIdsJSON);
+      if (!Array.isArray(ids) || ids.length === 0) {
+        alert('Error: Could not retrieve or parse original booking IDs for the group.');
+        return;
+      }
+    } catch (e) {
+      console.error('Error parsing original booking IDs:', e);
+      alert('Error: Could not retrieve or parse original booking IDs for the group.');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete this entire group? This will delete ${ids.length} booking(s).`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/lessons/delete-group', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ids: ids }),
+        credentials: 'include',
+      });
+
+      if (res.ok) {
+        loadHistory();
+        alert('Group deleted successfully.');
+      } else {
+        let errorMessage = 'Group deletion failed.';
+        try {
+          const errorData = await res.json();
+          if (errorData && errorData.message) {
+            errorMessage = `Group deletion failed: ${errorData.message}`;
+          }
+        } catch (e) {
+          // Could not parse JSON, use default error or text if available
+           const textError = await res.text();
+           if(textError) errorMessage = `Group deletion failed: ${textError}`;
+        }
+        alert(errorMessage);
+      }
+    } catch (err) {
+      console.error('Error deleting group:', err);
+      alert('Group deletion failed due to a network error.');
+    }
+
+  } else { // Individual lesson deletion
+    if (!confirm('Are you sure you want to delete this lesson?')) return;
+    try {
+      const res = await fetch(`/api/admin/lessons/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        loadHistory();
+      } else {
+        let errorText = 'Delete failed.';
+        try {
+            // Try to parse as JSON first for structured error messages
+            const errorData = await res.json();
+            if (errorData && errorData.message) {
+                errorText = `Delete failed: ${errorData.message}`;
+            } else {
+                // Fallback to text if not JSON or no message property
+                errorText = `Delete failed: ${await res.text()}`;
+            }
+        } catch (e) {
+            // If JSON parsing fails, try to get plain text
+            try {
+                errorText = `Delete failed: ${await res.text()}`;
+            } catch (e2) {
+                // If text reading also fails, use a generic message with status
+                errorText = `Delete failed with status: ${res.status}`;
+            }
+        }
+        alert(errorText);
+      }
+    } catch (err) {
+      console.error('Error deleting lesson:', err);
+      alert('Delete failed due to a network error.');
+    }
   }
 }
 

@@ -429,6 +429,11 @@ function generateTimeSelectElement(lessonId, originalTime24hr) {
   return select;
 }
 
+function isPrivateLesson(programName) {
+  if (!programName) return false;
+  return programName.toLowerCase().includes('private');
+}
+
 function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
   const container = document.getElementById(containerId);
   if (!container) {
@@ -436,16 +441,19 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
     return;
   }
 
+  let individualLessonsToRender = [];
+  const groupedLessons = {};
+
   if (lessonsArray.length === 0) {
     container.innerHTML = `<p>${placeholderMessage}</p>`;
     return;
   }
 
-  const isCampProgram = (programName) => {
-    if (!programName) return false;
-    const lowerProgramName = programName.toLowerCase();
-    return lowerProgramName.includes('camp') || lowerProgramName.includes('pass');
-  };
+  // const isCampProgram = (programName) => { // Removed as per plan
+  //   if (!programName) return false;
+  //   const lowerProgramName = programName.toLowerCase();
+  //   return lowerProgramName.includes('camp') || lowerProgramName.includes('pass');
+  // };
 
   let tableHTML = `
     <table style="width:100%; border-collapse:collapse; margin-top:10px;">
@@ -467,135 +475,131 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
       <tbody>
   `;
 
-  if (activeCategoryFilter === 'SummerCamp' || activeCategoryFilter === 'KidsCamp') {
-    const groupedLessons = {};
-    lessonsArray.forEach(les => {
-      // Ensure only camp programs are processed for grouping if this function is ever called directly
-      // with mixed data when 'SummerCamp' or 'KidsCamp' filter is active. filterAndRenderHistory should pre-filter.
-      if (!isCampProgram(les.program)) {
-          // Optionally, render as individual row or skip. For now, skip if not camp/pass.
-          // console.warn("Non-camp program found in 'SummerCamp' or 'KidsCamp' filter:", les);
-          return; 
+  lessonsArray.forEach(les => {
+    if (isPrivateLesson(les.program)) {
+      individualLessonsToRender.push(les);
+      return; // Skip grouping for private lessons
+    }
+
+    // This path is for non-private lessons
+    const originalDate = les.date ? les.date.substring(0, 10) : 'nodate';
+    const timeForGroupingKey = les.time ? les.time.substring(0, 5) : 'notime'; // HH:MM for grouping key
+    const compositeKey = `${les.program}-${originalDate}-${timeForGroupingKey}`;
+    const isLessonPaid = les.paid === true || String(les.paid).toLowerCase() === 'true';
+
+    if (!groupedLessons[compositeKey]) {
+      groupedLessons[compositeKey] = {
+        program: les.program,
+        date: originalDate, // YYYY-MM-DD
+        time: les.time || 'notime', // Store full original time (e.g., HH:MM:SS or HH:MM) from first lesson for display
+        students: new Set(), 
+        email: les.email,
+        phone: les.phone,
+        lesson_cost: les.lesson_cost,
+        referral_source: les.referral_source || '—',
+        coaches: new Set(),
+        originalBookingIds: [les.id],
+        paid: isLessonPaid,
+        displayDate: les.date ? new Date(les.date).toLocaleDateString() : 'N/A',
+        // displayTime for grouped rows will be formatted using group.time and formatTime_12hr()
+      };
+      if (les.student && les.student.trim() !== '') { groupedLessons[compositeKey].students.add(les.student.trim()); }
+      const lessonCoaches = [les.coach, les.coach2, les.coach3].filter(Boolean);
+      lessonCoaches.forEach(c => groupedLessons[compositeKey].coaches.add(c));
+    } else {
+      if (les.student && les.student.trim() !== '') { groupedLessons[compositeKey].students.add(les.student.trim()); }
+      const lessonCoaches = [les.coach, les.coach2, les.coach3].filter(Boolean);
+      lessonCoaches.forEach(c => groupedLessons[compositeKey].coaches.add(c));
+      groupedLessons[compositeKey].originalBookingIds.push(les.id);
+      if (isLessonPaid) {
+        groupedLessons[compositeKey].paid = true;
       }
+      // Student name aggregation is handled by adding to the Set.
+    }
+  });
 
-      const originalDate = les.date ? les.date.substring(0, 10) : 'nodate';
-      const originalTime = les.time || 'notime';
-      const compositeKey = `${les.program}-${originalDate}-${originalTime}`;
-      const isLessonPaid = les.paid === true || String(les.paid).toLowerCase() === 'true';
+  Object.values(groupedLessons).forEach(group => {
+    const rowDataId = group.originalBookingIds[0]; 
+    const coachesDisplay = Array.from(group.coaches).join(', ');
+    const dateStr = group.displayDate; 
+    const formattedTime = formatTime_12hr(group.time); // Use group.time (original full time string)
+    const referralSourceDisplay = group.referral_source || '—';
 
-      if (!groupedLessons[compositeKey]) {
-        groupedLessons[compositeKey] = {
-          program: les.program,
-          date: originalDate,
-          time: originalTime,
-          student: les.student,
-          email: les.email,
-          phone: les.phone,
-          lesson_cost: les.lesson_cost,
-          referral_source: les.referral_source || '—',
-          coaches: new Set(), // Initialize with a Set for unique coach names
-          originalBookingIds: [les.id],
-          paid: isLessonPaid, // Initialize paid status with the first lesson's status
-          // Store formatted date/time from first lesson for display consistency
-          displayDate: les.date ? new Date(les.date).toLocaleDateString() : 'N/A',
-          displayTime: les.time ? formatTime_12hr(les.time) : 'N/A',
-        };
-        const lessonCoaches = [les.coach, les.coach2, les.coach3].filter(Boolean);
-        lessonCoaches.forEach(c => groupedLessons[compositeKey].coaches.add(c));
-      } else {
-        const lessonCoaches = [les.coach, les.coach2, les.coach3].filter(Boolean);
-        lessonCoaches.forEach(c => groupedLessons[compositeKey].coaches.add(c));
-        groupedLessons[compositeKey].originalBookingIds.push(les.id);
-        if (isLessonPaid) { // If any lesson in the group is paid, the group is considered paid
-          groupedLessons[compositeKey].paid = true;
-        }
-        // Student, email, phone, cost, referral_source are assumed to be the same for the group, taken from the first lesson.
-      }
-    });
+    let studentDisplay = '—';
+    if (group.students && group.students.size > 0) {
+      studentDisplay = Array.from(group.students).filter(name => name && name.trim() !== '').join(', ');
+      if (studentDisplay === '') studentDisplay = '—'; // Handle case where all names were empty/whitespace
+    }
 
-    Object.values(groupedLessons).forEach(group => {
-      const groupDisplayId = group.originalBookingIds.join('-'); // For checkbox data-id
-      const rowDataId = group.originalBookingIds[0]; // Main row data-id, for now use first ID
-      const coachesDisplay = Array.from(group.coaches).join(', ');
-      // Use stored displayDate/Time, or format from group.date/time if needed
-      const dateStr = group.displayDate; 
-      const formattedTime = group.displayTime;
-      const referralSourceDisplay = group.referral_source || '—';
+    tableHTML += `
+      <tr data-id="${rowDataId}" 
+          data-is-grouped="true" 
+          data-original-ids='${JSON.stringify(group.originalBookingIds)}'
+          data-program="${group.program || ''}"
+          data-date="${group.date || ''}" /* YYYY-MM-DD */
+          data-time="${group.time || ''}" /* Original full time, e.g., HH:MM:SS or HH:MM */
+          data-student="${studentDisplay}"
+          data-email="${group.email || ''}"
+          data-phone="${group.phone || ''}"
+          data-lesson-cost="${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}">
+        <td class="history-cell" data-id="${rowDataId}" data-field="program" data-original-value="${group.program || ''}" style="padding:8px; border:1px solid #ddd;">${group.program || '—'}</td>
+        <td class="history-cell" data-id="${rowDataId}" data-field="coach" data-original-value="${coachesDisplay}" style="padding:8px; border:1px solid #ddd;">${coachesDisplay || '—'}</td>
+        <td class="history-cell" data-id="${rowDataId}" data-field="date" data-original-value="${group.date}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
+        <td class="history-cell" data-id="${rowDataId}" data-field="time" data-original-value="${group.time ? group.time.substring(0,5) : ''}" style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
+        <td class="history-cell" data-id="${rowDataId}" data-field="student" data-original-value="${studentDisplay}" style="padding:8px; border:1px solid #ddd;">${studentDisplay}</td>
+        <td style="padding:8px; border:1px solid #ddd;">${group.email || '—'}</td>
+        <td style="padding:8px; border:1px solid #ddd;">${group.phone || '—'}</td>
+        <td class="history-cell" data-id="${rowDataId}" data-field="lesson_cost" data-original-value="${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}</td>
+        <td class="history-cell" data-id="${rowDataId}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
+        <td class="history-cell" data-id="${rowDataId}" data-field="paid" data-original-value="${String(group.paid)}" style="padding:8px; border:1px solid #ddd;">${group.paid ? 'Yes' : 'No'}</td>
+        <td style="padding:8px; border:1px solid #ddd;">
+          <button onclick="deleteAdminLesson(${rowDataId}, true)">Delete Group</button>
+        </td>
+      </tr>
+    `;
+  });
 
-      tableHTML += `
-        <tr data-id="${rowDataId}" 
-            data-is-grouped="true" 
-            data-original-ids='${JSON.stringify(group.originalBookingIds)}'
-            data-program="${group.program || ''}"
-            data-date="${group.date || ''}"
-            data-time="${group.time || ''}"
-            data-student="${group.student || ''}"
-            data-email="${group.email || ''}"
-            data-phone="${group.phone || ''}"
-            data-lesson-cost="${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}">
-          <td class="history-cell" data-id="${rowDataId}" data-field="program" data-original-value="${group.program || ''}" style="padding:8px; border:1px solid #ddd;">${group.program || '—'}</td>
-          <td class="history-cell" data-id="${rowDataId}" data-field="coach" data-original-value="${coachesDisplay}" style="padding:8px; border:1px solid #ddd;">${coachesDisplay || '—'}</td>
-          <td class="history-cell" data-id="${rowDataId}" data-field="date" data-original-value="${group.date || ''}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
-          <td class="history-cell" data-id="${rowDataId}" data-field="time" data-original-value="${group.time || ''}" style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
-          <td class="history-cell" data-id="${rowDataId}" data-field="student" data-original-value="${group.student || ''}" style="padding:8px; border:1px solid #ddd;">${group.student || '—'}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${group.email || '—'}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${group.phone || '—'}</td>
-          <td class="history-cell" data-id="${rowDataId}" data-field="lesson_cost" data-original-value="${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}</td>
-          <td class="history-cell" data-id="${rowDataId}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
-          <td class="history-cell" data-id="${rowDataId}" data-field="paid" data-original-value="${String(group.paid)}" style="padding:8px; border:1px solid #ddd;">${group.paid ? 'Yes' : 'No'}</td>
-          <td style="padding:8px; border:1px solid #ddd;">
-            <button onclick="deleteAdminLesson(${rowDataId}, true)">Delete Group</button> <!-- Placeholder, needs specific handling for grouped deletion -->
-          </td>
-        </tr>
-      `;
-    });
+  individualLessonsToRender.forEach(les => {
+    const dateStr = les.date ? new Date(les.date).toLocaleDateString() : 'N/A';
+    const referralSourceDisplay = les.referral_source || '—';
+    const originalDate = les.date ? les.date.substring(0,10) : '';
+    const isPaid = les.paid === true || String(les.paid).toLowerCase() === 'true';
+    const timeSelectPlaceholderId = `time-select-cell-${les.id}`;
+    const coaches = [les.coach, les.coach2, les.coach3].filter(Boolean).join(', ');
+    const originalCoachesValue = [les.coach || '', les.coach2 || '', les.coach3 || ''].filter(Boolean).join(', ');
 
-  } else { // Original logic for non-camp views
-    lessonsArray.forEach(les => {
-      const dateStr = les.date ? new Date(les.date).toLocaleDateString() : 'N/A';
-      // const formattedTime = les.time ? formatTime_12hr(les.time) : 'N/A'; // No longer directly used here for non-grouped
-      const referralSourceDisplay = les.referral_source || '—';
-      const originalDate = les.date ? les.date.substring(0,10) : '';
-      const isPaid = les.paid === true || String(les.paid).toLowerCase() === 'true';
+    tableHTML += `
+      <tr data-id="${les.id}" data-is-grouped="false">
+        <td class="history-cell" data-id="${les.id}" data-field="program" data-original-value="${les.program || ''}" style="padding:8px; border:1px solid #ddd;">${les.program || '—'}</td>
+        <td class="history-cell" data-id="${les.id}" data-field="coach" data-original-value="${originalCoachesValue}" style="padding:8px; border:1px solid #ddd;">${coaches || '—'}</td>
+        <td class="history-cell" data-id="${les.id}" data-field="date" data-original-value="${originalDate}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
+        <td id="${timeSelectPlaceholderId}" style="padding:8px; border:1px solid #ddd;"></td>
+        <td class="history-cell" data-id="${les.id}" data-field="student" data-original-value="${les.student || ''}" style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
+        <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td>
+        <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td>
+        <td class="history-cell" data-id="${les.id}" data-field="lesson_cost" data-original-value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}</td>
+        <td class="history-cell" data-id="${les.id}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
+        <td class="history-cell" data-id="${les.id}" data-field="paid" data-original-value="${String(isPaid)}" style="padding:8px; border:1px solid #ddd;">${isPaid ? 'Yes' : 'No'}</td>
+        <td style="padding:8px; border:1px solid #ddd;">
+          <button onclick="deleteAdminLesson(${les.id}, false)">Delete</button>
+        </td>
+      </tr>
+    `;
+  });
 
-      // Placeholder for time select element
-      const timeSelectPlaceholderId = `time-select-cell-${les.id}`;
-      const coaches = [les.coach, les.coach2, les.coach3].filter(Boolean).join(', ');
-      const originalCoachesValue = [les.coach || '', les.coach2 || '', les.coach3 || ''].filter(Boolean).join(', ');
-
-      tableHTML += `
-        <tr data-id="${les.id}">
-          <td class="history-cell" data-id="${les.id}" data-field="program" data-original-value="${les.program || ''}" style="padding:8px; border:1px solid #ddd;">${les.program || '—'}</td>
-          <td class="history-cell" data-id="${les.id}" data-field="coach" data-original-value="${originalCoachesValue}" style="padding:8px; border:1px solid #ddd;">${coaches || '—'}</td>
-          <td class="history-cell" data-id="${les.id}" data-field="date" data-original-value="${originalDate}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
-          <td id="${timeSelectPlaceholderId}" style="padding:8px; border:1px solid #ddd;"></td>
-          <td class="history-cell" data-id="${les.id}" data-field="student" data-original-value="${les.student || ''}" style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td>
-          <td class="history-cell" data-id="${les.id}" data-field="lesson_cost" data-original-value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}</td>
-          <td class="history-cell" data-id="${les.id}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
-          <td class="history-cell" data-id="${les.id}" data-field="paid" data-original-value="${String(isPaid)}" style="padding:8px; border:1px solid #ddd;">${isPaid ? 'Yes' : 'No'}</td>
-          <td style="padding:8px; border:1px solid #ddd;">
-            <button onclick="deleteAdminLesson(${les.id})">Delete</button>
-          </td>
-        </tr>
-      `;
-    });
-  }
   tableHTML += `</tbody></table>`;
   container.innerHTML = tableHTML;
 
-  // After table HTML is set, populate the time select cells
-  if (activeCategoryFilter !== 'SummerCamp' && activeCategoryFilter !== 'KidsCamp') { // Only do this for non-grouped rows
-    lessonsArray.forEach(les => {
-      const timeSelectCell = document.getElementById(`time-select-cell-${les.id}`);
-      if (timeSelectCell) {
-        const timeSelectElement = generateTimeSelectElement(les.id, les.time ? les.time.substring(0,5) : '');
-        timeSelectCell.appendChild(timeSelectElement);
-      }
-    });
-  }
-
+  // After table HTML is set, populate the time select cells for individual lessons
+  individualLessonsToRender.forEach(les => {
+    const timeSelectCell = document.getElementById(`time-select-cell-${les.id}`);
+    if (timeSelectCell) {
+      // generateTimeSelectElement expects HH:MM for its originalTime24hr argument
+      const timeForSelect = les.time ? les.time.substring(0,5) : ''; 
+      const timeSelectElement = generateTimeSelectElement(les.id, timeForSelect);
+      timeSelectCell.appendChild(timeSelectElement);
+    }
+  });
 }
 
 async function loadHistory() {

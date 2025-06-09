@@ -303,8 +303,9 @@ ul.nav-links-mobile li a {
     <div id="category-filters" style="margin-bottom: 20px;">
       <button class="category-filter-button active-filter-button" data-category="All">All</button>
       <button class="category-filter-button" data-category="Privates">Private Lessons</button>
-      <button class="category-filter-button" data-category="Camps">Camps & Passes</button>
-      <button class="category-filter-button" data-category="Clinics">Clinics & Other</button>
+      <button class="category-filter-button" data-category="SummerCamp">Summer Camp</button>
+      <button class="category-filter-button" data-category="KidsCamp">Kids Camp</button>
+      <button class="category-filter-button" data-category="AdultClinics">Adult Clinics</button>
     </div>
 
 <!-- New container for the buttons -->
@@ -466,14 +467,14 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
       <tbody>
   `;
 
-  if (activeCategoryFilter === 'Camps') {
+  if (activeCategoryFilter === 'SummerCamp' || activeCategoryFilter === 'KidsCamp') {
     const groupedLessons = {};
     lessonsArray.forEach(les => {
       // Ensure only camp programs are processed for grouping if this function is ever called directly
-      // with mixed data when 'Camps' filter is active. filterAndRenderHistory should pre-filter.
+      // with mixed data when 'SummerCamp' or 'KidsCamp' filter is active. filterAndRenderHistory should pre-filter.
       if (!isCampProgram(les.program)) {
           // Optionally, render as individual row or skip. For now, skip if not camp/pass.
-          // console.warn("Non-camp program found in 'Camps' filter:", les);
+          // console.warn("Non-camp program found in 'SummerCamp' or 'KidsCamp' filter:", les);
           return; 
       }
 
@@ -585,7 +586,7 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
   container.innerHTML = tableHTML;
 
   // After table HTML is set, populate the time select cells
-  if (activeCategoryFilter !== 'Camps') { // Only do this for non-grouped rows
+  if (activeCategoryFilter !== 'SummerCamp' && activeCategoryFilter !== 'KidsCamp') { // Only do this for non-grouped rows
     lessonsArray.forEach(les => {
       const timeSelectCell = document.getElementById(`time-select-cell-${les.id}`);
       if (timeSelectCell) {
@@ -761,8 +762,9 @@ function filterAndRenderHistory(searchTerm) {
       if (!les || !les.program) return false;
       const programName = les.program.toLowerCase();
       if (activeCategoryFilter === 'Privates') return programName.includes('private');
-      if (activeCategoryFilter === 'Camps') return programName.includes('camp') || programName.includes('pass');
-      if (activeCategoryFilter === 'Clinics') return programName.includes('clinic') || programName.includes('high performance');
+      if (activeCategoryFilter === 'SummerCamp') return programName.includes('summer camp');
+      if (activeCategoryFilter === 'KidsCamp') return programName.includes('kids camp');
+      if (activeCategoryFilter === 'AdultClinics') return programName.includes('adult') && (programName.includes('camp') || programName.includes('clinic'));
       return false;
     });
   }

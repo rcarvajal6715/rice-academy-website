@@ -794,8 +794,8 @@ window.addEventListener('DOMContentLoaded', () => {
         const fieldName = td.dataset.field;
 
         if (isGroupedRow) {
-            if (fieldName === 'coach') { // Only coach field is editable for grouped rows
-                // For grouped rows, if editing is enabled, create the dropdown.
+            if (fieldName === 'coach') { // Coach field logic for grouped rows
+                // For grouped rows, if editing is enabled, create the dropdown/checkboxes.
                 // If editing is disabled, revert to text.
                 if (editing) {
                     const currentCoachValue = td.innerText.trim();
@@ -831,14 +831,13 @@ window.addEventListener('DOMContentLoaded', () => {
                         });
                         td.appendChild(coachListContainer);
                     } else {
-                        // Fallback to single select for non-camp/pass grouped rows (if any such case exists)
+                        // Fallback to single select for non-camp/pass grouped rows
                         const selectEl = document.createElement('select');
                         selectEl.className = 'history-coach-select';
                         validCoaches.forEach(coachName => {
                             const optionEl = document.createElement('option');
                             optionEl.value = coachName;
                             optionEl.textContent = coachName;
-                            // Select first coach if multiple were listed, or the single coach
                             if (coachName === currentCoachValue.split(',')[0].trim()) {
                                 optionEl.selected = true;
                             }
@@ -850,25 +849,61 @@ window.addEventListener('DOMContentLoaded', () => {
                 } else {
                     // When disabling editing for a grouped coach cell
                     const coachListContainer = td.querySelector('.coach-checkbox-list');
-                    if (coachListContainer) { // If checkboxes were used
+                    if (coachListContainer) { 
                         const selectedCheckboxes = Array.from(coachListContainer.querySelectorAll('input[type="checkbox"]:checked'));
                         const selectedCoachNames = selectedCheckboxes.map(cb => cb.value);
-                        td.innerHTML = ''; // Clear the checkboxes
+                        td.innerHTML = ''; 
                         td.textContent = selectedCoachNames.join(', ') || '—';
-                    } else { // Fallback for select elements (if program was not camp/pass)
+                    } else { 
                         const selectEl = td.querySelector('select.history-coach-select');
                         if (selectEl) {
-                            // This part remains for single-select dropdowns in grouped rows (non camp/pass)
                             const selectedCoach = selectEl.value;
                             td.innerHTML = ''; 
                             td.textContent = selectedCoach || '—'; 
                         }
-                        // If it was a multi-select (older version, or if a non-camp/pass somehow had it), this also needs to be handled
-                        // However, current logic only creates multi-select for camp/pass, which are now checkboxes.
-                        // So, this 'else' for selectEl should primarily hit single-selects.
                     }
                 }
-            } else {
+            } else if (fieldName === 'date') { // Date field for grouped rows
+                if (editing) {
+                    const currentDateValue = td.dataset.originalValue; // Should be YYYY-MM-DD
+                    td.innerHTML = '';
+                    const dateInput = document.createElement('input');
+                    dateInput.type = 'date';
+                    dateInput.value = currentDateValue;
+                    dateInput.style.width = '100%'; // Make input take cell width
+                    dateInput.style.boxSizing = 'border-box';
+                    td.appendChild(dateInput);
+                    td.contentEditable = false;
+                } else {
+                    const dateInput = td.querySelector('input[type="date"]');
+                    if (dateInput) {
+                        const newDateValue = dateInput.value; // YYYY-MM-DD
+                        // td.dataset.originalValue = newDateValue; // Update originalValue if needed upon save, not here
+                        td.innerHTML = '';
+                        td.textContent = newDateValue ? new Date(newDateValue + 'T00:00:00').toLocaleDateString() : 'N/A'; // Ensure local time for toLocaleDateString
+                    }
+                }
+            } else if (fieldName === 'time') { // Time field for grouped rows
+                if (editing) {
+                    const originalTime24hr = td.dataset.originalValue; // Should be HH:MM
+                    td.innerHTML = '';
+                    // Use tr.dataset.id as a unique enough ID for the select element for this group
+                    const timeSelect = generateTimeSelectElement(tr.dataset.id + '-group', originalTime24hr);
+                    timeSelect.style.width = '100%';
+                    timeSelect.style.boxSizing = 'border-box';
+                    td.appendChild(timeSelect);
+                    timeSelect.disabled = false; // Ensure it's enabled
+                    td.contentEditable = false;
+                } else {
+                    const timeSelect = td.querySelector('select.history-time-select');
+                    if (timeSelect) {
+                        const newTimeValue = timeSelect.value; // HH:MM
+                        // td.dataset.originalValue = newTimeValue; // Update originalValue if needed upon save
+                        td.innerHTML = '';
+                        td.textContent = newTimeValue ? formatTime_12hr(newTimeValue) : 'N/A';
+                    }
+                }
+            } else { // Other fields in grouped rows (program, student, etc.)
                 td.contentEditable = false; 
             }
         } else { // Logic for non-grouped rows
@@ -951,8 +986,14 @@ window.addEventListener('DOMContentLoaded', () => {
       });
 
       // Add this part:
-      document.querySelectorAll('select.history-time-select').forEach(select => {
-        select.disabled = !editing;
+      document.querySelectorAll('select.history-time-select, input[type="date"]').forEach(inputEl => {
+        if (inputEl.matches('select.history-time-select')) { // Only disable time selects if they are for individual lessons
+            const tr = inputEl.closest('tr');
+            if (tr && tr.dataset.isGrouped !== 'true') {
+                 inputEl.disabled = !editing;
+            }
+        }
+        // Date inputs for grouped rows are handled inside the loop, this keeps individual lesson date inputs (if any) editable
       });
     });
   }
@@ -976,21 +1017,16 @@ window.addEventListener('DOMContentLoaded', () => {
         let changed = false;
 
         if (isGroupedRow) {
-          // Updated handling for grouped rows coach saving
           if (fieldName === 'coach') {
             const checkboxes = td.querySelectorAll('input[type="checkbox"][name="coach-checkbox"]');
-            let selectedCoaches = []; // Initialize here to ensure it's always an array
+            let selectedCoaches = []; 
 
-            if (checkboxes.length > 0) { // Check if checkboxes are present (Camp/Pass row)
+            if (checkboxes.length > 0) { 
               checkboxes.forEach(cb => {
                 if (cb.checked) selectedCoaches.push(cb.value);
               });
 
-              const originalCoachesArray = originalValue
-                .split(',')
-                .map(name => name.trim())
-                .filter(name => name);
-
+              const originalCoachesArray = originalValue.split(',').map(name => name.trim()).filter(name => name);
               const originalSet = new Set(originalCoachesArray.sort());
               const selectedSet = new Set(selectedCoaches.sort());
 
@@ -999,28 +1035,19 @@ window.addEventListener('DOMContentLoaded', () => {
                   !selectedCoaches.every(coach => originalSet.has(coach)) ) {
                 changed = true;
               }
-              // newValue is implicitly selectedCoaches here for the changed check and data push
             } else {
-              // This is a grouped row, but not a Camp/Pass (e.g., uses a single select for coach)
               const selectEl = td.querySelector('select.history-coach-select');
               if (selectEl) {
-                newValue = selectEl.value; // This is the single selected coach
+                newValue = selectEl.value; 
                 const originalCoachesArray = originalValue.split(',').map(name => name.trim()).filter(name => name);
                 const firstOriginalCoach = originalCoachesArray[0] || '';
-
-                // A single select value is considered changed if it's different from the first original coach,
-                // or if the original had multiple coaches (implying a consolidation),
-                // or if the original was empty and now a coach is selected.
                 if (newValue !== firstOriginalCoach || originalCoachesArray.length > 1 || (originalCoachesArray.length === 0 && newValue !== '')) {
                   changed = true;
                 }
                 if (changed) {
-                  selectedCoaches = [newValue]; // Ensure selectedCoaches is an array for the data push
+                  selectedCoaches = [newValue]; 
                 } else {
-                  // If not changed, selectedCoaches should reflect the original state for this path
-                  // or remain empty if no change and no original value.
-                  // However, newCoaches in groupedUpdates will only be populated if changed is true.
-                  selectedCoaches = originalCoachesArray; // Keep original if no change
+                  selectedCoaches = originalCoachesArray; 
                 }
               }
             }
@@ -1028,23 +1055,99 @@ window.addEventListener('DOMContentLoaded', () => {
             if (changed) {
               try {
                 const originalBookingIds = JSON.parse(tr.dataset.originalIds);
+                // For coach updates, ensure other potentially changed fields (date, time) for this group are also captured.
+                const currentGroupDate = tr.querySelector('td[data-field="date"] input[type="date"]') ? tr.querySelector('td[data-field="date"] input[type="date"]').value : tr.dataset.date;
+                const currentGroupTime = tr.querySelector('td[data-field="time"] select.history-time-select') ? tr.querySelector('td[data-field="time"] select.history-time-select').value : tr.dataset.time.substring(0,5);
+                
                 groupedUpdates.push({
                   program: tr.dataset.program,
-                  date: tr.dataset.date,
-                  time: tr.dataset.time,
+                  date: currentGroupDate, // Use potentially updated date
+                  time: currentGroupTime, // Use potentially updated time
                   originalBookingIds: originalBookingIds,
-                  newCoaches: selectedCoaches, // selectedCoaches is already an array
+                  newCoaches: selectedCoaches, 
                   lesson_cost: parseFloat(tr.dataset.lessonCost) || 0,
                   student: tr.dataset.student,
                   email: tr.dataset.email,
                   phone: tr.dataset.phone,
                   originalCoachValueForDebug: originalValue,
-                  newCoachValueForDebug: selectedCoaches.join(', ')
+                  newCoachValueForDebug: selectedCoaches.join(', '),
+                  isCoachUpdate: true // Flag that this is primarily a coach update
                 });
               } catch (e) {
                 console.error("Error processing grouped update for coach:", e, tr.dataset.originalIds);
-                changed = false;
+                changed = false; // Prevent this specific push if error
               }
+            }
+          } else if (fieldName === 'date') {
+            const dateInput = td.querySelector('input[type="date"]');
+            if (dateInput) {
+              newValue = dateInput.value; // YYYY-MM-DD
+              if (newValue !== originalValue) { // originalValue is YYYY-MM-DD from td.dataset.originalValue
+                changed = true;
+              }
+            }
+            if (changed) {
+                 try {
+                    const originalBookingIds = JSON.parse(tr.dataset.originalIds);
+                    // Check if an update for this group (for coach) is already pending to avoid duplicate entries if only date/time changed
+                    let existingGroupUpdate = groupedUpdates.find(upd => JSON.stringify(upd.originalBookingIds) === JSON.stringify(originalBookingIds) && upd.isCoachUpdate);
+                    if (existingGroupUpdate) {
+                        existingGroupUpdate.date = newValue; // Update date in existing entry
+                    } else {
+                         groupedUpdates.push({
+                            program: tr.dataset.program,
+                            date: newValue,
+                            time: tr.dataset.time.substring(0,5), // Original time if only date changed
+                            originalBookingIds: originalBookingIds,
+                            newCoaches: (tr.querySelector('td[data-field="coach"] .coach-checkbox-list') || tr.querySelector('td[data-field="coach"] select')) ? 
+                                         (Array.from(tr.querySelectorAll('td[data-field="coach"] input[type="checkbox"]:checked')).map(cb => cb.value).join(', ') || (tr.querySelector('td[data-field="coach"] select') ? tr.querySelector('td[data-field="coach"] select').value : ''))
+                                         : tr.querySelector('td[data-field="coach"]').textContent.trim(), // Fallback to text if not in edit mode (should not happen)
+                            lesson_cost: parseFloat(tr.dataset.lessonCost) || 0,
+                            student: tr.dataset.student,
+                            email: tr.dataset.email,
+                            phone: tr.dataset.phone,
+                            isDateUpdate: true
+                        });
+                    }
+                } catch (e) {
+                    console.error("Error processing grouped update for date:", e, tr.dataset.originalIds);
+                    changed = false;
+                }
+            }
+          } else if (fieldName === 'time') {
+            const timeSelect = td.querySelector('select.history-time-select');
+            if (timeSelect) {
+              newValue = timeSelect.value; // HH:MM
+              if (newValue !== originalValue) { // originalValue is HH:MM from td.dataset.originalValue
+                changed = true;
+              }
+            }
+             if (changed) {
+                 try {
+                    const originalBookingIds = JSON.parse(tr.dataset.originalIds);
+                    let existingGroupUpdate = groupedUpdates.find(upd => JSON.stringify(upd.originalBookingIds) === JSON.stringify(originalBookingIds) && (upd.isCoachUpdate || upd.isDateUpdate));
+                     if (existingGroupUpdate) {
+                        existingGroupUpdate.time = newValue; // Update time in existing entry
+                    } else {
+                        groupedUpdates.push({
+                            program: tr.dataset.program,
+                            date: tr.dataset.date, // Original date if only time changed
+                            time: newValue,
+                            originalBookingIds: originalBookingIds,
+                            newCoaches: (tr.querySelector('td[data-field="coach"] .coach-checkbox-list') || tr.querySelector('td[data-field="coach"] select')) ?
+                                         (Array.from(tr.querySelectorAll('td[data-field="coach"] input[type="checkbox"]:checked')).map(cb => cb.value).join(', ') || (tr.querySelector('td[data-field="coach"] select') ? tr.querySelector('td[data-field="coach"] select').value : ''))
+                                         : tr.querySelector('td[data-field="coach"]').textContent.trim(),
+                            lesson_cost: parseFloat(tr.dataset.lessonCost) || 0,
+                            student: tr.dataset.student,
+                            email: tr.dataset.email,
+                            phone: tr.dataset.phone,
+                            isTimeUpdate: true
+                        });
+                    }
+                } catch (e) {
+                    console.error("Error processing grouped update for time:", e, tr.dataset.originalIds);
+                    changed = false;
+                }
             }
           }
           // Other fields in grouped rows are not processed for saving as they are not editable
@@ -1194,23 +1297,72 @@ window.addEventListener('DOMContentLoaded', () => {
       }
 
       // Process grouped updates
-      for (const groupUpd of groupedUpdates) {
+      // Consolidate groupedUpdates to ensure one entry per group with all changes
+      const finalGroupedUpdates = {};
+      groupedUpdates.forEach(upd => {
+          const key = JSON.stringify(upd.originalBookingIds);
+          if (!finalGroupedUpdates[key]) {
+              finalGroupedUpdates[key] = {
+                  program: upd.program,
+                  date: upd.date,
+                  time: upd.time,
+                  originalBookingIds: upd.originalBookingIds,
+                  newCoaches: upd.newCoaches, // This might be an array or string, ensure backend handles
+                  lesson_cost: upd.lesson_cost,
+                  student: upd.student,
+                  email: upd.email,
+                  phone: upd.phone
+              };
+          } else {
+              // Update fields if this update entry has more recent info (e.g. specific date/time change)
+              if (upd.isDateUpdate) finalGroupedUpdates[key].date = upd.date;
+              if (upd.isTimeUpdate) finalGroupedUpdates[key].time = upd.time;
+              if (upd.isCoachUpdate) finalGroupedUpdates[key].newCoaches = upd.newCoaches; 
+              // Potentially merge other fields if necessary, but current logic implies separate pushes for coach/date/time fields
+          }
+      });
+
+
+      for (const groupUpd of Object.values(finalGroupedUpdates)) {
+        // Determine the correct API endpoint based on what changed.
+        // This example assumes one versatile endpoint or specific ones for date/time/coach.
+        // For simplicity, let's assume '/api/admin/lessons/update-group-details' can handle these.
+        // The backend will need to parse which fields are provided and update accordingly.
+        
+        // Make sure newCoaches is in the expected format (e.g. array of strings)
+        // If newCoaches was derived from textContent, it might be a string. Convert if necessary.
+        let coachesToUpdate = groupUpd.newCoaches;
+        if (typeof coachesToUpdate === 'string') {
+            coachesToUpdate = coachesToUpdate.split(',').map(c => c.trim()).filter(c => c);
+        }
+
+
+        const payload = {
+            originalBookingIds: groupUpd.originalBookingIds,
+            date: groupUpd.date, // YYYY-MM-DD
+            time: groupUpd.time, // HH:MM
+            coaches: coachesToUpdate, // Array of coach names
+            // program: groupUpd.program, // Program is usually part of the key, not updatable here
+            // lesson_cost, student, email, phone are typically not editable for groups in this UI
+        };
+
         try {
-          const res = await fetch('/api/admin/lessons/update-coaches', {
+          // Using a generic endpoint, assuming backend can differentiate based on payload
+          const res = await fetch('/api/admin/lessons/update-group-details', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
-            body: JSON.stringify(groupUpd)
+            body: JSON.stringify(payload)
           });
           if (res.ok) {
             successes++;
           } else {
             failures++;
-            const errData = await res.json().catch(() => ({ message: `Group update failed for program ${groupUpd.program} on ${groupUpd.date} with status ${res.status}` }));
-            failureDetails.push(`Group: ${errData.message || `Failed for ${groupUpd.program} on ${groupUpd.date}`}`);
+            const errData = await res.json().catch(() => ({ message: `Group update failed for IDs ${groupUpd.originalBookingIds.join(', ')} with status ${res.status}` }));
+            failureDetails.push(`Group: ${errData.message || `Failed for IDs ${groupUpd.originalBookingIds.join(', ')}`}`);
           }
         } catch (networkError) {
           failures++;
-          failureDetails.push(`Group Network error for program ${groupUpd.program} on ${groupUpd.date}: ${networkError.message}`);
+          failureDetails.push(`Group Network error for IDs ${groupUpd.originalBookingIds.join(', ')}: ${networkError.message}`);
         }
       }
 

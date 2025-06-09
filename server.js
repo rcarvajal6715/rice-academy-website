@@ -204,6 +204,105 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+// ---- Admin Update Group Lesson Details (Date, Time, Coaches) Route ----
+app.post('/api/admin/lessons/update-group-details', async (req, res) => {
+  if (!req.session?.user?.isAdmin) {
+    return res.status(403).json({ message: 'Forbidden: Admin access required.' });
+  }
+
+  const { originalBookingIds, coaches, date, time } = req.body;
+
+  // Validate originalBookingIds
+  if (!Array.isArray(originalBookingIds) || originalBookingIds.length === 0 || !originalBookingIds.every(id => Number.isInteger(id) && id > 0)) {
+    return res.status(400).json({ message: 'Invalid originalBookingIds. Must be a non-empty array of positive integers.' });
+  }
+
+  // Validate coaches
+  if (!Array.isArray(coaches) || !coaches.every(coach => typeof coach === 'string' && coach.trim() !== '')) {
+    // Allow empty coaches array (to delete a group), but if not empty, coaches must be valid non-empty strings.
+    if (coaches.length > 0) {
+      return res.status(400).json({ message: 'Invalid coaches. Must be an array of non-empty strings.' });
+    }
+  }
+
+  // Validate date
+  if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({ message: 'Invalid date format. Use YYYY-MM-DD.' });
+  }
+  const parsedDate = new Date(date);
+  if (isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0,10) !== date) {
+      return res.status(400).json({ message: 'Invalid date value (e.g., month or day out of range).' });
+  }
+
+  // Validate time (HH:MM or HH:MM:SS)
+  if (typeof time !== 'string' || !/^\d{2}:\d{2}(:\d{2})?$/.test(time)) {
+    return res.status(400).json({ message: 'Invalid time format. Use HH:MM or HH:MM:SS.' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Fetch details from the first original booking to carry over
+    const firstBookingId = originalBookingIds[0];
+    const originalBookingResult = await client.query('SELECT program, student, email, phone, lesson_cost, referral_source, paid FROM bookings WHERE id = $1', [firstBookingId]);
+
+    if (originalBookingResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: `Original booking with ID ${firstBookingId} not found.` });
+    }
+    const originalBookingDetails = originalBookingResult.rows[0];
+
+    // Delete all existing bookings associated with the group
+    const deleteResult = await client.query('DELETE FROM bookings WHERE id = ANY($1::int[])', [originalBookingIds]);
+    console.log(`Deleted ${deleteResult.rowCount} original bookings for group update.`);
+
+    let newBookingsCount = 0;
+    if (coaches.length > 0) {
+      for (const coachName of coaches) {
+        // Preserve original details, update date, time, and coach
+        await client.query(
+          `INSERT INTO bookings (program, coach, date, time, student, email, phone, lesson_cost, referral_source, paid, session_id, coach2, coach3)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+          [
+            originalBookingDetails.program,
+            coachName, // New coach for this specific booking
+            date,      // New date from request
+            time,      // New time from request
+            originalBookingDetails.student,
+            originalBookingDetails.email,
+            originalBookingDetails.phone,
+            originalBookingDetails.lesson_cost,
+            originalBookingDetails.referral_source,
+            originalBookingDetails.paid, // Preserve paid status
+            null, // session_id is typically null for manually managed/updated bookings
+            null, // coach2 - assuming new model is one primary coach per row for groups
+            null  // coach3 - assuming new model is one primary coach per row for groups
+          ]
+        );
+        newBookingsCount++;
+      }
+    }
+
+    await client.query('COMMIT');
+    
+    if (newBookingsCount > 0) {
+      res.status(200).json({ message: `Successfully updated group lesson. ${deleteResult.rowCount} original booking(s) removed, ${newBookingsCount} new booking(s) created with new details.` });
+    } else if (deleteResult.rowCount > 0) {
+      res.status(200).json({ message: `Successfully removed ${deleteResult.rowCount} booking(s) from the group. No new bookings created as no coaches were provided.` });
+    } else {
+      res.status(200).json({ message: 'No changes made to the group. Original bookings might not have existed or no new coaches provided.' });
+    }
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error updating group lesson details:', err);
+    res.status(500).json({ message: 'Failed to update group lesson details due to a server error.' });
+  } finally {
+    client.release();
+  }
+});
+
 // ---- Admin Delete Group of Lessons Route ----
 app.post('/api/admin/lessons/delete-group', async (req, res) => {
   if (!req.session?.user?.isAdmin) {

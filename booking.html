@@ -569,14 +569,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         coachTilesContainerEl.innerHTML = ''; 
 
-        coaches.forEach(coach => {
+        coaches.forEach((coach, index) => { // Added index
             const tile = document.createElement('div');
             tile.classList.add('coach-tile');
             tile.setAttribute('data-value', coach.value);
             tile.setAttribute('role', 'button');
-            // Set tabindex for the first tile to 0, others to -1
-            tile.setAttribute('tabindex', index === 0 ? '0' : '-1');
-            currentCoachTileElements.push(tile);
+            tile.setAttribute('tabindex', index === 0 ? '0' : '-1'); // Set initial tabindex
 
             const img = document.createElement('img');
             img.src = coach.image; 
@@ -632,8 +630,19 @@ document.addEventListener('DOMContentLoaded', () => {
             coachTilesContainerEl.appendChild(tile);
         });
         coachTilesContainerEl.style.display = 'grid';
-        if (currentCoachTileElements.length > 0) {
-            currentCoachTileElements[0].focus(); // Focus the first coach tile
+        
+        // Corrected focus logic:
+        // Query all tiles within the container after they are added.
+        const allTilesInContainer = coachTilesContainerEl.querySelectorAll('.coach-tile');
+        if (allTilesInContainer.length > 0) {
+            // Ensure tabindexes are set correctly (e.g. if a default selection is made later)
+            // This might be redundant if the loop sets it perfectly, but good for robustness.
+            allTilesInContainer.forEach((tile, idx) => {
+                // The loop already sets this, but if we wanted to ensure only ONE is 0:
+                // tile.setAttribute('tabindex', idx === 0 ? '0' : '-1');
+            });
+            // Focus the first tile. The tabindex should already be '0' from the loop.
+            allTilesInContainer[0].focus();
         }
     }
 

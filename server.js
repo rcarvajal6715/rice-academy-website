@@ -1474,6 +1474,13 @@ app.post('/api/admin/lessons', async (req, res) => {
   }
   console.log('Received student_names:', student_names, 'Processed for DB:', studentValueForDb);
 
+  let studentsDataArray = null;
+  if (Array.isArray(student_names) && student_names.length > 0) {
+    studentsDataArray = student_names.map(name => ({ name: name, email: null, phone: null }));
+  } else {
+    studentsDataArray = []; // Or null, as per requirement, using empty array for easier JSON stringification
+  }
+
   const campLikePrograms = ["Summer Camp - Day Pass", "Summer Camp - Week Pass", "Kids Camp - Day Pass", "Kids Camp - Week Pass", "Adult Clinics"];
   const isCampLikeProgram = campLikePrograms.includes(program);
 
@@ -1506,8 +1513,8 @@ app.post('/api/admin/lessons', async (req, res) => {
       let lessonsAddedCount = 0;
       for (const currentCoach of coachesToProcess) {
         await pool.query(
-          'INSERT INTO bookings (email, program, coach, date, time, student, paid, session_id, referral_source, lesson_cost) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
-          ['', program, currentCoach, date, time, studentValueForDb, false, null, referralSourceForDb, costForDb]
+          'INSERT INTO bookings (email, program, coach, date, time, student, paid, session_id, referral_source, lesson_cost, students_data) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
+          ['', program, currentCoach, date, time, studentValueForDb, false, null, referralSourceForDb, costForDb, JSON.stringify(studentsDataArray)]
         );
         lessonsAddedCount++;
       }
@@ -1523,8 +1530,8 @@ app.post('/api/admin/lessons', async (req, res) => {
     console.log('🎾 Adding non-camp lesson via admin for coach(es):', coachName, coachName2, coachName3, 'Program:', program, 'Referral:', referral_source, 'Cost:', costForDb);
     try {
       await pool.query(
-        'INSERT INTO bookings (email, program, coach, coach2, coach3, date, time, student, paid, session_id, referral_source, lesson_cost) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
-        ['', program, coachName || null, coachName2 || null, coachName3 || null, date, time, studentValueForDb, false, null, referralSourceForDb, costForDb]
+        'INSERT INTO bookings (email, program, coach, coach2, coach3, date, time, student, paid, session_id, referral_source, lesson_cost, students_data) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)',
+        ['', program, coachName || null, coachName2 || null, coachName3 || null, date, time, studentValueForDb, false, null, referralSourceForDb, costForDb, JSON.stringify(studentsDataArray)]
       );
       res.status(200).send('Lesson added successfully');
     } catch (err) {
@@ -1541,7 +1548,7 @@ app.get('/api/admin/lessons', async (req, res) => {
   try {
     // Ensure referral_source is included in the SELECT query if it's not already
     const { rows } = await pool.query(`
-      SELECT id, program, coach, coach2, coach3, date, time, student, paid, email, phone, lesson_cost, total_lessons, used_lessons, referral_source
+      SELECT id, program, coach, coach2, coach3, date, time, student, paid, email, phone, lesson_cost, total_lessons, used_lessons, referral_source, students_data
       FROM bookings
       ORDER BY date DESC, time DESC
     `);

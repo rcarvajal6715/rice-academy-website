@@ -1215,25 +1215,36 @@ ul.nav-links-mobile li a {
           <td style="padding:8px; border:1px solid #ddd;">${coachDisplay}</td>
           <td style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
           <td style="padding:8px; border:1px solid #ddd;">${timeCellContent}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${ isCampTable ? 'N/A' : (les.student || '—')}</td>
+          <td style="padding:8px; border:1px solid #ddd;">${
+            (() => {
+              if (les.students_data && Array.isArray(les.students_data) && les.students_data.length > 0) {
+                return les.students_data.map(student => student.name).join(', ');
+              } else {
+                return isCampTable ? 'N/A' : (les.student || '—');
+              }
+            })()
+          }</td>
           <td style="padding:8px; border:1px solid #ddd;">
             ${(() => {
               let nValue = 1;
-              let studentsData = '[]';
-              if (isCampTable) {
-                nValue = les.booking_ids ? les.booking_ids.length : 0;
-                // For camps, student data is not directly in les, placeholder for now
-                studentsData = '[]';
+              let studentsDataString;
+              if (les.students_data && Array.isArray(les.students_data) && les.students_data.length > 0) {
+                studentsDataString = JSON.stringify(les.students_data).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+                nValue = les.students_data.length;
+              } else if (isCampTable && les.booking_ids) { // Camp table but no les.students_data, prepare for API call
+                studentsDataString = '[]'; // Empty array signals to modal to fetch if needed
+                nValue = les.booking_ids.length;
               } else {
-                // For non-camp tables, les has student, email, phone
-                const studentData = [{
+                // Fallback for non-camp tables or if les.students_data is not available
+                const fallbackStudentData = [{
                   name: les.student || null,
                   email: les.email || null,
                   phone: les.phone || null
                 }];
-                studentsData = JSON.stringify(studentData).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+                studentsDataString = JSON.stringify(fallbackStudentData).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+                nValue = 1; // Assuming single student from les.student
               }
-              return `<button class="btn-small view-contact-btn" data-students='${studentsData}'>View Contact (${nValue})</button>`;
+              return `<button class="btn-small view-contact-btn" data-students='${studentsDataString}'>View Contact (${nValue})</button>`;
             })()}
           </td>
           <td style="padding:8px; border:1px solid #ddd;">$<input type="number" class="lesson-cost-input" data-booking-id="${isCampTable && les.booking_ids ? les.booking_ids[0] : les.id}" value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" data-original-cost="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" placeholder="N/A" style="width: 70px;" ${!editingEnabled ? 'disabled' : ''}></td>`;
@@ -1902,14 +1913,13 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
             contactDetailsContainer.innerHTML = ''; // Clear previous content
 
             try {
-              //The JSON string was escaped with &quot; for " and &apos; for '. Need to unescape before parsing.
-              const unescapedJson = studentsJson.replace(/&quot;/g, '"').replace(/&apos;/g, "'");
-              const students = JSON.parse(unescapedJson);
+              const unescapedJson = studentsJson.replace(/&apos;/g, "'").replace(/&quot;/g, '"');
+              const studentsArray = JSON.parse(unescapedJson);
 
-              if (students && students.length > 0) { // Data from data-students attribute
-                students.forEach(student => {
+              if (studentsArray && studentsArray.length > 0) {
+                studentsArray.forEach(student => {
                   const studentDiv = document.createElement('div');
-                  studentDiv.className = 'student-contact-entry'; // Apply the class
+                  studentDiv.className = 'student-contact-entry';
                   studentDiv.innerHTML = `
                     <p><strong>Name:</strong> ${student.name || 'N/A'}</p>
                     <p><strong>Email:</strong> ${student.email || 'N/A'}</p>
@@ -1917,13 +1927,13 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
                   `;
                   contactDetailsContainer.appendChild(studentDiv);
                 });
-              } else if (students && students.length === 0) { // Empty array, typically for camps, fetch details
+              } else if (studentsArray && studentsArray.length === 0) { // Empty array from data-students, potentially trigger API call for camps
                 const row = button.closest('tr');
-                const bookingIds = row ? row.dataset.id : null;
+                const bookingIdsString = row ? row.dataset.id : null; // This gets the composite ID string for grouped camps
 
-                if (bookingIds) {
-                  contactDetailsContainer.innerHTML = '<p>Loading student details...</p>'; // Loading message
-                  fetch(`/api/students-by-booking-ids?ids=${bookingIds}`, { credentials: 'include' })
+                if (bookingIdsString) { // bookingIdsString can be "123" or "123,456,789"
+                  contactDetailsContainer.innerHTML = '<p>Loading student details...</p>';
+                  fetch(`/api/students-by-booking-ids?ids=${bookingIdsString}`, { credentials: 'include' })
                     .then(response => {
                       if (!response.ok) {
                         throw new Error(`HTTP error! Status: ${response.status}`);

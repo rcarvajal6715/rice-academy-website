@@ -444,6 +444,30 @@ ul.nav-links-mobile li a {
    transform: none; /* No hover effect when disabled */
    box-shadow: none; /* No shadow when disabled */
 }
+
+/* Styles for View Contact Modal Content */
+#contact-details-container p {
+  margin: 5px 0;
+  line-height: 1.4;
+}
+
+.student-contact-entry {
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.student-contact-entry:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+#contact-details-container strong {
+  color: #0c3c78;
+  margin-right: 5px;
+}
+/* End Styles for View Contact Modal Content */
+
   </style>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 </head>
@@ -654,6 +678,23 @@ ul.nav-links-mobile li a {
       <div class="modal-footer">
         <button type="button" id="cancelEditCoachesBtn" class="cancel-btn">Cancel</button>
         <button type="button" id="saveCoachesChangesBtn">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Contact Modal -->
+  <div id="viewContactModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Contact Information</h2>
+      </div>
+      <div class="modal-body">
+        <div id="contact-details-container">
+          <!-- Contact details will be populated here by JavaScript -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="closeViewContactBtn" class="cancel-btn">Cancel</button>
       </div>
     </div>
   </div>
@@ -1131,8 +1172,7 @@ ul.nav-links-mobile li a {
             <th style="padding:8px; border:1px solid #ddd;">Date</th>
             <th style="padding:8px; border:1px solid #ddd;">Time</th>
             <th style="padding:8px; border:1px solid #ddd;">Student</th>
-            <th style="padding:8px; border:1px solid #ddd;">Email</th>
-            <th style="padding:8px; border:1px solid #ddd;">Phone</th>
+            <th style="padding:8px; border:1px solid #ddd;">Contact</th>
             <th style="padding:8px; border:1px solid #ddd;">Lesson Cost</th>
             ${containerId === 'private-lessons-table-container' ? '<th style="padding:8px; border:1px solid #ddd;">Payout Type</th>' : ''}
             <th style="padding:8px; border:1px solid #ddd;">Actions</th>
@@ -1176,8 +1216,26 @@ ul.nav-links-mobile li a {
           <td style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
           <td style="padding:8px; border:1px solid #ddd;">${timeCellContent}</td>
           <td style="padding:8px; border:1px solid #ddd;">${ isCampTable ? 'N/A' : (les.student || '—')}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${ isCampTable ? 'N/A' : (les.email || '—')}</td>
-          <td style="padding:8px; border:1px solid #ddd;">${ isCampTable ? 'N/A' : (les.phone || '—')}</td>
+          <td style="padding:8px; border:1px solid #ddd;">
+            ${(() => {
+              let nValue = 1;
+              let studentsData = '[]';
+              if (isCampTable) {
+                nValue = les.booking_ids ? les.booking_ids.length : 0;
+                // For camps, student data is not directly in les, placeholder for now
+                studentsData = '[]';
+              } else {
+                // For non-camp tables, les has student, email, phone
+                const studentData = [{
+                  name: les.student || null,
+                  email: les.email || null,
+                  phone: les.phone || null
+                }];
+                studentsData = JSON.stringify(studentData).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+              }
+              return `<button class="btn-small view-contact-btn" data-students='${studentsData}'>View Contact (${nValue})</button>`;
+            })()}
+          </td>
           <td style="padding:8px; border:1px solid #ddd;">$<input type="number" class="lesson-cost-input" data-booking-id="${isCampTable && les.booking_ids ? les.booking_ids[0] : les.id}" value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" data-original-cost="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" placeholder="N/A" style="width: 70px;" ${!editingEnabled ? 'disabled' : ''}></td>`;
           
       if (containerId === 'private-lessons-table-container') {
@@ -1829,6 +1887,102 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
       }
       // --- End Edit Coaches Modal Logic ---
 
+      // --- View Contact Modal Logic ---
+      const viewContactModal = document.getElementById('viewContactModal');
+      const closeViewContactBtn = document.getElementById('closeViewContactBtn');
+      const contactDetailsContainer = document.getElementById('contact-details-container');
+      const mainSectionForClickDelegation = document.querySelector('section'); // Or document.body if section isn't guaranteed to cover all tables
+
+      if (mainSectionForClickDelegation && viewContactModal && closeViewContactBtn && contactDetailsContainer) {
+        mainSectionForClickDelegation.addEventListener('click', (event) => {
+          if (event.target.classList.contains('view-contact-btn')) {
+            event.preventDefault();
+            const button = event.target;
+            const studentsJson = button.dataset.students;
+            contactDetailsContainer.innerHTML = ''; // Clear previous content
+
+            try {
+              //The JSON string was escaped with &quot; for " and &apos; for '. Need to unescape before parsing.
+              const unescapedJson = studentsJson.replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+              const students = JSON.parse(unescapedJson);
+
+              if (students && students.length > 0) { // Data from data-students attribute
+                students.forEach(student => {
+                  const studentDiv = document.createElement('div');
+                  studentDiv.className = 'student-contact-entry'; // Apply the class
+                  studentDiv.innerHTML = `
+                    <p><strong>Name:</strong> ${student.name || 'N/A'}</p>
+                    <p><strong>Email:</strong> ${student.email || 'N/A'}</p>
+                    <p><strong>Phone:</strong> ${student.phone || 'N/A'}</p>
+                  `;
+                  contactDetailsContainer.appendChild(studentDiv);
+                });
+              } else if (students && students.length === 0) { // Empty array, typically for camps, fetch details
+                const row = button.closest('tr');
+                const bookingIds = row ? row.dataset.id : null;
+
+                if (bookingIds) {
+                  contactDetailsContainer.innerHTML = '<p>Loading student details...</p>'; // Loading message
+                  fetch(`/api/students-by-booking-ids?ids=${bookingIds}`, { credentials: 'include' })
+                    .then(response => {
+                      if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                      }
+                      return response.json();
+                    })
+                    .then(fetchedStudents => {
+                      contactDetailsContainer.innerHTML = ''; // Clear loading message
+                      if (fetchedStudents && fetchedStudents.length > 0) {
+                        fetchedStudents.forEach(student => {
+                          const studentDiv = document.createElement('div');
+                          studentDiv.className = 'student-contact-entry'; // Apply the class
+                          studentDiv.innerHTML = `
+                            <p><strong>Name:</strong> ${student.name || 'N/A'}</p>
+                            <p><strong>Email:</strong> ${student.email || 'N/A'}</p>
+                            <p><strong>Phone:</strong> ${student.phone || 'N/A'}</p>
+                          `;
+                          contactDetailsContainer.appendChild(studentDiv);
+                        });
+                      } else {
+                        contactDetailsContainer.innerHTML = '<p>No student contact details found for this session.</p>';
+                      }
+                    })
+                    .catch(err => {
+                      console.error('Error fetching student details:', err);
+                      contactDetailsContainer.innerHTML = `<p>Error fetching student details: ${err.message}</p>`;
+                    });
+                } else {
+                  contactDetailsContainer.innerHTML = '<p>Could not determine booking IDs for this session.</p>';
+                }
+              } else {
+                contactDetailsContainer.innerHTML = '<p>Could not load contact information.</p>';
+              }
+            } catch (e) {
+              console.error('Error parsing student data:', e);
+              contactDetailsContainer.innerHTML = '<p>Error loading contact details. Data might be malformed.</p>';
+            }
+            viewContactModal.style.display = 'block';
+          }
+        });
+
+        closeViewContactBtn.onclick = () => {
+          viewContactModal.style.display = 'none';
+        };
+
+        // Close modal if user clicks outside of it ( reusing existing pattern )
+        window.addEventListener('click', (event) => {
+          if (event.target == viewContactModal) {
+            viewContactModal.style.display = "none";
+          }
+        });
+      } else {
+        console.warn('One or more elements for View Contact Modal not found. Functionality might be affected.');
+        if (!mainSectionForClickDelegation) console.warn('Main section for click delegation not found.');
+        if (!viewContactModal) console.warn('viewContactModal element not found.');
+        if (!closeViewContactBtn) console.warn('closeViewContactBtn element not found.');
+        if (!contactDetailsContainer) console.warn('contactDetailsContainer element not found.');
+      }
+      // --- End View Contact Modal Logic ---
 
       // --- Mobile Menu Toggle Script --- 
       const menuToggle = document.querySelector('.mobile-menu-toggle');

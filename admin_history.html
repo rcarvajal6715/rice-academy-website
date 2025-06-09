@@ -319,6 +319,21 @@ ul.nav-links-mobile li a {
     </div>
   </section>
 
+  <!-- Contact Details Modal -->
+  <div id="contactDetailsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Contact Details</h2>
+      </div>
+      <div class="modal-body">
+        <!-- JavaScript will populate this -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="closeContactModalBtn" class="cancel-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
   <footer>
     <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
   </footer>
@@ -464,8 +479,7 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
           <th style="padding:8px; border:1px solid #ddd;">Date</th>
           <th style="padding:8px; border:1px solid #ddd;">Time</th>
           <th style="padding:8px; border:1px solid #ddd;">Student</th>
-          <th style="padding:8px; border:1px solid #ddd;">Email</th>
-          <th style="padding:8px; border:1px solid #ddd;">Phone</th>
+          <th style="padding:8px; border:1px solid #ddd;">Contact</th>
           <th style="padding:8px; border:1px solid #ddd;">Lesson Cost</th>
           <th style="padding:8px; border:1px solid #ddd;">Referral Source</th>
           <th style="padding:8px; border:1px solid #ddd;">Paid</th>
@@ -492,9 +506,8 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
         program: les.program,
         date: originalDate, // YYYY-MM-DD
         time: les.time || 'notime', // Store full original time (e.g., HH:MM:SS or HH:MM) from first lesson for display
-        students: new Set(), 
-        email: les.email,
-        phone: les.phone,
+        studentDetailsList: [],
+        _tempStudentSet: new Set(), // For uniqueness check
         lesson_cost: les.lesson_cost,
         referral_source: les.referral_source || '—',
         coaches: new Set(),
@@ -503,19 +516,34 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
         displayDate: les.date ? new Date(les.date).toLocaleDateString() : 'N/A',
         // displayTime for grouped rows will be formatted using group.time and formatTime_12hr()
       };
-      if (les.student && les.student.trim() !== '') { groupedLessons[compositeKey].students.add(les.student.trim()); }
-      const lessonCoaches = [les.coach, les.coach2, les.coach3].filter(Boolean);
-      lessonCoaches.forEach(c => groupedLessons[compositeKey].coaches.add(c));
-    } else {
-      if (les.student && les.student.trim() !== '') { groupedLessons[compositeKey].students.add(les.student.trim()); }
-      const lessonCoaches = [les.coach, les.coach2, les.coach3].filter(Boolean);
-      lessonCoaches.forEach(c => groupedLessons[compositeKey].coaches.add(c));
-      groupedLessons[compositeKey].originalBookingIds.push(les.id);
-      if (isLessonPaid) {
-        groupedLessons[compositeKey].paid = true;
-      }
-      // Student name aggregation is handled by adding to the Set.
     }
+
+    if (les.student && les.student.trim() !== '') {
+      const studentObj = { name: les.student.trim(), email: les.email || null, phone: les.phone || null };
+      const studentObjString = JSON.stringify(studentObj);
+      if (!groupedLessons[compositeKey]._tempStudentSet.has(studentObjString)) {
+        groupedLessons[compositeKey].studentDetailsList.push(studentObj);
+        groupedLessons[compositeKey]._tempStudentSet.add(studentObjString);
+      }
+    }
+    
+    const lessonCoaches = [les.coach, les.coach2, les.coach3].filter(Boolean);
+    lessonCoaches.forEach(c => groupedLessons[compositeKey].coaches.add(c));
+    
+    // Add new lesson id to originalBookingIds if it's not the first one (already added during initialization)
+    if (groupedLessons[compositeKey].originalBookingIds[0] !== les.id && !groupedLessons[compositeKey].originalBookingIds.includes(les.id)) {
+      groupedLessons[compositeKey].originalBookingIds.push(les.id);
+    }
+    
+    // Ensure 'paid' status is true if any lesson in the group is paid
+    if (isLessonPaid) {
+      groupedLessons[compositeKey].paid = true;
+    }
+  });
+
+  // Clean up temporary sets
+  Object.values(groupedLessons).forEach(group => {
+    delete group._tempStudentSet;
   });
 
   Object.values(groupedLessons).forEach(group => {
@@ -525,10 +553,12 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
     const formattedTime = formatTime_12hr(group.time); // Use group.time (original full time string)
     const referralSourceDisplay = group.referral_source || '—';
 
+    const studentCount = group.studentDetailsList.length;
+    const studentDetailsJSON = JSON.stringify(group.studentDetailsList);
     let studentDisplay = '—';
-    if (group.students && group.students.size > 0) {
-      studentDisplay = Array.from(group.students).filter(name => name && name.trim() !== '').join(', ');
-      if (studentDisplay === '') studentDisplay = '—'; // Handle case where all names were empty/whitespace
+    if (studentCount > 0) {
+      studentDisplay = group.studentDetailsList.map(s => s.name).filter(name => name && name.trim() !== '').join(', ');
+      if (studentDisplay === '') studentDisplay = '—';
     }
 
     tableHTML += `
@@ -538,17 +568,14 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
           data-program="${group.program || ''}"
           data-date="${group.date || ''}" /* YYYY-MM-DD */
           data-time="${group.time || ''}" /* Original full time, e.g., HH:MM:SS or HH:MM */
-          data-student="${studentDisplay}"
-          data-email="${group.email || ''}"
-          data-phone="${group.phone || ''}"
+          data-student="${studentDisplay}" // This studentDisplay is for the "Student" column
           data-lesson-cost="${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}">
         <td class="history-cell" data-id="${rowDataId}" data-field="program" data-original-value="${group.program || ''}" style="padding:8px; border:1px solid #ddd;">${group.program || '—'}</td>
         <td class="history-cell" data-id="${rowDataId}" data-field="coach" data-original-value="${coachesDisplay}" style="padding:8px; border:1px solid #ddd;">${coachesDisplay || '—'}</td>
         <td class="history-cell" data-id="${rowDataId}" data-field="date" data-original-value="${group.date}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
         <td class="history-cell" data-id="${rowDataId}" data-field="time" data-original-value="${group.time ? group.time.substring(0,5) : ''}" style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
         <td class="history-cell" data-id="${rowDataId}" data-field="student" data-original-value="${studentDisplay}" style="padding:8px; border:1px solid #ddd;">${studentDisplay}</td>
-        <td style="padding:8px; border:1px solid #ddd;">${group.email || '—'}</td>
-        <td style="padding:8px; border:1px solid #ddd;">${group.phone || '—'}</td>
+        <td style="padding:8px; border:1px solid #ddd;"><button class="view-contact-btn" data-student-details='${studentDetailsJSON.replace(/'/g, "&apos;")}'>View Contact (${studentCount})</button></td>
         <td class="history-cell" data-id="${rowDataId}" data-field="lesson_cost" data-original-value="${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}</td>
         <td class="history-cell" data-id="${rowDataId}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
         <td class="history-cell" data-id="${rowDataId}" data-field="paid" data-original-value="${String(group.paid)}" style="padding:8px; border:1px solid #ddd;">${group.paid ? 'Yes' : 'No'}</td>
@@ -568,6 +595,14 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
     const coaches = [les.coach, les.coach2, les.coach3].filter(Boolean).join(', ');
     const originalCoachesValue = [les.coach || '', les.coach2 || '', les.coach3 || ''].filter(Boolean).join(', ');
 
+    const studentDetailsArray = [];
+    let studentCount = 0;
+    if (les.student && les.student.trim() !== '') {
+      studentDetailsArray.push({ name: les.student.trim(), email: les.email || null, phone: les.phone || null });
+      studentCount = 1;
+    }
+    const studentDetailsJSON = JSON.stringify(studentDetailsArray);
+
     tableHTML += `
       <tr data-id="${les.id}" data-is-grouped="false">
         <td class="history-cell" data-id="${les.id}" data-field="program" data-original-value="${les.program || ''}" style="padding:8px; border:1px solid #ddd;">${les.program || '—'}</td>
@@ -575,8 +610,7 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
         <td class="history-cell" data-id="${les.id}" data-field="date" data-original-value="${originalDate}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
         <td id="${timeSelectPlaceholderId}" style="padding:8px; border:1px solid #ddd;"></td>
         <td class="history-cell" data-id="${les.id}" data-field="student" data-original-value="${les.student || ''}" style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
-        <td style="padding:8px; border:1px solid #ddd;">${les.email || '—'}</td>
-        <td style="padding:8px; border:1px solid #ddd;">${les.phone || '—'}</td>
+        <td style="padding:8px; border:1px solid #ddd;"><button class="view-contact-btn" data-student-details='${studentDetailsJSON.replace(/'/g, "&apos;")}'>View Contact (${studentCount})</button></td>
         <td class="history-cell" data-id="${les.id}" data-field="lesson_cost" data-original-value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}</td>
         <td class="history-cell" data-id="${les.id}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
         <td class="history-cell" data-id="${les.id}" data-field="paid" data-original-value="${String(isPaid)}" style="padding:8px; border:1px solid #ddd;">${isPaid ? 'Yes' : 'No'}</td>
@@ -589,7 +623,6 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
 
   tableHTML += `</tbody></table>`;
   container.innerHTML = tableHTML;
-
   // After table HTML is set, populate the time select cells for individual lessons
   individualLessonsToRender.forEach(les => {
     const timeSelectCell = document.getElementById(`time-select-cell-${les.id}`);
@@ -753,8 +786,26 @@ function filterAndRenderHistory(searchTerm) {
     searchFilteredLessons = allFetchedPastLessons.filter(les => {
       if (!les) return false;
       const dateStr = les.date ? new Date(les.date).toLocaleDateString().toLowerCase() : '';
-      return [les.program, les.coach, les.student, les.email, les.phone, dateStr]
+      // Modify search to check studentDetailsList for contact info if needed
+      // For now, existing search fields:
+      let mainFieldsMatch = [les.program, les.coach, les.student, dateStr]
         .some(field => field && String(field).toLowerCase().includes(searchTerm));
+      
+      // If searching by email or phone, we now need to check the studentDetailsList for individual lessons
+      // or the original les.email/les.phone for grouped lessons (as they are not yet fully refactored in allFetchedPastLessons)
+      let contactMatch = false;
+      if (searchTerm.includes('@') || searchTerm.match(/\d{3}-\d{3}-\d{4}/) || searchTerm.match(/\d{10}/) ) { // Simple check for email/phone like terms
+        if (isPrivateLesson(les.program)) { // Individual lessons store email/phone directly on `les`
+            contactMatch = [les.email, les.phone].some(field => field && String(field).toLowerCase().includes(searchTerm));
+        } else { // Grouped lessons - need to check the original data structure before it's grouped or assume search on main student contact
+            // This part is tricky because allFetchedPastLessons has raw lesson data.
+            // The grouping logic creates studentDetailsList. If we want to search *within* that for grouped lessons
+            // before they are rendered, we'd need to simulate part of the grouping or adjust search.
+            // For simplicity, current search keeps original behavior for email/phone on the base `les` object.
+             contactMatch = [les.email, les.phone].some(field => field && String(field).toLowerCase().includes(searchTerm));
+        }
+      }
+      return mainFieldsMatch || contactMatch;
     });
   }
 
@@ -777,6 +828,697 @@ function filterAndRenderHistory(searchTerm) {
 
 window.addEventListener('DOMContentLoaded', () => {
   enableHistoryEditingBtn = document.getElementById('enable-history-editing-btn');
+  saveHistoryBtn = document.getElementById('save-history-btn');
+  historyTableContainer = document.getElementById('past-lessons-table-container');
+
+  loadHistory();
+
+  if (enableHistoryEditingBtn) {
+    enableHistoryEditingBtn.addEventListener('click', () => {
+      editing = !editing;
+      enableHistoryEditingBtn.textContent = editing ? 'Disable Editing' : 'Enable Editing';
+      if (saveHistoryBtn) saveHistoryBtn.disabled = !editing;
+
+      document.querySelectorAll('.history-cell').forEach(td => {
+        const tr = td.closest('tr');
+        const isGroupedRow = tr && tr.dataset.isGrouped === 'true';
+        const fieldName = td.dataset.field;
+
+        if (isGroupedRow) {
+            if (fieldName === 'coach') { // Coach field logic for grouped rows
+                // For grouped rows, if editing is enabled, create the dropdown/checkboxes.
+                // If editing is disabled, revert to text.
+                if (editing) {
+                    const currentCoachValue = td.innerText.trim();
+                    const programType = tr.dataset.program ? tr.dataset.program.toLowerCase() : '';
+                    td.innerHTML = ''; // Clear the cell
+
+                    if (programType.includes('camp') || programType.includes('pass')) {
+                        // Create a div for checkbox list
+                        const coachListContainer = document.createElement('div');
+                        coachListContainer.className = 'coach-checkbox-list';
+                        coachListContainer.style.display = 'flex';
+                        coachListContainer.style.flexWrap = 'wrap';
+                        coachListContainer.style.gap = '10px';
+
+                        const selectedCoaches = currentCoachValue.split(',').map(c => c.trim().toLowerCase());
+                        validCoaches.forEach(coachName => {
+                            const label = document.createElement('label');
+                            label.style.display = 'flex';
+                            label.style.alignItems = 'center';
+                            label.style.gap = '5px';
+
+                            const checkbox = document.createElement('input');
+                            checkbox.type = 'checkbox';
+                            checkbox.name = 'coach-checkbox';
+                            checkbox.value = coachName;
+                            if (selectedCoaches.includes(coachName.toLowerCase())) {
+                                checkbox.checked = true;
+                            }
+                            
+                            label.appendChild(checkbox);
+                            label.appendChild(document.createTextNode(coachName));
+                            coachListContainer.appendChild(label);
+                        });
+                        td.appendChild(coachListContainer);
+                    } else {
+                        // Fallback to single select for non-camp/pass grouped rows
+                        const selectEl = document.createElement('select');
+                        selectEl.className = 'history-coach-select';
+                        validCoaches.forEach(coachName => {
+                            const optionEl = document.createElement('option');
+                            optionEl.value = coachName;
+                            optionEl.textContent = coachName;
+                            if (coachName === currentCoachValue.split(',')[0].trim()) {
+                                optionEl.selected = true;
+                            }
+                            selectEl.appendChild(optionEl);
+                        });
+                        td.appendChild(selectEl);
+                    }
+                    td.contentEditable = false; 
+                } else {
+                    // When disabling editing for a grouped coach cell
+                    const coachListContainer = td.querySelector('.coach-checkbox-list');
+                    if (coachListContainer) { 
+                        const selectedCheckboxes = Array.from(coachListContainer.querySelectorAll('input[type="checkbox"]:checked'));
+                        const selectedCoachNames = selectedCheckboxes.map(cb => cb.value);
+                        td.innerHTML = ''; 
+                        td.textContent = selectedCoachNames.join(', ') || '—';
+                    } else { 
+                        const selectEl = td.querySelector('select.history-coach-select');
+                        if (selectEl) {
+                            const selectedCoach = selectEl.value;
+                            td.innerHTML = ''; 
+                            td.textContent = selectedCoach || '—'; 
+                        }
+                    }
+                }
+            } else if (fieldName === 'date') { // Date field for grouped rows
+                if (editing) {
+                    const currentDateValue = td.dataset.originalValue; // Should be YYYY-MM-DD
+                    td.innerHTML = '';
+                    const dateInput = document.createElement('input');
+                    dateInput.type = 'date';
+                    dateInput.value = currentDateValue;
+                    dateInput.style.width = '100%'; // Make input take cell width
+                    dateInput.style.boxSizing = 'border-box';
+                    td.appendChild(dateInput);
+                    td.contentEditable = false;
+                } else {
+                    const dateInput = td.querySelector('input[type="date"]');
+                    if (dateInput) {
+                        const newDateValue = dateInput.value; // YYYY-MM-DD
+                        // td.dataset.originalValue = newDateValue; // Update originalValue if needed upon save, not here
+                        td.innerHTML = '';
+                        td.textContent = newDateValue ? new Date(newDateValue + 'T00:00:00').toLocaleDateString() : 'N/A'; // Ensure local time for toLocaleDateString
+                    }
+                }
+            } else if (fieldName === 'time') { // Time field for grouped rows
+                if (editing) {
+                    const originalTime24hr = td.dataset.originalValue; // Should be HH:MM
+                    td.innerHTML = '';
+                    // Use tr.dataset.id as a unique enough ID for the select element for this group
+                    const timeSelect = generateTimeSelectElement(tr.dataset.id + '-group', originalTime24hr);
+                    timeSelect.style.width = '100%';
+                    timeSelect.style.boxSizing = 'border-box';
+                    td.appendChild(timeSelect);
+                    timeSelect.disabled = false; // Ensure it's enabled
+                    td.contentEditable = false;
+                } else {
+                    const timeSelect = td.querySelector('select.history-time-select');
+                    if (timeSelect) {
+                        const newTimeValue = timeSelect.value; // HH:MM
+                        // td.dataset.originalValue = newTimeValue; // Update originalValue if needed upon save
+                        td.innerHTML = '';
+                        td.textContent = newTimeValue ? formatTime_12hr(newTimeValue) : 'N/A';
+                    }
+                }
+            } else { // Other fields in grouped rows (program, student, etc.)
+                td.contentEditable = false; 
+            }
+        } else { // Logic for non-grouped rows
+            // Coach field will now be handled by the generic contentEditable logic below
+            if (fieldName === 'referral_source') { // Keep referral_source special handling
+            td.contentEditable = false; // It's a select, not directly editable
+            if (editing) {
+              const originalValue = td.dataset.originalValue === '—' ? '' : td.dataset.originalValue;
+              td.innerHTML = '';
+              const selectEl = document.createElement('select');
+              selectEl.className = 'history-referral-select';
+              const options = [
+                  { value: '', text: 'None' },
+                  { value: 'Ricardo', text: 'Referred by Ricardo' },
+                  { value: 'Jacob', text: 'Jacob - Own Booking' },
+                  { value: 'Paula', text: 'Paula - Own Booking' },
+                  { value: 'Zach', text: 'Zach - Own Booking' },
+                  { value: 'RicardoOwn', text: 'Ricardo - Teaches Himself' }
+              ];
+              options.forEach(opt => {
+                const optionEl = document.createElement('option');
+                optionEl.value = opt.value;
+                optionEl.textContent = opt.text;
+                if (opt.value === originalValue) optionEl.selected = true;
+                selectEl.appendChild(optionEl);
+              });
+              td.appendChild(selectEl);
+            } else {
+              const selectEl = td.querySelector('select.history-referral-select');
+              if (selectEl) {
+                const selectedText = selectEl.options[selectEl.selectedIndex]?.text || selectEl.value;
+                td.innerHTML = '';
+                td.textContent = selectedText || '—';
+              }
+            }
+          } else if (fieldName === 'coach') {
+            if (editing) {
+              const currentCellText = td.innerText.trim();
+              // Determine the first coach's name. Fallback to an empty string or first valid coach if needed.
+              let firstCoachName = '';
+              if (currentCellText && currentCellText !== '—') {
+                firstCoachName = currentCellText.split(',')[0].trim();
+              } else if (validCoaches.length > 0) {
+                // Optional: fallback to the first valid coach if cell is empty and that's desired.
+                // firstCoachName = validCoaches[0]; // Uncomment if this behavior is needed.
+              }
+
+              td.innerHTML = ''; // Clear the cell's current content.
+
+              const selectEl = document.createElement('select');
+              selectEl.className = 'history-coach-select'; // Reuse class if appropriate or define new one
+
+              validCoaches.forEach(coachName => {
+                const optionEl = document.createElement('option');
+                optionEl.value = coachName;
+                optionEl.textContent = coachName;
+                if (coachName === firstCoachName) {
+                  optionEl.selected = true;
+                }
+                selectEl.appendChild(optionEl);
+              });
+
+              td.appendChild(selectEl);
+              td.contentEditable = false; // Ensure contentEditable is false as we are using a select.
+            } else {
+              // Disabling editing for the coach cell
+              const selectEl = td.querySelector('select.history-coach-select');
+              if (selectEl) {
+                const selectedCoachName = selectEl.value;
+                td.innerHTML = ''; // Clear the select element.
+                td.innerText = selectedCoachName || '—'; // Set text to selected coach or '—' if empty.
+              }
+              // td.contentEditable = false; // Should remain false or be explicitly set if needed.
+            }
+          } else { // For other editable cells in non-grouped rows
+            td.contentEditable = editing;
+            if (!editing) td.blur();
+          }
+        }
+      });
+
+      // Add this part:
+      document.querySelectorAll('select.history-time-select, input[type="date"]').forEach(inputEl => {
+        if (inputEl.matches('select.history-time-select')) { // Only disable time selects if they are for individual lessons
+            const tr = inputEl.closest('tr');
+            if (tr && tr.dataset.isGrouped !== 'true') {
+                 inputEl.disabled = !editing;
+            }
+        }
+        // Date inputs for grouped rows are handled inside the loop, this keeps individual lesson date inputs (if any) editable
+      });
+    });
+  }
+
+  if (saveHistoryBtn) {
+    saveHistoryBtn.addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to save all changes to the history?')) return;
+      if (enableHistoryEditingBtn) enableHistoryEditingBtn.disabled = true;
+      saveHistoryBtn.disabled = true;
+
+      const updates = [];
+      const groupedUpdates = [];
+
+      document.querySelectorAll('.history-cell[data-id]').forEach(td => {
+        const tr = td.closest('tr');
+        const isGroupedRow = tr && tr.dataset.isGrouped === 'true';
+        const bookingId = td.dataset.id; // This is the first booking ID for grouped rows
+        const fieldName = td.dataset.field;
+        const originalValue = td.dataset.originalValue;
+        let newValue;
+        let changed = false;
+
+        if (isGroupedRow) {
+          if (fieldName === 'coach') {
+            const checkboxes = td.querySelectorAll('input[type="checkbox"][name="coach-checkbox"]');
+            let selectedCoaches = []; 
+
+            if (checkboxes.length > 0) { 
+              checkboxes.forEach(cb => {
+                if (cb.checked) selectedCoaches.push(cb.value);
+              });
+
+              const originalCoachesArray = originalValue.split(',').map(name => name.trim()).filter(name => name);
+              const originalSet = new Set(originalCoachesArray.sort());
+              const selectedSet = new Set(selectedCoaches.sort());
+
+              if (originalCoachesArray.length !== selectedCoaches.length ||
+                  !originalCoachesArray.every(coach => selectedSet.has(coach)) ||
+                  !selectedCoaches.every(coach => originalSet.has(coach)) ) {
+                changed = true;
+              }
+            } else {
+              const selectEl = td.querySelector('select.history-coach-select');
+              if (selectEl) {
+                newValue = selectEl.value; 
+                const originalCoachesArray = originalValue.split(',').map(name => name.trim()).filter(name => name);
+                const firstOriginalCoach = originalCoachesArray[0] || '';
+                if (newValue !== firstOriginalCoach || originalCoachesArray.length > 1 || (originalCoachesArray.length === 0 && newValue !== '')) {
+                  changed = true;
+                }
+                if (changed) {
+                  selectedCoaches = [newValue]; 
+                } else {
+                  selectedCoaches = originalCoachesArray; 
+                }
+              }
+            }
+
+            if (changed) {
+              try {
+                const originalBookingIds = JSON.parse(tr.dataset.originalIds);
+                // For coach updates, ensure other potentially changed fields (date, time) for this group are also captured.
+                const currentGroupDate = tr.querySelector('td[data-field="date"] input[type="date"]') ? tr.querySelector('td[data-field="date"] input[type="date"]').value : tr.dataset.date;
+                const currentGroupTime = tr.querySelector('td[data-field="time"] select.history-time-select') ? tr.querySelector('td[data-field="time"] select.history-time-select').value : tr.dataset.time.substring(0,5);
+                
+                groupedUpdates.push({
+                  program: tr.dataset.program,
+                  date: currentGroupDate, // Use potentially updated date
+                  time: currentGroupTime, // Use potentially updated time
+                  originalBookingIds: originalBookingIds,
+                  newCoaches: selectedCoaches, 
+                  lesson_cost: parseFloat(tr.dataset.lessonCost) || 0,
+                  student: tr.dataset.student, // This is the concatenated student names string
+                  // email and phone are no longer top-level properties for groups in save payload
+                  originalCoachValueForDebug: originalValue,
+                  newCoachValueForDebug: selectedCoaches.join(', '),
+                  isCoachUpdate: true // Flag that this is primarily a coach update
+                });
+              } catch (e) {
+                console.error("Error processing grouped update for coach:", e, tr.dataset.originalIds);
+                changed = false; // Prevent this specific push if error
+              }
+            }
+          } else if (fieldName === 'date') {
+            const dateInput = td.querySelector('input[type="date"]');
+            if (dateInput) {
+              newValue = dateInput.value; // YYYY-MM-DD
+              if (newValue !== originalValue) { // originalValue is YYYY-MM-DD from td.dataset.originalValue
+                changed = true;
+              }
+            }
+            if (changed) {
+                 try {
+                    const originalBookingIds = JSON.parse(tr.dataset.originalIds);
+                    let existingGroupUpdate = groupedUpdates.find(upd => JSON.stringify(upd.originalBookingIds) === JSON.stringify(originalBookingIds) && upd.isCoachUpdate);
+                    if (existingGroupUpdate) {
+                        existingGroupUpdate.date = newValue; 
+                    } else {
+                         groupedUpdates.push({
+                            program: tr.dataset.program,
+                            date: newValue,
+                            time: tr.dataset.time.substring(0,5), 
+                            originalBookingIds: originalBookingIds,
+                            newCoaches: (tr.querySelector('td[data-field="coach"] .coach-checkbox-list') || tr.querySelector('td[data-field="coach"] select')) ? 
+                                         (Array.from(tr.querySelectorAll('td[data-field="coach"] input[type="checkbox"]:checked')).map(cb => cb.value).join(', ') || (tr.querySelector('td[data-field="coach"] select') ? tr.querySelector('td[data-field="coach"] select').value : ''))
+                                         : tr.querySelector('td[data-field="coach"]').textContent.trim(), 
+                            lesson_cost: parseFloat(tr.dataset.lessonCost) || 0,
+                            student: tr.dataset.student,
+                            // email: tr.dataset.email, // Removed
+                            // phone: tr.dataset.phone, // Removed
+                            isDateUpdate: true
+                        });
+                    }
+                } catch (e) {
+                    console.error("Error processing grouped update for date:", e, tr.dataset.originalIds);
+                    changed = false;
+                }
+            }
+          } else if (fieldName === 'time') {
+            const timeSelect = td.querySelector('select.history-time-select');
+            if (timeSelect) {
+              newValue = timeSelect.value; // HH:MM
+              if (newValue !== originalValue) { // originalValue is HH:MM from td.dataset.originalValue
+                changed = true;
+              }
+            }
+             if (changed) {
+                 try {
+                    const originalBookingIds = JSON.parse(tr.dataset.originalIds);
+                    let existingGroupUpdate = groupedUpdates.find(upd => JSON.stringify(upd.originalBookingIds) === JSON.stringify(originalBookingIds) && (upd.isCoachUpdate || upd.isDateUpdate));
+                     if (existingGroupUpdate) {
+                        existingGroupUpdate.time = newValue; 
+                    } else {
+                        groupedUpdates.push({
+                            program: tr.dataset.program,
+                            date: tr.dataset.date, 
+                            time: newValue,
+                            originalBookingIds: originalBookingIds,
+                            newCoaches: (tr.querySelector('td[data-field="coach"] .coach-checkbox-list') || tr.querySelector('td[data-field="coach"] select')) ?
+                                         (Array.from(tr.querySelectorAll('td[data-field="coach"] input[type="checkbox"]:checked')).map(cb => cb.value).join(', ') || (tr.querySelector('td[data-field="coach"] select') ? tr.querySelector('td[data-field="coach"] select').value : ''))
+                                         : tr.querySelector('td[data-field="coach"]').textContent.trim(),
+                            lesson_cost: parseFloat(tr.dataset.lessonCost) || 0,
+                            student: tr.dataset.student,
+                            // email: tr.dataset.email, // Removed
+                            // phone: tr.dataset.phone, // Removed
+                            isTimeUpdate: true
+                        });
+                    }
+                } catch (e) {
+                    console.error("Error processing grouped update for time:", e, tr.dataset.originalIds);
+                    changed = false;
+                }
+            }
+          }
+          // Other fields in grouped rows are not processed for saving as they are not editable
+        } else { // Logic for non-grouped rows
+          let cellValueChanged = false;
+          let processedNewValue;
+
+          if (fieldName === 'coach') {
+            const selectEl = td.querySelector('select.history-coach-select');
+            if (selectEl) { 
+                processedNewValue = selectEl.value;
+            } else { 
+                processedNewValue = td.innerText.trim();
+            }
+            const firstOriginalCoach = ((originalValue || '').split(',')[0] || '').trim();
+            if (processedNewValue !== firstOriginalCoach) {
+                cellValueChanged = true;
+            }
+          } else if (fieldName === 'referral_source') { 
+            const selectEl = td.querySelector('select.history-referral-select');
+            if (selectEl) {
+              processedNewValue = selectEl.value;
+              const normalizedOriginalValue = originalValue === '—' ? '' : originalValue;
+              if (processedNewValue !== normalizedOriginalValue) cellValueChanged = true;
+            }
+          } else if (td.contentEditable === 'true') { 
+            processedNewValue = td.innerText.trim();
+            
+            if (fieldName === 'time') { 
+              if (processedNewValue === '' || processedNewValue.toLowerCase() === 'n/a') processedNewValue = null;
+            } else if (fieldName === 'program' || fieldName === 'student') { 
+              if (processedNewValue === '' || processedNewValue.toLowerCase() === 'null') processedNewValue = null;
+            } else if (fieldName === 'date' && td.innerText.includes('/')) {
+              const parts = processedNewValue.split('/');
+              if (parts.length === 3) processedNewValue = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+            } else if (fieldName === 'lesson_cost') {
+              processedNewValue = processedNewValue.replace('$', '').trim();
+              if (processedNewValue === '' && originalValue !== '') processedNewValue = null;
+              else if (processedNewValue !== '' && isNaN(Number(processedNewValue))) {
+                console.warn(`Invalid cost for booking ${bookingId}: ${processedNewValue}. Skipping update.`);
+                return; 
+              } else if (processedNewValue !== '') {
+                processedNewValue = Number(processedNewValue); 
+              }
+            } else if (fieldName === 'paid') {
+              const lowerNewValue = processedNewValue.toLowerCase();
+              processedNewValue = (lowerNewValue === 'yes' || lowerNewValue === 'true');
+            }
+            if (String(processedNewValue) !== String(originalValue)) cellValueChanged = true;
+          }
+
+          if (cellValueChanged) {
+            if (fieldName === 'coach') { 
+                updates.push({
+                    bookingId: bookingId,
+                    fieldName: 'coach', 
+                    newValue: processedNewValue, 
+                    originalValueForDebug: originalValue 
+                });
+            } else { 
+              updates.push({ bookingId, fieldName, newValue: processedNewValue, originalValueForDebug: originalValue });
+            }
+          }
+        }
+      });
+
+      document.querySelectorAll('select.history-time-select').forEach(select => {
+        const bookingId = select.dataset.id;
+        const originalTime = select.dataset.originalTime; 
+        let newValue = select.value; 
+
+        if (newValue === "") {
+          newValue = null; 
+        }
+
+        let trulyChanged = false;
+        if (newValue === null) { 
+            if (originalTime !== "" && originalTime !== null) { 
+                trulyChanged = true;
+            }
+        } else { 
+            if (newValue !== originalTime) {
+                trulyChanged = true;
+            }
+        }
+
+        if (trulyChanged) {
+          updates.push({
+            bookingId: bookingId,
+            fieldName: 'time',
+            newValue: newValue, 
+            originalValueForDebug: originalTime
+          });
+        }
+      });
+
+      if (updates.length === 0 && groupedUpdates.length === 0) {
+        alert('No actual changes detected to save.');
+        if (enableHistoryEditingBtn) enableHistoryEditingBtn.disabled = false;
+        if (editing) saveHistoryBtn.disabled = false;
+        else saveHistoryBtn.disabled = true;
+        return;
+      }
+
+      let successes = 0;
+      let failures = 0;
+      const failureDetails = [];
+
+      for (const upd of updates) {
+        try {
+          const res = await fetch(`/api/admin/history/${upd.bookingId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
+            body: JSON.stringify({ field: upd.fieldName, value: upd.newValue })
+          });
+          if (res.ok) {
+            successes++;
+          } else {
+            failures++;
+            const errData = await res.json().catch(() => ({ message: `Update failed for ID ${upd.bookingId}, Field ${upd.fieldName} with status ${res.status}` }));
+            failureDetails.push(`Individual: ${errData.message || `Failed for ${upd.fieldName}`}`);
+          }
+        } catch (networkError) {
+          failures++;
+          failureDetails.push(`Individual Network error for ID ${upd.bookingId}, Field ${upd.fieldName}: ${networkError.message}`);
+        }
+      }
+
+      const finalGroupedUpdates = {};
+      groupedUpdates.forEach(upd => {
+          const key = JSON.stringify(upd.originalBookingIds);
+          if (!finalGroupedUpdates[key]) {
+              finalGroupedUpdates[key] = {
+                  program: upd.program,
+                  date: upd.date,
+                  time: upd.time,
+                  originalBookingIds: upd.originalBookingIds,
+                  newCoaches: upd.newCoaches, 
+                  lesson_cost: upd.lesson_cost,
+                  student: upd.student, // String of student names
+                  // email & phone removed
+              };
+          } else {
+              if (upd.isDateUpdate) finalGroupedUpdates[key].date = upd.date;
+              if (upd.isTimeUpdate) finalGroupedUpdates[key].time = upd.time;
+              if (upd.isCoachUpdate) finalGroupedUpdates[key].newCoaches = upd.newCoaches; 
+          }
+      });
+
+
+      for (const groupUpd of Object.values(finalGroupedUpdates)) {
+        let coachesToUpdate = groupUpd.newCoaches;
+        if (typeof coachesToUpdate === 'string') {
+            coachesToUpdate = coachesToUpdate.split(',').map(c => c.trim()).filter(c => c);
+        }
+
+        const payload = {
+            originalBookingIds: groupUpd.originalBookingIds,
+            date: groupUpd.date, 
+            time: groupUpd.time, 
+            coaches: coachesToUpdate, 
+        };
+
+        try {
+          const res = await fetch('/api/admin/lessons/update-group-details', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
+            body: JSON.stringify(payload)
+          });
+          if (res.ok) {
+            successes++;
+          } else {
+            failures++;
+            const errData = await res.json().catch(() => ({ message: `Group update failed for IDs ${groupUpd.originalBookingIds.join(', ')} with status ${res.status}` }));
+            failureDetails.push(`Group: ${errData.message || `Failed for IDs ${groupUpd.originalBookingIds.join(', ')}`}`);
+          }
+        } catch (networkError) {
+          failures++;
+          failureDetails.push(`Group Network error for IDs ${groupUpd.originalBookingIds.join(', ')}: ${networkError.message}`);
+        }
+      }
+
+      let summaryMessage = `${successes} update(s) successful.`;
+      if (failures > 0) summaryMessage += `\n${failures} updates failed.\nDetails:\n${failureDetails.join('\n')}`;
+      alert(summaryMessage);
+
+      editing = false;
+      if (enableHistoryEditingBtn) {
+        enableHistoryEditingBtn.disabled = false;
+        enableHistoryEditingBtn.textContent = 'Enable Editing';
+      }
+      if (saveHistoryBtn) saveHistoryBtn.disabled = true;
+      document.querySelectorAll('.history-cell').forEach(cell => cell.contentEditable = false);
+      loadHistory();
+    });
+  }
+
+  const bulkCostUpdateButton = document.querySelector('.bulk-update-costs-btn');
+  if (bulkCostUpdateButton) {
+  }
+
+  const searchInput = document.getElementById('historySearchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      filterAndRenderHistory(searchInput.value.toLowerCase().trim());
+    });
+  }
+
+  const filterButtons = document.querySelectorAll('#category-filters .category-filter-button');
+  filterButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      activeCategoryFilter = button.getAttribute('data-category');
+      filterButtons.forEach(btn => btn.classList.remove('active-filter-button'));
+      button.classList.add('active-filter-button');
+      filterAndRenderHistory(searchInput ? searchInput.value.toLowerCase().trim() : '');
+    });
+  });
+});
+// Corrected JavaScript logic provided by the user ends here
+</script>
+<script>
+// --- Contact Details Modal Logic ---
+const contactDetailsModal = document.getElementById('contactDetailsModal');
+const closeContactModalBtn = document.getElementById('closeContactModalBtn');
+const contactModalBody = contactDetailsModal.querySelector('.modal-body');
+
+// Function to open the contact modal and populate it
+function openContactModal(studentDetailsArray) {
+  if (!contactModalBody || !contactDetailsModal) {
+    console.error('Contact modal elements not found');
+    return;
+  }
+
+  contactModalBody.innerHTML = ''; // Clear previous content
+
+  if (!studentDetailsArray || studentDetailsArray.length === 0) {
+    contactModalBody.innerHTML = '<p>No contact details available for this session.</p>';
+  } else {
+    const list = document.createElement('ul');
+    list.style.listStyleType = 'none'; // Optional: remove bullet points
+    list.style.padding = '0';
+
+    studentDetailsArray.forEach(student => {
+      const listItem = document.createElement('li');
+      listItem.style.marginBottom = '10px'; // Add some spacing
+      listItem.style.paddingBottom = '10px'; // Add some spacing
+      listItem.style.borderBottom = '1px solid #eee'; // Separator
+
+      const nameEl = document.createElement('strong');
+      nameEl.textContent = student.name || 'N/A';
+      
+      const emailEl = document.createElement('p');
+      emailEl.textContent = `Email: ${student.email || 'N/A'}`;
+      emailEl.style.margin = '5px 0';
+      
+      const phoneEl = document.createElement('p');
+      phoneEl.textContent = `Phone: ${student.phone || 'N/A'}`;
+      phoneEl.style.margin = '5px 0';
+
+      listItem.appendChild(nameEl);
+      listItem.appendChild(emailEl);
+      listItem.appendChild(phoneEl);
+      list.appendChild(listItem);
+    });
+    // Remove border from the last item
+    if (list.lastChild) {
+      list.lastChild.style.borderBottom = 'none';
+      list.lastChild.style.marginBottom = '0';
+      list.lastChild.style.paddingBottom = '0';
+    }
+    contactModalBody.appendChild(list);
+  }
+  contactDetailsModal.style.display = 'block';
+}
+
+// Event listener for "Close" button in the contact modal
+if (closeContactModalBtn) {
+  closeContactModalBtn.onclick = function() {
+    if (contactDetailsModal) {
+      contactDetailsModal.style.display = 'none';
+    }
+  }
+}
+
+// Event listener for closing the modal by clicking outside of it
+window.addEventListener('click', function(event) {
+  if (event.target == contactDetailsModal) {
+    contactDetailsModal.style.display = 'none';
+  }
+});
+
+// Add event listeners to "View Contact (N)" buttons
+// This needs to be done after the table is rendered or use event delegation.
+// Modifying to use event delegation on the table container for dynamically added buttons.
+const pastLessonsTableContainer = document.getElementById('past-lessons-table-container');
+if (pastLessonsTableContainer) {
+  pastLessonsTableContainer.addEventListener('click', function(event) {
+    if (event.target.classList.contains('view-contact-btn')) {
+      const studentDetailsJSON = event.target.getAttribute('data-student-details');
+      if (studentDetailsJSON) {
+        try {
+          const studentDetailsArray = JSON.parse(studentDetailsJSON);
+          openContactModal(studentDetailsArray);
+        } catch (e) {
+          console.error('Failed to parse student details JSON:', e, studentDetailsJSON);
+          // Optionally, display an error in the modal or via an alert
+          openContactModal([{ name: 'Error loading details', email: 'Please check console', phone: '' }]);
+        }
+      } else {
+        console.warn('View contact button clicked, but no student details found.');
+        openContactModal([]); // Show modal with "No details" message
+      }
+    }
+  });
+} else {
+  console.error('past-lessons-table-container not found for attaching contact button listeners.');
+}
+// --- End Contact Details Modal Logic ---
+</script>
+  <script>
+  // This entire block is for mobile menu and session management, remains unchanged.
+  document.addEventListener('DOMContentLoaded', () => {
   saveHistoryBtn = document.getElementById('save-history-btn');
   historyTableContainer = document.getElementById('past-lessons-table-container');
 

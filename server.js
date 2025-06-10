@@ -829,7 +829,7 @@ FROM bookings
     // New Camp Financial Logic
     const campBookingsResult = await pool.query(
       `
-          SELECT program, date, coach, lesson_cost
+          SELECT program, date, coach, lesson_cost, student
           FROM bookings
           WHERE (
               LOWER(program) LIKE '%summer%' OR
@@ -864,18 +864,22 @@ FROM bookings
       
       if (!campSessions[sessionKey]) {
         campSessions[sessionKey] = {
-          // program: booking.program, // Original
-          program: normalizedCampProgram, // Use the same normalized variable
-          originalProgram: booking.program, // Add this line
-          date: sessionDateString,
-          coaches: new Set(),
-          totalRevenue: 0,
-          // bookings: [] // Not strictly needed for financials, can be added if debugging
+          program:          normalizedCampProgram,
+          originalProgram:  booking.program,
+          date:             sessionDateString,
+          coaches:          new Set(),
+          totalRevenue:     0,
+          participants:     new Set(),    // track who’s been billed
         };
       }
       campSessions[sessionKey].coaches.add(booking.coach);
-      campSessions[sessionKey].totalRevenue += parseFloat(booking.lesson_cost);
-      // campSessions[sessionKey].bookings.push(booking);
+      // Only add revenue once per student, even if multiple coach entries exist
+      const studentName = (booking.student || '').trim();
+      if (!campSessions[sessionKey].participants.has(studentName)) {
+        campSessions[sessionKey].participants.add(studentName);
+        campSessions[sessionKey].totalRevenue += parseFloat(booking.lesson_cost);
+      }
+      // campSessions[sessionKey].bookings.push(booking); // This line can remain commented out or be removed
     }
 
     let totalCampRevenue = 0; // This will be the sum of specific camp types for coach payout and academy earnings logic

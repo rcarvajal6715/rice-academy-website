@@ -612,21 +612,6 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
       if (studentDisplay === '') studentDisplay = '—';
     }
 
-    let studentCellHTML;
-    if (editing) {
-      if (studentDisplay === '—' || studentDisplay === '') {
-        studentCellHTML = '—';
-      } else {
-        const studentNames = studentDisplay.split(',').map(name => name.trim());
-        studentCellHTML = studentNames.map(name => {
-          if (name === '') return '';
-          return `<span data-student-name="${name}">${name} <button type="button" class="delete-student-btn" style="cursor:pointer; color:red; background:none; border:none; font-size:small;">&times;</button></span>`;
-        }).join('');
-      }
-    } else {
-      studentCellHTML = studentDisplay;
-    }
-
     tableHTML += `
       <tr data-id="${rowDataId}" 
           data-is-grouped="true" 
@@ -640,7 +625,7 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
         <td class="history-cell" data-id="${rowDataId}" data-field="coach" data-original-value="${coachesDisplay}" style="padding:8px; border:1px solid #ddd;">${coachesDisplay || '—'}</td>
         <td class="history-cell" data-id="${rowDataId}" data-field="date" data-original-value="${group.date}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
         <td class="history-cell" data-id="${rowDataId}" data-field="time" data-original-value="${group.time ? group.time.substring(0,5) : ''}" style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
-        <td class="history-cell" data-id="${rowDataId}" data-field="student" data-original-value="${studentDisplay}" style="padding:8px; border:1px solid #ddd;">${studentCellHTML}</td>
+        <td class="history-cell" data-id="${rowDataId}" data-field="student" data-original-value="${studentDisplay}" style="padding:8px; border:1px solid #ddd;">${studentDisplay}</td>
         <td style="padding:8px; border:1px solid #ddd;"><button class="view-contact-btn" data-students='${studentDetailsJSON.replace(/'/g, "&apos;")}'>View Contact (${studentCount})</button></td>
         <td class="history-cell" data-id="${rowDataId}" data-field="lesson_cost" data-original-value="${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}</td>
         <td class="history-cell" data-id="${rowDataId}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
@@ -1175,9 +1160,6 @@ window.addEventListener('DOMContentLoaded', () => {
                 // For coach updates, ensure other potentially changed fields (date, time) for this group are also captured.
                 const currentGroupDate = tr.querySelector('td[data-field="date"] input[type="date"]') ? tr.querySelector('td[data-field="date"] input[type="date"]').value : tr.dataset.date;
                 const currentGroupTime = tr.querySelector('td[data-field="time"] select.history-time-select') ? tr.querySelector('td[data-field="time"] select.history-time-select').value : tr.dataset.time.substring(0,5);
-                const studentCell = tr.querySelector('td[data-field="student"]');
-                const studentSpans = studentCell.querySelectorAll('span[data-student-name]');
-                const currentStudentNames = Array.from(studentSpans).map(span => span.dataset.studentName);
                 
                 groupedUpdates.push({
                   program: tr.dataset.program,
@@ -1186,7 +1168,8 @@ window.addEventListener('DOMContentLoaded', () => {
                   originalBookingIds: originalBookingIds,
                   newCoaches: selectedCoaches, 
                   lesson_cost: parseFloat(tr.dataset.lessonCost) || 0,
-                  students: currentStudentNames, 
+                  student: tr.dataset.student, // This is the concatenated student names string
+                  // email and phone are no longer top-level properties for groups in save payload
                   originalCoachValueForDebug: originalValue,
                   newCoachValueForDebug: selectedCoaches.join(', '),
                   isCoachUpdate: true // Flag that this is primarily a coach update
@@ -1217,10 +1200,12 @@ window.addEventListener('DOMContentLoaded', () => {
                             time: tr.dataset.time.substring(0,5), 
                             originalBookingIds: originalBookingIds,
                             newCoaches: (tr.querySelector('td[data-field="coach"] .coach-checkbox-list') || tr.querySelector('td[data-field="coach"] select')) ? 
-                                         (Array.from(tr.querySelectorAll('td[data-field="coach"] input[type="checkbox"]:checked')).map(cb => cb.value) || (tr.querySelector('td[data-field="coach"] select') ? [tr.querySelector('td[data-field="coach"] select').value] : []))
-                                         : (tr.querySelector('td[data-field="coach"]').textContent.trim() ? tr.querySelector('td[data-field="coach"]').textContent.trim().split(',').map(s=>s.trim()) : []),
+                                         (Array.from(tr.querySelectorAll('td[data-field="coach"] input[type="checkbox"]:checked')).map(cb => cb.value).join(', ') || (tr.querySelector('td[data-field="coach"] select') ? tr.querySelector('td[data-field="coach"] select').value : ''))
+                                         : tr.querySelector('td[data-field="coach"]').textContent.trim(), 
                             lesson_cost: parseFloat(tr.dataset.lessonCost) || 0,
-                            students: Array.from(tr.querySelectorAll('td[data-field="student"] span[data-student-name]')).map(span => span.dataset.studentName),
+                            student: tr.dataset.student,
+                            // email: tr.dataset.email, // Removed
+                            // phone: tr.dataset.phone, // Removed
                             isDateUpdate: true
                         });
                     }
@@ -1250,10 +1235,12 @@ window.addEventListener('DOMContentLoaded', () => {
                             time: newValue,
                             originalBookingIds: originalBookingIds,
                             newCoaches: (tr.querySelector('td[data-field="coach"] .coach-checkbox-list') || tr.querySelector('td[data-field="coach"] select')) ?
-                                         (Array.from(tr.querySelectorAll('td[data-field="coach"] input[type="checkbox"]:checked')).map(cb => cb.value) || (tr.querySelector('td[data-field="coach"] select') ? [tr.querySelector('td[data-field="coach"] select').value] : []))
-                                         : (tr.querySelector('td[data-field="coach"]').textContent.trim() ? tr.querySelector('td[data-field="coach"]').textContent.trim().split(',').map(s=>s.trim()) : []),
+                                         (Array.from(tr.querySelectorAll('td[data-field="coach"] input[type="checkbox"]:checked')).map(cb => cb.value).join(', ') || (tr.querySelector('td[data-field="coach"] select') ? tr.querySelector('td[data-field="coach"] select').value : ''))
+                                         : tr.querySelector('td[data-field="coach"]').textContent.trim(),
                             lesson_cost: parseFloat(tr.dataset.lessonCost) || 0,
-                            students: Array.from(tr.querySelectorAll('td[data-field="student"] span[data-student-name]')).map(span => span.dataset.studentName),
+                            student: tr.dataset.student,
+                            // email: tr.dataset.email, // Removed
+                            // phone: tr.dataset.phone, // Removed
                             isTimeUpdate: true
                         });
                     }
@@ -1327,67 +1314,8 @@ window.addEventListener('DOMContentLoaded', () => {
         }
       });
 
-      // After the main loop, check for student-only changes in grouped rows
-      document.querySelectorAll('tr[data-is-grouped="true"]').forEach(tr => {
-        const originalBookingIds = JSON.parse(tr.dataset.originalIds);
-        const studentCell = tr.querySelector('td[data-field="student"]');
-        const studentSpans = studentCell.querySelectorAll('span[data-student-name]');
-        const currentStudentNames = Array.from(studentSpans).map(span => span.dataset.studentName);
-        
-        const originalStudentString = studentCell.dataset.originalValue;
-        let originalStudentNamesArray = [];
-        if (originalStudentString && originalStudentString !== '—') {
-            originalStudentNamesArray = originalStudentString.split(',').map(name => name.trim());
-        }
-
-        const studentsChanged = currentStudentNames.length !== originalStudentNamesArray.length || 
-                                !currentStudentNames.every(name => originalStudentNamesArray.includes(name)) ||
-                                !originalStudentNamesArray.every(name => currentStudentNames.includes(name));
-
-        if (studentsChanged) {
-            const existingGroupUpdateIndex = groupedUpdates.findIndex(upd => JSON.stringify(upd.originalBookingIds) === JSON.stringify(originalBookingIds));
-            if (existingGroupUpdateIndex !== -1) {
-                // If an update for this group already exists (e.g. coach/date/time changed), just update its students list
-                groupedUpdates[existingGroupUpdateIndex].students = currentStudentNames;
-                groupedUpdates[existingGroupUpdateIndex].isStudentUpdate = true; // Mark that students were also updated
-            } else {
-                // Only students changed, create a new update entry
-                let coachesFromCell;
-                const coachCell = tr.querySelector('td[data-field="coach"]');
-                const coachCheckboxes = coachCell.querySelectorAll('input[type="checkbox"][name="coach-checkbox"]');
-                if (coachCheckboxes.length > 0) {
-                    coachesFromCell = Array.from(coachCheckboxes)
-                                        .filter(cb => cb.checked)
-                                        .map(cb => cb.value);
-                } else {
-                    const coachSelect = coachCell.querySelector('select.history-coach-select');
-                    if (coachSelect) {
-                        coachesFromCell = [coachSelect.value];
-                    } else {
-                         coachesFromCell = coachCell.textContent.trim() ? coachCell.textContent.trim().split(',').map(s=>s.trim()) : [];
-                    }
-                }
-                
-                groupedUpdates.push({
-                    originalBookingIds: originalBookingIds,
-                    program: tr.dataset.program,
-                    date: tr.dataset.date, // Original date
-                    time: tr.dataset.time.substring(0,5), // Original time
-                    newCoaches: coachesFromCell, 
-                    lesson_cost: parseFloat(tr.dataset.lessonCost) || 0,
-                    students: currentStudentNames,
-                    isStudentOnlyUpdate: true 
-                });
-            }
-        }
-      });
-
-
       document.querySelectorAll('select.history-time-select').forEach(select => {
-        const bookingId = select.dataset.id; // This ID might have '-group' suffix for grouped rows if used there
-        const tr = select.closest('tr');
-        if (tr && tr.dataset.isGrouped === 'true') return; // Grouped row times are handled within their main logic
-
+        const bookingId = select.dataset.id;
         const originalTime = select.dataset.originalTime; 
         let newValue = select.value; 
 
@@ -1407,18 +1335,12 @@ window.addEventListener('DOMContentLoaded', () => {
         }
 
         if (trulyChanged) {
-          // Ensure no duplicate update for this booking ID and field
-          const existingUpdateIndex = updates.findIndex(u => u.bookingId === bookingId && u.fieldName === 'time');
-          if (existingUpdateIndex > -1) {
-            updates[existingUpdateIndex].newValue = newValue; // Update existing
-          } else {
-            updates.push({
-              bookingId: bookingId,
-              fieldName: 'time',
-              newValue: newValue, 
-              originalValueForDebug: originalTime
-            });
-          }
+          updates.push({
+            bookingId: bookingId,
+            fieldName: 'time',
+            newValue: newValue, 
+            originalValueForDebug: originalTime
+          });
         }
       });
 
@@ -1463,36 +1385,30 @@ window.addEventListener('DOMContentLoaded', () => {
                   date: upd.date,
                   time: upd.time,
                   originalBookingIds: upd.originalBookingIds,
-                  newCoaches: Array.isArray(upd.newCoaches) ? upd.newCoaches : (upd.newCoaches ? String(upd.newCoaches).split(',').map(s=>s.trim()) : []),
+                  newCoaches: upd.newCoaches, 
                   lesson_cost: upd.lesson_cost,
-                  students: upd.students || [] // Ensure students is an array
+                  student: upd.student, // String of student names
+                  // email & phone removed
               };
           } else {
-              // Merge logic: prioritize updates from specific field changes, then student-only changes
               if (upd.isDateUpdate) finalGroupedUpdates[key].date = upd.date;
               if (upd.isTimeUpdate) finalGroupedUpdates[key].time = upd.time;
-              if (upd.isCoachUpdate) finalGroupedUpdates[key].newCoaches = Array.isArray(upd.newCoaches) ? upd.newCoaches : (upd.newCoaches ? String(upd.newCoaches).split(',').map(s=>s.trim()) : []);
-              if (upd.students) finalGroupedUpdates[key].students = upd.students; // Always update students if present in `upd`
-              if (upd.lesson_cost !== undefined) finalGroupedUpdates[key].lesson_cost = upd.lesson_cost;
+              if (upd.isCoachUpdate) finalGroupedUpdates[key].newCoaches = upd.newCoaches; 
           }
       });
 
 
       for (const groupUpd of Object.values(finalGroupedUpdates)) {
         let coachesToUpdate = groupUpd.newCoaches;
-        if (coachesToUpdate && typeof coachesToUpdate === 'string') { // Ensure it's an array
+        if (typeof coachesToUpdate === 'string') {
             coachesToUpdate = coachesToUpdate.split(',').map(c => c.trim()).filter(c => c);
-        } else if (!Array.isArray(coachesToUpdate)) {
-            coachesToUpdate = []; // Default to empty array if undefined or not parseable
         }
-        
+
         const payload = {
             originalBookingIds: groupUpd.originalBookingIds,
             date: groupUpd.date, 
             time: groupUpd.time, 
-            coaches: coachesToUpdate,
-            students: groupUpd.students || [], // Ensure students array is included
-            lesson_cost: groupUpd.lesson_cost 
+            coaches: coachesToUpdate, 
         };
 
         try {
@@ -1549,19 +1465,6 @@ window.addEventListener('DOMContentLoaded', () => {
       filterAndRenderHistory(searchInput ? searchInput.value.toLowerCase().trim() : '');
     });
   });
-
-  // Event listener for deleting students from grouped lessons
-  if (historyTableContainer) {
-    historyTableContainer.addEventListener('click', function(event) {
-      if (editing && event.target.classList.contains('delete-student-btn')) {
-        const studentSpan = event.target.closest('span[data-student-name]');
-        if (studentSpan) {
-          studentSpan.remove();
-          // Future enhancement: could update an internal state or mark for save confirmation
-        }
-      }
-    });
-  }
 
 // --- View Contact Modal Logic (copy from admin.html) ---
 const viewContactModal       = document.getElementById('viewContactModal');

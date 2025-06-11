@@ -648,6 +648,12 @@ app.get('/api/financials', async (req, res) => {
   }
   // console.log('WARN: /api/financials auth bypassed for testing.'); // Auth enabled
 
+  function addDays(dateString, days) {
+    const baseDate = new Date(dateString + 'T00:00:00.000Z'); // Treat as UTC midnight
+    baseDate.setUTCDate(baseDate.getUTCDate() + days);
+    return baseDate.toISOString().slice(0, 10); // Format back to YYYY-MM-DD
+  }
+
   try {
   // 2) Determine period → startDate/endDate (YYYY-MM-DD or default to current month)
   const { start_date: startDateQuery, end_date: endDateQuery } = req.query;
@@ -846,7 +852,44 @@ FROM bookings
       [sqlStartDate, sqlEndDate]
     );
     const campBookingsRaw = campBookingsResult.rows;
-    const filteredCampBookings = campBookingsRaw.filter(booking => {
+
+    let expandedBookings = [];
+    for (const booking of campBookingsRaw) {
+      const originalProgram = booking.program;
+      const lessonCost = booking.lesson_cost != null ? parseFloat(booking.lesson_cost) : null;
+
+      // Ensure lessonCost is positive for week passes to be expanded
+      if (originalProgram === "Summer Camp - Week Pass" && lessonCost != null && lessonCost > 0) {
+        const dailyRevenue = lessonCost / 5;
+        for (let i = 0; i < 5; i++) { // Monday (0) to Friday (4)
+          expandedBookings.push({
+            ...booking,
+            date: addDays(booking.date, i), // booking.date is the start date (Monday)
+            lesson_cost: dailyRevenue,
+            program: "Summer Camp - Week Pass" // Retain for normalization
+          });
+        }
+      } else if (originalProgram === "Kids Camp - Week Pass" && lessonCost != null && lessonCost > 0) {
+        const dailyRevenue = lessonCost / 3;
+        const KCPassDaysOffsets = [1, 2, 5]; // Tuesday, Wednesday, Saturday (assuming Mon=0 for booking.date)
+        for (const offset of KCPassDaysOffsets) {
+          expandedBookings.push({
+            ...booking,
+            date: addDays(booking.date, offset), // booking.date is the start date (Monday)
+            lesson_cost: dailyRevenue,
+            program: "Kids Camp - Week Pass" // Retain for normalization
+          });
+        }
+      } else {
+        // For non-week-pass bookings or week passes with no/zero cost
+        expandedBookings.push({ ...booking });
+      }
+    }
+
+    const filteredCampBookings = expandedBookings.filter(booking => {
+      // Ensure lesson_cost is valid after potential division and positive
+      if (booking.lesson_cost == null || booking.lesson_cost <= 0) return false;
+      
       const normalized = normalizeProgramType(booking.program);
       return normalized === "Summer Camp" || normalized === "Kids Camp" || normalized === "Group Lesson";
     });

@@ -861,7 +861,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Obsolete programEl.addEventListener('change', ...) has been removed.
   // Obsolete coachEl.addEventListener('change', ...) has been removed.
 
-  document.getElementById('bookingForm').addEventListener('submit', async e => {
+  document.getElementById('bookingForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const student = document.getElementById('student').value;
     const program = document.getElementById('selectedProgram').value; // Updated
@@ -881,7 +881,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
         const bookingData = { student, program, coach, date, time, email, phone }; // Ensure only specified fields
-        const res = await fetch('/api/book-pay-later', { // ← use the existing pay-later route  [oai_citation:0‡server.js](file-service://file-3q69ouFcoynfZ2Mc4FKCgS)
+         const res = await fetch('/api/book-pay-later', {// ← use the existing pay-later route  [oai_citation:0‡server.js](file-service://file-3q69ouFcoynfZ2Mc4FKCgS)
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include', // Keep credentials

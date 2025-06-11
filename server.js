@@ -835,56 +835,58 @@ FROM bookings
   // Use coach if present (from bookings), otherwise use coach1 (from admin_history)
   const primaryCoachName = booking.coach || booking.coach1 || 'Unknown Coach'; 
   const simpleCoachName = primaryCoachName.split(' ')[0];
+  // referral_source from DB will now be 'Ricardo', 'RicardoOwn', 'Jacob', 'Paula', etc.
   const referral = booking.referral_source ? booking.referral_source.trim() : '';
-  // Ensure program is read correctly, it should exist in both structures
-  const program = booking.program; 
+  const program = booking.program;
 
-  // Filter to apply commission logic only to "Private Lessons"
-  // This check is important because combinedLessonData contains various program types.
   if (normalizeProgramType(program) !== "Private Lessons") {
-    continue; // Skip if not a private lesson for this specific commission logic
+    continue;
   }
 
   let coachGetsThisLesson = 0;
   let academyGetsThisLesson = 0;
 
-  // Priority 1: Ricardo as Coach
+  // Standard Pay Logic based on referral_source and coach name
   if (simpleCoachName === 'Ricardo') {
-    coachGetsThisLesson = lessonCost;
-    academyGetsThisLesson = 0;
-  }
-  // Priority 2: Specific Referral Sources (Non-Ricardo Coach)
-  else if (referral === 'FriendReferral') {
-    academyGetsThisLesson = 10;
-    coachGetsThisLesson = Math.max(0, lessonCost - 10);
-  } else if (referral === 'WebsiteReferral') {
-    academyGetsThisLesson = 20;
-    coachGetsThisLesson = Math.max(0, lessonCost - 20);
-  } else if (referral === 'Ricardo') { // Ricardo referral, but coach is not Ricardo
-    academyGetsThisLesson = 20;
-    coachGetsThisLesson = Math.max(0, lessonCost - 20);
-  }
-  // Priority 3: Coach-Specific Rules (Non-Ricardo Coach, No Matching Primary Referral)
-  else if (simpleCoachName === 'Jacob' && (referral === null || referral === '' || referral === 'Jacob' || referral === 'JacobOwn')) {
-    academyGetsThisLesson = 10;
-    coachGetsThisLesson = Math.max(0, lessonCost - 10);
-  } else if (simpleCoachName === 'Paula' && (referral === null || referral === '' || referral === 'Paula' || referral === 'PaulaOwn')) {
-    academyGetsThisLesson = lessonCost * 0.10;
-    coachGetsThisLesson = lessonCost - academyGetsThisLesson;
-    if (coachGetsThisLesson < 0) coachGetsThisLesson = 0; // Ensure not negative
-  } else if (simpleCoachName === 'Zach' && (referral === null || referral === '' || referral === 'Zach' || referral === 'ZachOwn')) {
-    academyGetsThisLesson = lessonCost * 0.10;
-    coachGetsThisLesson = lessonCost - academyGetsThisLesson;
-    if (coachGetsThisLesson < 0) coachGetsThisLesson = 0; // Ensure not negative
-  }
-  // Priority 4: Default Fallback (Non-Ricardo Coach, No Matching Primary or Coach-Specific Referral)
-  else {
-    coachGetsThisLesson = lessonCost;
-    academyGetsThisLesson = 0;
-    // Optional: Log fallback cases if needed for debugging or monitoring
-    // console.warn(
-    //   `WARN: Fallback commission case for booking (coach: ${coachFullName}, referral: '${referral}', cost: ${lessonCost}).`
-    // );
+      // Ricardo always gets the full lesson cost if he is the coach.
+      // Covers 'RicardoOwn' (if he booked for himself via instructor portal or admin set it)
+      // or 'Ricardo' (if referred to him by another coach/admin).
+      coachGetsThisLesson = lessonCost;
+      academyGetsThisLesson = 0;
+  } else if (referral === 'Ricardo') { // Referred by Ricardo (and coach is not Ricardo)
+      academyGetsThisLesson = 20; // Academy gets $20
+      coachGetsThisLesson = Math.max(0, lessonCost - academyGetsThisLesson);
+  } else if (referral === 'FriendReferral') { // This is likely an admin-set value
+      academyGetsThisLesson = 10; // Academy gets $10
+      coachGetsThisLesson = Math.max(0, lessonCost - academyGetsThisLesson);
+  } else if (referral === 'WebsiteReferral') { // This is likely an admin-set value
+      academyGetsThisLesson = 20; // Academy gets $20
+      coachGetsThisLesson = Math.max(0, lessonCost - academyGetsThisLesson);
+  } else if (referral === simpleCoachName || referral === simpleCoachName + "Own" || referral === '' || referral === null) {
+      // This covers "Jacob", "JacobOwn", "Paula", "PaulaOwn", "Zach", "ZachOwn"
+      // or empty/null referral (which implies coach's own session).
+      // `instructor_portal` sends coach's name (e.g. "Jacob") for their own sessions.
+      // `admin.html` also uses coach's name (e.g. "Jacob") for "Jacob's Own".
+      if (simpleCoachName === 'Jacob') {
+          academyGetsThisLesson = 10; // Jacob's own, academy gets $10
+          coachGetsThisLesson = Math.max(0, lessonCost - academyGetsThisLesson);
+      } else if (simpleCoachName === 'Paula' || simpleCoachName === 'Zach') {
+          academyGetsThisLesson = lessonCost * 0.10; // Paula/Zach's own, academy gets 10%
+          coachGetsThisLesson = lessonCost - academyGetsThisLesson;
+          if (coachGetsThisLesson < 0) coachGetsThisLesson = 0;
+      } else {
+          // Default for other coaches' own lessons if not specified above
+          coachGetsThisLesson = lessonCost; // Coach gets full amount
+          academyGetsThisLesson = 0;
+      }
+  } else {
+      // Fallback for any other referral_source values or unhandled coach names
+      // This case might indicate a new referral type or an issue with data consistency.
+      coachGetsThisLesson = lessonCost; // Default to coach gets full amount
+      academyGetsThisLesson = 0;
+      console.warn(
+        `WARN: /api/financials: Fallback commission case for booking (coach: ${primaryCoachName}, referral: '${referral}', cost: ${lessonCost}). Defaulting to full pay for coach.`
+      );
   }
 
   totalCoachPayrollForPrivates += coachGetsThisLesson;
@@ -1615,22 +1617,38 @@ app.get('/api/coach/financials', async (req, res) => {
 
     for (const booking of privateLessonsResult.rows) {
       const lessonCost = parseFloat(booking.lesson_cost);
-      const simpleLoggedInCoachName = loggedInCoachName.split(' ')[0]; 
+      const simpleLoggedInCoachName = loggedInCoachName.split(' ')[0];
+      // referral_source from DB will now be 'Ricardo', 'RicardoOwn', 'Jacob', 'Paula', etc.
       const referral = booking.referral_source ? booking.referral_source.trim() : '';
-      
+
       let coachGetsThisLesson = 0;
+
+      // Standard Pay Logic based on referral_source and coach name
       if (simpleLoggedInCoachName === 'Ricardo') {
-        coachGetsThisLesson = lessonCost;
-      } else if (referral === 'FriendReferral') {
-        coachGetsThisLesson = Math.max(0, lessonCost - 10);
-      } else if (referral === 'WebsiteReferral' || referral === 'Ricardo') {
-        coachGetsThisLesson = Math.max(0, lessonCost - 20);
-      } else if (simpleLoggedInCoachName === 'Jacob' && (referral === '' || referral === 'Jacob' || referral === 'JacobOwn')) {
-        coachGetsThisLesson = Math.max(0, lessonCost - 10);
-      } else if ((simpleLoggedInCoachName === 'Paula' || simpleLoggedInCoachName === 'Zach') && (referral === '' || referral === simpleLoggedInCoachName || referral === simpleLoggedInCoachName + 'Own')) {
-        coachGetsThisLesson = lessonCost * 0.90; 
+          // Ricardo always gets the full lesson cost if he is the coach.
+          coachGetsThisLesson = lessonCost;
+      } else if (referral === 'Ricardo') { // Referred by Ricardo (and coach is not Ricardo)
+          coachGetsThisLesson = Math.max(0, lessonCost - 20); // Academy gets $20
+      } else if (referral === 'FriendReferral') { // This is likely an admin-set value
+          coachGetsThisLesson = Math.max(0, lessonCost - 10); // Academy gets $10
+      } else if (referral === 'WebsiteReferral') { // This is likely an admin-set value
+          coachGetsThisLesson = Math.max(0, lessonCost - 20); // Academy gets $20
+      } else if (referral === simpleLoggedInCoachName || referral === simpleLoggedInCoachName + "Own" || referral === '' || referral === null) {
+          // This covers "Jacob", "JacobOwn", "Paula", "PaulaOwn", "Zach", "ZachOwn" or empty/null referral (coach's own)
+          // instructor_portal sends coach's name (e.g. "Jacob") for their own sessions.
+          // admin.html also uses coach's name (e.g. "Jacob") for "Jacob's Own".
+          if (simpleLoggedInCoachName === 'Jacob') {
+              coachGetsThisLesson = Math.max(0, lessonCost - 10); // Jacob's own, academy gets $10
+          } else if (simpleLoggedInCoachName === 'Paula' || simpleLoggedInCoachName === 'Zach') {
+              coachGetsThisLesson = lessonCost * 0.90; // Paula/Zach's own, academy gets 10%
+          } else {
+              // Default for other coaches' own lessons if not specified above
+              coachGetsThisLesson = lessonCost; // Coach gets full amount
+          }
       } else {
-        coachGetsThisLesson = lessonCost; 
+          // Fallback for any other referral_source values or unhandled coach names
+          coachGetsThisLesson = lessonCost; // Default to coach gets full amount
+          console.warn(`Coach Financials: Unhandled referral case for coach ${simpleLoggedInCoachName} with referral '${referral}'. Defaulting to full pay for coach.`);
       }
       coachPrivatesPay += coachGetsThisLesson;
     }
@@ -1970,16 +1988,38 @@ app.post('/api/coach/lessons', async (req, res) => {
   if (!req.session.coachId || !req.session.coachName) {
     return res.status(401).send('Unauthorized: Coach not logged in.');
   }
-  let { program, date, time, student, lesson_cost } = req.body; // Use let for program
+  let { program, date, time, student, lesson_cost, referral_source } = req.body; // Add referral_source
+  const loggedInCoachName = req.session.coachName;
+
   if (program === 'Tennis Private') {
     program = 'Private Lesson';
   }
+
+  let finalReferralSource = null;
+  if (program === 'Private Lesson') {
+    if (referral_source === 'RicardoReference') {
+      if (loggedInCoachName === 'Ricardo Carvajalino') {
+        finalReferralSource = 'RicardoOwn';
+      } else {
+        finalReferralSource = 'Ricardo';
+      }
+    } else if (referral_source && referral_source.trim() !== '') {
+      // Handles cases like "Jacob", "Paula", etc., or other specific referral codes.
+      finalReferralSource = referral_source.trim();
+    } else {
+      // Default to coach's own if no specific referral source is provided for a private lesson
+      // This covers scenarios where "Choose session owner" might be submitted or the field is empty.
+      finalReferralSource = loggedInCoachName;
+    }
+  }
+  // For non-Private Lessons, finalReferralSource remains null as initialized.
+
   try {
     await pool.query(
       `INSERT INTO bookings
-         (email, program, coach, date, time, student, paid, session_id, lesson_cost)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, 
-      ['', program, req.session.coachName, date, time, student || '', false, null, lesson_cost === undefined ? null : lesson_cost]
+         (email, program, coach, date, time, student, paid, session_id, lesson_cost, referral_source)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      ['', program, loggedInCoachName, date, time, student || '', false, null, lesson_cost === undefined ? null : lesson_cost, finalReferralSource]
     );
     res.sendStatus(200);
   } catch (err) {

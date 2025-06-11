@@ -443,6 +443,12 @@ ul.nav-links-mobile li a {
           <label for="coach-student">Student Name</label>
           <input type="text" id="coach-student" placeholder="Enter student name" />
         </div>
+        <div id="session-owner-container" style="display:none; margin-top:10px;">
+          <label for="session-owner-select">Session Owner</label>
+          <select id="session-owner-select">
+            <option value="" disabled selected>Choose session owner</option>
+          </select>
+        </div>
         <div style="margin-top:10px;">
           <label for="coach-date">Date</label>
           <input type="date" id="coach-date" required />
@@ -625,8 +631,16 @@ function populateTimeDropdowns() {
 
     const coachProg  = document.getElementById('coach-program');
     const coachStudC = document.getElementById('coach-student-container');
+    const sessionOwnerContainer = document.getElementById('session-owner-container');
+    const sessionOwnerSelect = document.getElementById('session-owner-select');
+
     coachProg.addEventListener('change', () => {
-      coachStudC.style.display = coachProg.value === 'Private Lesson' ? 'block' : 'none';
+      const isPrivateLesson = coachProg.value === 'Private Lesson';
+      coachStudC.style.display = isPrivateLesson ? 'block' : 'none';
+      sessionOwnerContainer.style.display = isPrivateLesson ? 'block' : 'none';
+      if (!isPrivateLesson) {
+        sessionOwnerSelect.value = ""; // Reset session owner dropdown
+      }
     });
     document.getElementById('coach-lesson-form').addEventListener('submit', async e => {
       e.preventDefault();
@@ -636,18 +650,38 @@ function populateTimeDropdowns() {
         date:    document.getElementById('coach-date').value,
         time:    document.getElementById('coach-time').value,
         student: document.getElementById('coach-student').value || '',
-        lesson_cost: priceValue ? parseFloat(priceValue) : null
+        lesson_cost: priceValue ? parseFloat(priceValue) : null,
+        referral_source: '' // Initialize referral_source
       };
 
       if (coachProg.value === 'Private Lesson') {
-        if (loggedInCoachName) {
-          payload.referral_source = loggedInCoachName;
+        const selectedReferralSource = sessionOwnerSelect.value;
+        if (selectedReferralSource) {
+          payload.referral_source = selectedReferralSource;
         } else {
-          console.error('Error: Coach name not available for referral source.');
-          // Optionally, alert the user or prevent submission if coach name is critical
-          // alert('Could not automatically set referral source. Please try logging out and in again.');
-          // return; 
+          // If "Choose session owner" is selected, or if somehow the value is empty
+          // and it's a private lesson, it implies it's the coach's own session.
+          // The backend might need to infer this or we could explicitly set it to loggedInCoachName.
+          // For now, sending the selected value (which might be empty) or loggedInCoachName if nothing selected.
+          // The requirement is that if "Coach's Own" is selected, value is loggedInCoachName.
+          // If "Ricardo's Reference" is selected, value is "RicardoReference".
+          // If nothing is chosen, it's an error or defaults to coach's own.
+          // Let's ensure a value is selected if it's a private lesson.
+          if (!selectedReferralSource && loggedInCoachName) {
+             // Default to loggedInCoachName if no selection but it's a private lesson
+             // However, the dropdown should have loggedInCoachName as a default selected or an option.
+             // The best approach is to ensure the dropdown is validated or has a sensible default.
+             // For now, if it's empty, we can treat it as coach's own if that's the desired fallback.
+             // payload.referral_source = loggedInCoachName; // This was the old logic.
+             // New logic: the value from select is king. If it's empty, it means "Choose..."
+             // The form should ideally validate that a choice is made for private lessons.
+             // For now, we send what's selected. If it's "", backend handles it or we add validation.
+          }
+          // No specific "else" needed here as referral_source is taken from select.
+          // The old logic of defaulting to loggedInCoachName if (loggedInCoachName) is now handled by dropdown population.
         }
+      } else {
+        payload.referral_source = null; // Or simply omit, depending on backend expectation
       }
 
       const res = await fetch('/api/coach/lessons', {
@@ -660,6 +694,8 @@ function populateTimeDropdowns() {
         alert('Lesson added');
         location.reload();
         coachStudC.style.display = 'none';
+        sessionOwnerContainer.style.display = 'none'; // Also hide session owner container
+        sessionOwnerSelect.value = ""; // Reset session owner dropdown
       } else {
         alert('Add failed: ' + await res.text());
       }
@@ -1007,6 +1043,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
                   if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInHTMLDesktop;
                   if (authContainerMobile) authContainerMobile.innerHTML = loggedInHTMLMobile;
+
+                  // Populate Session Owner Dropdown
+                  const sessionOwnerSelectElement = document.getElementById('session-owner-select');
+                  if (sessionOwnerSelectElement) {
+                    sessionOwnerSelectElement.innerHTML = ''; // Clear existing options
+
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = "";
+                    defaultOption.textContent = "Choose session owner";
+                    defaultOption.disabled = true;
+                    defaultOption.selected = true;
+                    sessionOwnerSelectElement.appendChild(defaultOption);
+
+                    if (loggedInCoachName) {
+                      const coachOption = document.createElement('option');
+                      coachOption.value = loggedInCoachName;
+                      coachOption.textContent = loggedInCoachName + "'s Own";
+                      sessionOwnerSelectElement.appendChild(coachOption);
+                    }
+
+                    const ricardoOption = document.createElement('option');
+                    ricardoOption.value = "RicardoReference";
+                    ricardoOption.textContent = "Ricardo's Reference";
+                    sessionOwnerSelectElement.appendChild(ricardoOption);
+                  }
+
 
                   if (data.firstName) { 
                       const welcomeMessageText = 'Welcome, ' + data.firstName + '!';

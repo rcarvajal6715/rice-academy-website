@@ -92,6 +92,33 @@ ensureBookingsSchema().catch(err => {
   // process.exit(1); // Optionally exit if schema setup is critical
 });
 
+// Function to ensure 'newsletter_subscribers' table exists
+async function ensureNewsletterTable() {
+  const client = await pool.connect();
+  try {
+    const createNewsletterTableQuery = `
+      CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+          id SERIAL PRIMARY KEY,
+          email TEXT UNIQUE NOT NULL,
+          subscribed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+    await client.query(createNewsletterTableQuery);
+    console.log('Table "newsletter_subscribers" is ready (created if it did not exist).');
+  } catch (err) {
+    console.error('Error creating "newsletter_subscribers" table:', err.stack);
+    // Decide if the application should exit or continue if table creation fails
+  } finally {
+    client.release();
+  }
+}
+
+// Call this function at startup
+ensureNewsletterTable().catch(err => {
+  console.error('Failed to ensure newsletter_subscribers schema:', err.stack);
+  // process.exit(1); // Optionally exit if schema setup is critical
+});
+
 // Ensure 'expenses' table exists
 (async () => {
   const createExpensesTableQuery = `
@@ -205,6 +232,40 @@ const transporter = nodemailer.createTransport({
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASSWORD
+  }
+});
+
+app.post('/api/newsletter', async (req, res) => {
+  const { email } = req.body;
+
+  if (!email || email.trim() === '') {
+    return res.status(400).json({ success: false, message: "Email is required." });
+  }
+
+  const emailRegex = /^\S+@\S+\.\S+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ success: false, message: "Invalid email format." });
+  }
+
+  let client;
+  try {
+    client = await pool.connect();
+    const result = await client.query(
+      'INSERT INTO newsletter_subscribers (email) VALUES ($1) RETURNING id, email, subscribed_at',
+      [email]
+    );
+    res.status(201).json({ success: true, message: "Successfully subscribed!", subscriber: result.rows[0] });
+  } catch (err) {
+    if (err.code === '23505') { // Unique violation
+      res.status(409).json({ success: false, message: "Email already subscribed." });
+    } else {
+      console.error('Error subscribing to newsletter:', err.stack);
+      res.status(500).json({ success: false, message: "Subscription failed. Please try again." });
+    }
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 });
 

@@ -881,7 +881,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
         const bookingData = { student, program, coach, date, time, email, phone }; // Ensure only specified fields
-        const res = await fetch('/api/book-session', { // Changed endpoint
+        const res = await fetch('/api/book-pay-later', { // Changed endpoint
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include', // Keep credentials

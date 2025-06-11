@@ -619,9 +619,14 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
     }
 
     if (les.student && les.student.trim() !== '') {
-      // Modified: studentObj now includes bookingId. Uniqueness check via _tempStudentSet is removed.
       const studentObj = { name: les.student.trim(), email: les.email || null, phone: les.phone || null, bookingId: les.id };
-      groupedLessons[compositeKey].studentDetailsList.push(studentObj);
+      // Check if a student with this bookingId already exists in this group's list
+      const studentExists = groupedLessons[compositeKey].studentDetailsList.some(
+        existingStudent => existingStudent.bookingId === studentObj.bookingId
+      );
+      if (!studentExists) {
+        groupedLessons[compositeKey].studentDetailsList.push(studentObj);
+      }
     }
     
     const lessonCoaches = [les.coach, les.coach2, les.coach3].filter(Boolean);

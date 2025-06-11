@@ -235,6 +235,22 @@
         /* Centering is handled by parent .hero flex properties */
     }
 
+    .hero-text-content {
+        position: static;
+        transform: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .hero-text-content h1 { /* More specific selector */
+        margin-bottom: 0.5em;
+    }
+    .hero-text-content p { /* More specific selector */
+        margin-bottom: 1.5em;
+    }
+
     .hero h1 {
         font-size: 2.8em; /* Adjusted font size */
         color: white; /* Adjusted color */

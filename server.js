@@ -648,10 +648,12 @@ app.get('/api/financials', async (req, res) => {
   }
   // console.log('WARN: /api/financials auth bypassed for testing.'); // Auth enabled
 
-  function addDays(dateString, days) {
-    const baseDate = new Date(dateString + 'T00:00:00.000Z'); // Treat as UTC midnight
-    baseDate.setUTCDate(baseDate.getUTCDate() + days);
-    return baseDate.toISOString().slice(0, 10); // Format back to YYYY-MM-DD
+  function addDays(input, days) {
+    const baseDate = input instanceof Date
+      ? new Date(input)
+      : new Date(input); // Parses 'YYYY-MM-DD'
+    baseDate.setDate(baseDate.getDate() + days);
+    return baseDate.toISOString().slice(0, 10);
   }
 
   try {

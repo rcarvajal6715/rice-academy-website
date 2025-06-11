@@ -938,7 +938,7 @@ FROM bookings
         }
       } else if (originalProgram === "Kids Camp - Week Pass" && lessonCost != null && lessonCost > 0) {
         const dailyRevenue = lessonCost / 3;
-        const KCPassDaysOffsets = [1, 2, 5]; // Tuesday, Wednesday, Saturday (assuming Mon=0 for booking.date)
+        const KCPassDaysOffsets = [1, 3, 5]; // Tuesday, Wednesday, Saturday (assuming Mon=0 for booking.date)
         for (const offset of KCPassDaysOffsets) {
           expandedBookings.push({
             ...booking,

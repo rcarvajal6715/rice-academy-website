@@ -221,7 +221,7 @@ ul.nav-links-mobile li a {
 
   <section>
     <h1 style="text-align:center;">Contact Us</h1>
-    <form action="https://rice-academy-backend-907885790859.us-central1.run.app/api/contact" method="POST">
+    <form id="contactForm" action="https://rice-academy-backend-907885790859.us-central1.run.app/api/contact" method="POST">
       <input type="text" name="first_name" placeholder="First Name" required />
       <input type="text" name="last_name" placeholder="Last Name" required />
       <input type="email" name="email" placeholder="Email Address" required />
@@ -235,7 +235,61 @@ ul.nav-links-mobile li a {
   </footer>
 
   <script>
-document.addEventListener('DOMContentLoaded', () => {
+    // --- Contact Form Submission Script ---
+    const contactForm = document.getElementById('contactForm');
+    if (contactForm) {
+      contactForm.addEventListener('submit', async function(event) {
+        event.preventDefault(); // Prevent default submission
+
+        const formData = new FormData(contactForm);
+        const data = {
+          first_name: formData.get('first_name'),
+          last_name: formData.get('last_name'),
+          email: formData.get('email'),
+          message: formData.get('message')
+        };
+
+        if (!data.first_name || !data.last_name || !data.email || !data.message) {
+          alert('Please fill in all fields.');
+          return;
+        }
+        if (!isValidEmail(data.email)) {
+            alert('Please enter a valid email address.');
+            return;
+        }
+
+        try {
+          const response = await fetch('/api/contact', { // Relative path
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+          });
+
+          const result = await response.json();
+
+          if (response.ok && result.success) {
+            alert(result.message || 'Message sent successfully!');
+            contactForm.reset(); // Clear the form
+          } else {
+            alert(result.message || 'Failed to send message. Please try again.');
+          }
+        } catch (error) {
+          console.error('Error submitting contact form:', error);
+          alert('An error occurred. Please try again later.');
+        }
+      });
+    }
+
+    function isValidEmail(email) {
+        // Basic email validation regex
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
+    // --- Existing Scripts ---
+    document.addEventListener('DOMContentLoaded', () => {
     // --- Menu Toggle Script ---
     const menuToggle = document.querySelector('.mobile-menu-toggle');
     const mobileMenuClose = document.querySelector('.mobile-menu-close');

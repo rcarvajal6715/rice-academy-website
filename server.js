@@ -168,6 +168,10 @@ app.use((req, res, next) => {
 // Static file serving (typically after other middleware, before specific routes)
 app.use(express.static(__dirname, { extensions: ['html'] }));
 
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end();
+});
+
 // Stripe Initialization
 // const StripeNode = require('stripe'); // Already required at the top
 
@@ -2257,14 +2261,33 @@ app.get('/api/availability', async (req, res) => {
 app.post('/api/contact', async (req, res) => {
   const { first_name, last_name, email, message } = req.body;
   try {
+    // Database insertion
     await pool.query(
       'INSERT INTO contacts (first_name, last_name, email, message) VALUES ($1, $2, $3, $4)',
       [first_name, last_name, email, message]
     );
-    res.status(200).send('Message received.');
+    console.log('Contact data saved to database.');
+
+    // Nodemailer logic
+    const mailOptions = {
+      from: `"C2 Tennis Academy" <${process.env.GMAIL_USER}>`,
+      to: 'c2tennisacademy@gmail.com',
+      subject: 'New Contact Form Submission',
+      html: `<h3>New Contact Form Submission</h3>
+             <p><strong>First Name:</strong> ${first_name}</p>
+             <p><strong>Last Name:</strong> ${last_name}</p>
+             <p><strong>Email:</strong> ${email}</p>
+             <p><strong>Message:</strong></p>
+             <p>${message}</p>`
+    };
+    
+    await transporter.sendMail(mailOptions);
+    console.log('Contact form email sent successfully.');
+    res.status(200).json({ success: true, message: 'Message sent successfully!' });
+
   } catch (err) {
-    console.error('Contact submission error:', err);
-    res.status(500).send('Contact submission failed.');
+    console.error('Error in /api/contact route:', err);
+    res.status(500).json({ success: false, message: 'Failed to send message.' });
   }
 });
 

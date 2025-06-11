@@ -881,13 +881,13 @@ FROM bookings
   totalCoachPayrollForPrivates += coachGetsThisLesson;
   totalAcademyCommissionForPrivates += academyGetsThisLesson;
 
-      // Add to coachFinancials totalPay for private lessons
+      // Add to coachFinancials privatesPay for private lessons
       if (primaryCoachName !== 'Unknown Coach') {
         if (!coachFinancials[primaryCoachName]) {
-          coachFinancials[primaryCoachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
+          coachFinancials[primaryCoachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0, privatesPay: 0, campsPay: 0 };
           // console.warn(`Financials: Coach ${primaryCoachName} from commission loop not found in coachFinancials. Initializing.`);
         }
-        coachFinancials[primaryCoachName].totalPay += coachGetsThisLesson;
+        coachFinancials[primaryCoachName].privatesPay += coachGetsThisLesson;
       }
     }
 
@@ -1071,10 +1071,10 @@ FROM bookings
           if (coachName && coachName !== 'Unknown Coach') {
             if (!coachFinancials[coachName]) {
               // This case should ideally not happen if campBookings loop ran correctly and initialized all coaches
-              coachFinancials[coachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
+              coachFinancials[coachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0, privatesPay: 0, campsPay: 0 };
               console.warn(`Financials: Coach ${coachName} from campSessions not found in coachFinancials during pay distribution. Initializing.`);
             }
-            coachFinancials[coachName].totalPay += individualCoachPayout;
+            coachFinancials[coachName].campsPay += individualCoachPayout;
           }
         });
       }
@@ -1138,7 +1138,7 @@ FROM bookings
       // Other program types (Summer Camp, Kids Camp, Group Lesson) are handled by filteredCampBookings loop.
       if (normalizedProgram === "Private Lessons") {
         if (!coachFinancials[primaryCoachName]) {
-          coachFinancials[primaryCoachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
+          coachFinancials[primaryCoachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0, privatesPay: 0, campsPay: 0 };
           // console.warn(`Financials: Coach ${primaryCoachName} from hours/lessons loop not found. Initializing.`);
         }
         coachFinancials[primaryCoachName].lessonsTaught += 1;
@@ -1163,13 +1163,20 @@ FROM bookings
       session.coaches.forEach(coachName => {
         // Make sure the coach has an entry
         if (!coachFinancials[coachName]) {
-          coachFinancials[coachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0 };
+          coachFinancials[coachName] = { lessonsTaught: 0, totalHours: 0, totalPay: 0, privatesPay: 0, campsPay: 0 };
         }
 
         // **Count one lesson per session, not per child**
         coachFinancials[coachName].lessonsTaught += 1;
         coachFinancials[coachName].totalHours     += duration;
       });
+    }
+
+    // Calculate Total Pay for each coach
+    for (const coachName in coachFinancials) {
+      if (coachFinancials.hasOwnProperty(coachName)) {
+        coachFinancials[coachName].totalPay = (coachFinancials[coachName].privatesPay || 0) + (coachFinancials[coachName].campsPay || 0);
+      }
     }
 
     // 8) Build and send the JSON response
@@ -1225,6 +1232,8 @@ FROM bookings
         coachName,
         lessonsTaught: data.lessonsTaught || 0,
         totalHours: data.totalHours || 0,
+        privatesPay: data.privatesPay || 0,
+        campsPay: data.campsPay || 0,
         totalPay: data.totalPay || 0,
       })).sort((a, b) => b.totalPay - a.totalPay) // Sort by pay, descending
     };

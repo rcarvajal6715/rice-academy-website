@@ -486,11 +486,13 @@ legend {
           <th>Coach Name</th>
           <th>Lessons Taught</th>
           <th>Total Hours</th>
+          <th>Privates Pay</th>
+          <th>Camps Pay</th>
           <th>Total Pay</th>
         </tr>
       </thead>
       <tbody id="coach-payroll-table-body">
-        <tr><td colspan="4" id="coach-table-loading" style="text-align: center;">Loading table data...</td></tr>
+        <tr><td colspan="6" id="coach-table-loading" style="text-align: center;">Loading table data...</td></tr>
         <!-- Coach data rows will be populated here by JavaScript -->
       </tbody>
     </table>
@@ -1122,6 +1124,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             hoursP.innerHTML = `<strong>Total Hours:</strong> ${coach.totalHours.toFixed(1)} hrs`;
                             hoursP.style.margin = '5px 0';
 
+                            const privatesPayP = document.createElement('p');
+                            privatesPayP.innerHTML = `<strong>Privates Pay:</strong> $${(coach.privatesPay || 0).toFixed(2)}`;
+                            privatesPayP.style.margin = '5px 0';
+
+                            const campsPayP = document.createElement('p');
+                            campsPayP.innerHTML = `<strong>Camps Pay:</strong> $${(coach.campsPay || 0).toFixed(2)}`;
+                            campsPayP.style.margin = '5px 0';
+
                             const payP = document.createElement('p');
                             payP.innerHTML = `<strong>Total Pay:</strong> $${coach.totalPay.toFixed(2)}`;
                             payP.style.margin = '5px 0';
@@ -1129,6 +1139,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             coachDiv.appendChild(nameP);
                             coachDiv.appendChild(lessonsP);
                             coachDiv.appendChild(hoursP);
+                            coachDiv.appendChild(privatesPayP);
+                            coachDiv.appendChild(campsPayP);
                             coachDiv.appendChild(payP);
                             coachPayrollContainer.appendChild(coachDiv);
                         });
@@ -1167,6 +1179,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             hoursCell.textContent = `${coach.totalHours.toFixed(1)} hrs`;
                             hoursCell.style.textAlign = 'right';
 
+                            const privatesPayCell = row.insertCell();
+                            privatesPayCell.textContent = `$${(coach.privatesPay || 0).toFixed(2)}`;
+                            privatesPayCell.style.textAlign = 'right';
+
+                            const campsPayCell = row.insertCell();
+                            campsPayCell.textContent = `$${(coach.campsPay || 0).toFixed(2)}`;
+                            campsPayCell.style.textAlign = 'right';
+
                             const payCell = row.insertCell();
                             payCell.textContent = `$${coach.totalPay.toFixed(2)}`;
                             payCell.style.textAlign = 'right';
@@ -1174,14 +1194,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else {
                         const row = coachTableBody.insertRow();
                         const cell = row.insertCell();
-                        cell.colSpan = 4;
+                        cell.colSpan = 6;
                         cell.textContent = 'No coach payroll data available for this period.';
                         cell.style.textAlign = 'center';
                     }
                 } else {
                     const row = coachTableBody.insertRow();
                     const cell = row.insertCell();
-                    cell.colSpan = 4;
+                    cell.colSpan = 6;
                     cell.textContent = 'Coach payroll table data is not available or in an unexpected format.';
                     cell.style.textAlign = 'center';
                 }

@@ -881,7 +881,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
         const bookingData = { student, program, coach, date, time, email, phone }; // Ensure only specified fields
-        const res = await fetch('/api/book-pay-later', { // Changed endpoint
+        const res = await fetch('/api/book-pay-later', { // ← use the existing pay-later route  [oai_citation:0‡server.js](file-service://file-3q69ouFcoynfZ2Mc4FKCgS)
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include', // Keep credentials
@@ -899,7 +899,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (parseErr) { /* ignore parsing error */ }
             throw new Error(errorMsg);
         }
-        window.location.href = 'contact-success.html'; // Changed success redirect
+         window.location.href = 'pay-later-success.html'; // ← point at your pay-later confirmation page  [oai_citation:1‡pay-later-success.html](file-service://file-SYqk64fsbawVKmA7r4ph8n)
     } catch (err) {
         console.error('Booking error:', err.message);
         alert(err.message);

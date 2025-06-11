@@ -913,7 +913,7 @@ FROM bookings
               LOWER(program) LIKE '%clinic%' OR
               LOWER(program) LIKE '%high performance%'
           )
-            AND date >= $1 AND date <= $2
+            AND date >= (CAST($1 AS DATE) - INTERVAL '7 days') AND date <= $2
             AND lesson_cost IS NOT NULL AND lesson_cost > 0;
           `,
       [sqlStartDate, sqlEndDate]
@@ -971,6 +971,10 @@ FROM bookings
       // const sessionKey = `${sessionDateString}_${booking.program}`; // Original
       const normalizedCampProgram = normalizeProgramType(booking.program); // Ensure this is done before creating sessionKey
       const sessionKey = `${sessionDateString}_${normalizedCampProgram}`;
+
+      if (sessionDateString < sqlStartDate || sessionDateString > sqlEndDate) {
+          continue; 
+      }
       
       if (!campSessions[sessionKey]) {
         campSessions[sessionKey] = {

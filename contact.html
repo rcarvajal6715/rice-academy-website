@@ -331,6 +331,27 @@ ul.nav-links-mobile li a {
       margin-bottom: 10px; /* More space below input when stacked */
     }
   }
+  .footer-logo {
+  display: block;
+  max-width: 120px;     /* adjust as needed */
+  margin: 0 auto 12px;  /* center and add bottom space */
+}
+
+/* Footer: keep all columns side-by-side */
+.footer-wrapper {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: nowrap;      /* prevent wrapping */
+  align-items: center;    /* vertical align */
+}
+
+/* Footer columns: size to content and add horizontal gutters */
+.footer-col {
+  flex: 0 0 auto;         /* don’t grow or shrink */
+  margin: 0 16px;         /* gutter between items */
+}
+
+
   </style>
 </head>
 <body>
@@ -394,6 +415,7 @@ ul.nav-links-mobile li a {
   <div class="footer-wrapper">
    <!-- Contact Details -->
 <div class="footer-col">
+  <img src="C2white.png" alt="C2 Tennis Academy logo" class="footer-logo" />
   <h4>Contact Us</h4>
 
   <p class="contact-item">

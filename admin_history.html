@@ -399,6 +399,7 @@ ul.nav-links-mobile li a {
 let allFetchedPastLessons = []; 
 let activeCategoryFilter = 'All'; 
 let editing = false;
+let pendingDeletes = new Set();
 
 const validCoaches = [
     "Ricardo Carvajalino",
@@ -666,7 +667,7 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
         <td class="history-cell" data-id="${les.id}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
         <td class="history-cell" data-id="${les.id}" data-field="paid" data-original-value="${String(isPaid)}" style="padding:8px; border:1px solid #ddd;">${isPaid ? 'Yes' : 'No'}</td>
         <td style="padding:8px; border:1px solid #ddd;">
-          <button onclick="deleteAdminLesson(${les.id}, false)">Delete</button>
+          ${editing ? `<button onclick="deleteAdminLesson(${les.id}, false)">Delete</button>` : '—'}
         </td>
       </tr>
     `;
@@ -732,6 +733,25 @@ async function loadHistory() {
 }
 
 async function deleteAdminLesson(id, isGroup = false) {
+  // Check if we are in editing mode and deleting an individual lesson
+  if (editing === true && isGroup === false) {
+    // Action: Add to pendingDeletes and remove from DOM
+    if (confirm('Delete this student?')) {
+      pendingDeletes.add(id);
+      const rowToRemove = document.querySelector(`tr[data-id='${id}'][data-is-grouped='false']`);
+      if (rowToRemove) {
+        rowToRemove.remove();
+        console.log(`Student ID ${id} added to pendingDeletes and row removed from DOM.`);
+      } else {
+        console.warn(`Could not find row with data-id='${id}' and data-is-grouped='false' to remove from DOM.`);
+        // Fallback or error? For now, just log. If row not found, it can't be removed.
+        // Still add to pendingDeletes as the user confirmed the abstract deletion.
+      }
+    }
+    return; // Stop further execution for this case
+  }
+
+  // Original behavior for group deletions or non-edit mode individual deletions
   if (isGroup) {
     console.log(`Group deletion initiated for ID (first ID of group): ${id}`);
     const row = document.querySelector(`tr[data-id='${id}']`);
@@ -780,7 +800,6 @@ async function deleteAdminLesson(id, isGroup = false) {
             errorMessage = `Group deletion failed: ${errorData.message}`;
           }
         } catch (e) {
-          // Could not parse JSON, use default error or text if available
            const textError = await res.text();
            if(textError) errorMessage = `Group deletion failed: ${textError}`;
         }
@@ -791,7 +810,7 @@ async function deleteAdminLesson(id, isGroup = false) {
       alert('Group deletion failed due to a network error.');
     }
 
-  } else { // Individual lesson deletion
+  } else { // Individual lesson deletion (non-editing mode)
     if (!confirm('Are you sure you want to delete this lesson?')) return;
     try {
       const res = await fetch(`/api/admin/lessons/${id}`, {
@@ -799,24 +818,20 @@ async function deleteAdminLesson(id, isGroup = false) {
         credentials: 'include',
       });
       if (res.ok) {
-        loadHistory();
+        loadHistory(); // Reload history on successful deletion
       } else {
         let errorText = 'Delete failed.';
         try {
-            // Try to parse as JSON first for structured error messages
             const errorData = await res.json();
             if (errorData && errorData.message) {
                 errorText = `Delete failed: ${errorData.message}`;
             } else {
-                // Fallback to text if not JSON or no message property
                 errorText = `Delete failed: ${await res.text()}`;
             }
         } catch (e) {
-            // If JSON parsing fails, try to get plain text
             try {
                 errorText = `Delete failed: ${await res.text()}`;
             } catch (e2) {
-                // If text reading also fails, use a generic message with status
                 errorText = `Delete failed with status: ${res.status}`;
             }
         }
@@ -887,8 +902,20 @@ window.addEventListener('DOMContentLoaded', () => {
   if (enableHistoryEditingBtn) {
     enableHistoryEditingBtn.addEventListener('click', () => {
       editing = !editing;
+      pendingDeletes.clear();
+
       enableHistoryEditingBtn.textContent = editing ? 'Disable Editing' : 'Enable Editing';
       if (saveHistoryBtn) saveHistoryBtn.disabled = !editing;
+
+      if (editing) {
+        // Entering edit mode: Refresh the table display.
+        // Make sure searchInput is available in this scope (it is usually declared in DOMContentLoaded).
+        const searchInput = document.getElementById('historySearchInput');
+        filterAndRenderHistory(searchInput ? searchInput.value.toLowerCase().trim() : '');
+      } else {
+        // Exiting edit mode: Reload original table from server.
+        loadHistory();
+      }
 
       document.querySelectorAll('.history-cell').forEach(td => {
         const tr = td.closest('tr');
@@ -1105,6 +1132,50 @@ window.addEventListener('DOMContentLoaded', () => {
       if (!confirm('Are you sure you want to save all changes to the history?')) return;
       if (enableHistoryEditingBtn) enableHistoryEditingBtn.disabled = true;
       saveHistoryBtn.disabled = true;
+
+      let pendingDeletionsProcessed = false;
+      let pendingDeletionSuccesses = 0;
+      let pendingDeletionFailures = 0;
+      const pendingDeletionFailureDetails = [];
+
+      if (pendingDeletes.size > 0) {
+        if (confirm(`Are you sure you want to permanently delete ${pendingDeletes.size} student(s)? This action cannot be undone.`)) {
+          const deletePromises = [];
+          for (const lessonId of pendingDeletes) {
+            deletePromises.push(
+              fetch(`/api/admin/lessons/${lessonId}`, {
+                method: 'DELETE',
+                credentials: 'include',
+              })
+              .then(res => {
+                if (res.ok) {
+                  return { status: 'fulfilled', id: lessonId };
+                } else {
+                  return res.json().catch(() => ({ message: `Failed with status ${res.status}` }))
+                    .then(errData => ({ status: 'rejected', id: lessonId, reason: errData.message || `Failed with status ${res.status}` }));
+                }
+              })
+              .catch(networkError => ({ status: 'rejected', id: lessonId, reason: networkError.message }))
+            );
+          }
+
+          const results = await Promise.allSettled(deletePromises);
+          results.forEach(result => {
+            if (result.status === 'fulfilled' && result.value.status === 'fulfilled') {
+              pendingDeletionSuccesses++;
+            } else {
+              pendingDeletionFailures++;
+              // Ensure result.value exists and has a reason, otherwise provide a default message
+              const reason = result.value && result.value.reason ? result.value.reason : 'Unknown error during deletion';
+              const id = result.value && result.value.id ? result.value.id : 'Unknown ID';
+              pendingDeletionFailureDetails.push(`ID ${id}: ${reason}`);
+            }
+          });
+          pendingDeletionsProcessed = true;
+        } else {
+          alert('Pending deletions were not processed.');
+        }
+      }
 
       const updates = [];
       const groupedUpdates = [];
@@ -1432,8 +1503,17 @@ window.addEventListener('DOMContentLoaded', () => {
 
       let summaryMessage = `${successes} update(s) successful.`;
       if (failures > 0) summaryMessage += `\n${failures} updates failed.\nDetails:\n${failureDetails.join('\n')}`;
+      
+      if (pendingDeletionsProcessed) {
+        let deletionSummary = `Pending Deletions: ${pendingDeletionSuccesses} successful, ${pendingDeletionFailures} failed.`;
+        if (pendingDeletionFailures > 0) {
+          deletionSummary += `\nDeletion Failure Details:\n${pendingDeletionFailureDetails.join('\n')}`;
+        }
+        summaryMessage = deletionSummary + "\n\nCell Edits:\n" + summaryMessage;
+      }
       alert(summaryMessage);
 
+      pendingDeletes.clear();
       editing = false;
       if (enableHistoryEditingBtn) {
         enableHistoryEditingBtn.disabled = false;
@@ -1530,740 +1610,6 @@ if (mainSection && viewContactModal && closeViewContactBtn && contactDetailsCont
 });
 // Corrected JavaScript logic provided by the user ends here
 </script>
-  <script>
-  // This entire block is for mobile menu and session management, remains unchanged.
-  document.addEventListener('DOMContentLoaded', () => {
-  saveHistoryBtn = document.getElementById('save-history-btn');
-  historyTableContainer = document.getElementById('past-lessons-table-container');
-
-  loadHistory();
-
-  if (enableHistoryEditingBtn) {
-    enableHistoryEditingBtn.addEventListener('click', () => {
-      editing = !editing;
-      enableHistoryEditingBtn.textContent = editing ? 'Disable Editing' : 'Enable Editing';
-      if (saveHistoryBtn) saveHistoryBtn.disabled = !editing;
-
-      document.querySelectorAll('.history-cell').forEach(td => {
-        const tr = td.closest('tr');
-        const isGroupedRow = tr && tr.dataset.isGrouped === 'true';
-        const fieldName = td.dataset.field;
-
-        if (isGroupedRow) {
-            if (fieldName === 'coach') { // Coach field logic for grouped rows
-                // For grouped rows, if editing is enabled, create the dropdown/checkboxes.
-                // If editing is disabled, revert to text.
-                if (editing) {
-                    const currentCoachValue = td.innerText.trim();
-                    const programType = tr.dataset.program ? tr.dataset.program.toLowerCase() : '';
-                    td.innerHTML = ''; // Clear the cell
-
-                    if (programType.includes('camp') || programType.includes('pass')) {
-                        // Create a div for checkbox list
-                        const coachListContainer = document.createElement('div');
-                        coachListContainer.className = 'coach-checkbox-list';
-                        coachListContainer.style.display = 'flex';
-                        coachListContainer.style.flexWrap = 'wrap';
-                        coachListContainer.style.gap = '10px';
-
-                        const selectedCoaches = currentCoachValue.split(',').map(c => c.trim().toLowerCase());
-                        validCoaches.forEach(coachName => {
-                            const label = document.createElement('label');
-                            label.style.display = 'flex';
-                            label.style.alignItems = 'center';
-                            label.style.gap = '5px';
-
-                            const checkbox = document.createElement('input');
-                            checkbox.type = 'checkbox';
-                            checkbox.name = 'coach-checkbox';
-                            checkbox.value = coachName;
-                            if (selectedCoaches.includes(coachName.toLowerCase())) {
-                                checkbox.checked = true;
-                            }
-                            
-                            label.appendChild(checkbox);
-                            label.appendChild(document.createTextNode(coachName));
-                            coachListContainer.appendChild(label);
-                        });
-                        td.appendChild(coachListContainer);
-                    } else {
-                        // Fallback to single select for non-camp/pass grouped rows
-                        const selectEl = document.createElement('select');
-                        selectEl.className = 'history-coach-select';
-                        validCoaches.forEach(coachName => {
-                            const optionEl = document.createElement('option');
-                            optionEl.value = coachName;
-                            optionEl.textContent = coachName;
-                            if (coachName === currentCoachValue.split(',')[0].trim()) {
-                                optionEl.selected = true;
-                            }
-                            selectEl.appendChild(optionEl);
-                        });
-                        td.appendChild(selectEl);
-                    }
-                    td.contentEditable = false; 
-                } else {
-                    // When disabling editing for a grouped coach cell
-                    const coachListContainer = td.querySelector('.coach-checkbox-list');
-                    if (coachListContainer) { 
-                        const selectedCheckboxes = Array.from(coachListContainer.querySelectorAll('input[type="checkbox"]:checked'));
-                        const selectedCoachNames = selectedCheckboxes.map(cb => cb.value);
-                        td.innerHTML = ''; 
-                        td.textContent = selectedCoachNames.join(', ') || '—';
-                    } else { 
-                        const selectEl = td.querySelector('select.history-coach-select');
-                        if (selectEl) {
-                            const selectedCoach = selectEl.value;
-                            td.innerHTML = ''; 
-                            td.textContent = selectedCoach || '—'; 
-                        }
-                    }
-                }
-            } else if (fieldName === 'date') { // Date field for grouped rows
-                if (editing) {
-                    const currentDateValue = td.dataset.originalValue; // Should be YYYY-MM-DD
-                    td.innerHTML = '';
-                    const dateInput = document.createElement('input');
-                    dateInput.type = 'date';
-                    dateInput.value = currentDateValue;
-                    dateInput.style.width = '100%'; // Make input take cell width
-                    dateInput.style.boxSizing = 'border-box';
-                    td.appendChild(dateInput);
-                    td.contentEditable = false;
-                } else {
-                    const dateInput = td.querySelector('input[type="date"]');
-                    if (dateInput) {
-                        const newDateValue = dateInput.value; // YYYY-MM-DD
-                        // td.dataset.originalValue = newDateValue; // Update originalValue if needed upon save, not here
-                        td.innerHTML = '';
-                        td.textContent = newDateValue ? new Date(newDateValue + 'T00:00:00').toLocaleDateString() : 'N/A'; // Ensure local time for toLocaleDateString
-                    }
-                }
-            } else if (fieldName === 'time') { // Time field for grouped rows
-                if (editing) {
-                    const originalTime24hr = td.dataset.originalValue; // Should be HH:MM
-                    td.innerHTML = '';
-                    // Use tr.dataset.id as a unique enough ID for the select element for this group
-                    const timeSelect = generateTimeSelectElement(tr.dataset.id + '-group', originalTime24hr);
-                    timeSelect.style.width = '100%';
-                    timeSelect.style.boxSizing = 'border-box';
-                    td.appendChild(timeSelect);
-                    timeSelect.disabled = false; // Ensure it's enabled
-                    td.contentEditable = false;
-                } else {
-                    const timeSelect = td.querySelector('select.history-time-select');
-                    if (timeSelect) {
-                        const newTimeValue = timeSelect.value; // HH:MM
-                        // td.dataset.originalValue = newTimeValue; // Update originalValue if needed upon save
-                        td.innerHTML = '';
-                        td.textContent = newTimeValue ? formatTime_12hr(newTimeValue) : 'N/A';
-                    }
-                }
-            } else { // Other fields in grouped rows (program, student, etc.)
-                td.contentEditable = false; 
-            }
-        } else { // Logic for non-grouped rows
-            // Coach field will now be handled by the generic contentEditable logic below
-            if (fieldName === 'referral_source') { // Keep referral_source special handling
-            td.contentEditable = false; // It's a select, not directly editable
-            if (editing) {
-              const originalValue = td.dataset.originalValue === '—' ? '' : td.dataset.originalValue;
-              td.innerHTML = '';
-              const selectEl = document.createElement('select');
-              selectEl.className = 'history-referral-select';
-              const options = [
-                  { value: '', text: 'None' },
-                  { value: 'Ricardo', text: 'Referred by Ricardo' },
-                  { value: 'Jacob', text: 'Jacob - Own Booking' },
-                  { value: 'Paula', text: 'Paula - Own Booking' },
-                  { value: 'Zach', text: 'Zach - Own Booking' },
-                  { value: 'RicardoOwn', text: 'Ricardo - Teaches Himself' }
-              ];
-              options.forEach(opt => {
-                const optionEl = document.createElement('option');
-                optionEl.value = opt.value;
-                optionEl.textContent = opt.text;
-                if (opt.value === originalValue) optionEl.selected = true;
-                selectEl.appendChild(optionEl);
-              });
-              td.appendChild(selectEl);
-            } else {
-              const selectEl = td.querySelector('select.history-referral-select');
-              if (selectEl) {
-                const selectedText = selectEl.options[selectEl.selectedIndex]?.text || selectEl.value;
-                td.innerHTML = '';
-                td.textContent = selectedText || '—';
-              }
-            }
-          } else if (fieldName === 'coach') {
-            if (editing) {
-              const currentCellText = td.innerText.trim();
-              // Determine the first coach's name. Fallback to an empty string or first valid coach if needed.
-              let firstCoachName = '';
-              if (currentCellText && currentCellText !== '—') {
-                firstCoachName = currentCellText.split(',')[0].trim();
-              } else if (validCoaches.length > 0) {
-                // Optional: fallback to the first valid coach if cell is empty and that's desired.
-                // firstCoachName = validCoaches[0]; // Uncomment if this behavior is needed.
-              }
-
-              td.innerHTML = ''; // Clear the cell's current content.
-
-              const selectEl = document.createElement('select');
-              selectEl.className = 'history-coach-select'; // Reuse class if appropriate or define new one
-
-              validCoaches.forEach(coachName => {
-                const optionEl = document.createElement('option');
-                optionEl.value = coachName;
-                optionEl.textContent = coachName;
-                if (coachName === firstCoachName) {
-                  optionEl.selected = true;
-                }
-                selectEl.appendChild(optionEl);
-              });
-
-              td.appendChild(selectEl);
-              td.contentEditable = false; // Ensure contentEditable is false as we are using a select.
-            } else {
-              // Disabling editing for the coach cell
-              const selectEl = td.querySelector('select.history-coach-select');
-              if (selectEl) {
-                const selectedCoachName = selectEl.value;
-                td.innerHTML = ''; // Clear the select element.
-                td.innerText = selectedCoachName || '—'; // Set text to selected coach or '—' if empty.
-              }
-              // td.contentEditable = false; // Should remain false or be explicitly set if needed.
-            }
-          } else { // For other editable cells in non-grouped rows
-            td.contentEditable = editing;
-            if (!editing) td.blur();
-          }
-        }
-      });
-
-      // Add this part:
-      document.querySelectorAll('select.history-time-select, input[type="date"]').forEach(inputEl => {
-        if (inputEl.matches('select.history-time-select')) { // Only disable time selects if they are for individual lessons
-            const tr = inputEl.closest('tr');
-            if (tr && tr.dataset.isGrouped !== 'true') {
-                 inputEl.disabled = !editing;
-            }
-        }
-        // Date inputs for grouped rows are handled inside the loop, this keeps individual lesson date inputs (if any) editable
-      });
-    });
-  }
-
-  if (saveHistoryBtn) {
-    saveHistoryBtn.addEventListener('click', async () => {
-      if (!confirm('Are you sure you want to save all changes to the history?')) return;
-      if (enableHistoryEditingBtn) enableHistoryEditingBtn.disabled = true;
-      saveHistoryBtn.disabled = true;
-
-      const updates = [];
-      const groupedUpdates = [];
-
-      document.querySelectorAll('.history-cell[data-id]').forEach(td => {
-        const tr = td.closest('tr');
-        const isGroupedRow = tr && tr.dataset.isGrouped === 'true';
-        const bookingId = td.dataset.id; // This is the first booking ID for grouped rows
-        const fieldName = td.dataset.field;
-        const originalValue = td.dataset.originalValue;
-        let newValue;
-        let changed = false;
-
-        if (isGroupedRow) {
-          if (fieldName === 'coach') {
-            const checkboxes = td.querySelectorAll('input[type="checkbox"][name="coach-checkbox"]');
-            let selectedCoaches = []; 
-
-            if (checkboxes.length > 0) { 
-              checkboxes.forEach(cb => {
-                if (cb.checked) selectedCoaches.push(cb.value);
-              });
-
-              const originalCoachesArray = originalValue.split(',').map(name => name.trim()).filter(name => name);
-              const originalSet = new Set(originalCoachesArray.sort());
-              const selectedSet = new Set(selectedCoaches.sort());
-
-              if (originalCoachesArray.length !== selectedCoaches.length ||
-                  !originalCoachesArray.every(coach => selectedSet.has(coach)) ||
-                  !selectedCoaches.every(coach => originalSet.has(coach)) ) {
-                changed = true;
-              }
-            } else {
-              const selectEl = td.querySelector('select.history-coach-select');
-              if (selectEl) {
-                newValue = selectEl.value; 
-                const originalCoachesArray = originalValue.split(',').map(name => name.trim()).filter(name => name);
-                const firstOriginalCoach = originalCoachesArray[0] || '';
-                if (newValue !== firstOriginalCoach || originalCoachesArray.length > 1 || (originalCoachesArray.length === 0 && newValue !== '')) {
-                  changed = true;
-                }
-                if (changed) {
-                  selectedCoaches = [newValue]; 
-                } else {
-                  selectedCoaches = originalCoachesArray; 
-                }
-              }
-            }
-
-            if (changed) {
-              try {
-                const originalBookingIds = JSON.parse(tr.dataset.originalIds);
-                // For coach updates, ensure other potentially changed fields (date, time) for this group are also captured.
-                const currentGroupDate = tr.querySelector('td[data-field="date"] input[type="date"]') ? tr.querySelector('td[data-field="date"] input[type="date"]').value : tr.dataset.date;
-                const currentGroupTime = tr.querySelector('td[data-field="time"] select.history-time-select') ? tr.querySelector('td[data-field="time"] select.history-time-select').value : tr.dataset.time.substring(0,5);
-                
-                groupedUpdates.push({
-                  program: tr.dataset.program,
-                  date: currentGroupDate, // Use potentially updated date
-                  time: currentGroupTime, // Use potentially updated time
-                  originalBookingIds: originalBookingIds,
-                  newCoaches: selectedCoaches, 
-                  lesson_cost: parseFloat(tr.dataset.lessonCost) || 0,
-                  student: tr.dataset.student,
-                  email: tr.dataset.email,
-                  phone: tr.dataset.phone,
-                  originalCoachValueForDebug: originalValue,
-                  newCoachValueForDebug: selectedCoaches.join(', '),
-                  isCoachUpdate: true // Flag that this is primarily a coach update
-                });
-              } catch (e) {
-                console.error("Error processing grouped update for coach:", e, tr.dataset.originalIds);
-                changed = false; // Prevent this specific push if error
-              }
-            }
-          } else if (fieldName === 'date') {
-            const dateInput = td.querySelector('input[type="date"]');
-            if (dateInput) {
-              newValue = dateInput.value; // YYYY-MM-DD
-              if (newValue !== originalValue) { // originalValue is YYYY-MM-DD from td.dataset.originalValue
-                changed = true;
-              }
-            }
-            if (changed) {
-                 try {
-                    const originalBookingIds = JSON.parse(tr.dataset.originalIds);
-                    // Check if an update for this group (for coach) is already pending to avoid duplicate entries if only date/time changed
-                    let existingGroupUpdate = groupedUpdates.find(upd => JSON.stringify(upd.originalBookingIds) === JSON.stringify(originalBookingIds) && upd.isCoachUpdate);
-                    if (existingGroupUpdate) {
-                        existingGroupUpdate.date = newValue; // Update date in existing entry
-                    } else {
-                         groupedUpdates.push({
-                            program: tr.dataset.program,
-                            date: newValue,
-                            time: tr.dataset.time.substring(0,5), // Original time if only date changed
-                            originalBookingIds: originalBookingIds,
-                            newCoaches: (tr.querySelector('td[data-field="coach"] .coach-checkbox-list') || tr.querySelector('td[data-field="coach"] select')) ? 
-                                         (Array.from(tr.querySelectorAll('td[data-field="coach"] input[type="checkbox"]:checked')).map(cb => cb.value).join(', ') || (tr.querySelector('td[data-field="coach"] select') ? tr.querySelector('td[data-field="coach"] select').value : ''))
-                                         : tr.querySelector('td[data-field="coach"]').textContent.trim(), // Fallback to text if not in edit mode (should not happen)
-                            lesson_cost: parseFloat(tr.dataset.lessonCost) || 0,
-                            student: tr.dataset.student,
-                            email: tr.dataset.email,
-                            phone: tr.dataset.phone,
-                            isDateUpdate: true
-                        });
-                    }
-                } catch (e) {
-                    console.error("Error processing grouped update for date:", e, tr.dataset.originalIds);
-                    changed = false;
-                }
-            }
-          } else if (fieldName === 'time') {
-            const timeSelect = td.querySelector('select.history-time-select');
-            if (timeSelect) {
-              newValue = timeSelect.value; // HH:MM
-              if (newValue !== originalValue) { // originalValue is HH:MM from td.dataset.originalValue
-                changed = true;
-              }
-            }
-             if (changed) {
-                 try {
-                    const originalBookingIds = JSON.parse(tr.dataset.originalIds);
-                    let existingGroupUpdate = groupedUpdates.find(upd => JSON.stringify(upd.originalBookingIds) === JSON.stringify(originalBookingIds) && (upd.isCoachUpdate || upd.isDateUpdate));
-                     if (existingGroupUpdate) {
-                        existingGroupUpdate.time = newValue; // Update time in existing entry
-                    } else {
-                        groupedUpdates.push({
-                            program: tr.dataset.program,
-                            date: tr.dataset.date, // Original date if only time changed
-                            time: newValue,
-                            originalBookingIds: originalBookingIds,
-                            newCoaches: (tr.querySelector('td[data-field="coach"] .coach-checkbox-list') || tr.querySelector('td[data-field="coach"] select')) ?
-                                         (Array.from(tr.querySelectorAll('td[data-field="coach"] input[type="checkbox"]:checked')).map(cb => cb.value).join(', ') || (tr.querySelector('td[data-field="coach"] select') ? tr.querySelector('td[data-field="coach"] select').value : ''))
-                                         : tr.querySelector('td[data-field="coach"]').textContent.trim(),
-                            lesson_cost: parseFloat(tr.dataset.lessonCost) || 0,
-                            student: tr.dataset.student,
-                            email: tr.dataset.email,
-                            phone: tr.dataset.phone,
-                            isTimeUpdate: true
-                        });
-                    }
-                } catch (e) {
-                    console.error("Error processing grouped update for time:", e, tr.dataset.originalIds);
-                    changed = false;
-                }
-            }
-          }
-          // Other fields in grouped rows are not processed for saving as they are not editable
-        } else { // Logic for non-grouped rows
-          let cellValueChanged = false;
-          let processedNewValue;
-
-          if (fieldName === 'coach') {
-            const selectEl = td.querySelector('select.history-coach-select');
-            if (selectEl) { // Editing is active for this cell, read from select
-                processedNewValue = selectEl.value;
-            } else { // Editing was disabled, cell is plain text
-                processedNewValue = td.innerText.trim();
-            }
-            // Ensure originalValue is a string before splitting
-            const firstOriginalCoach = ((originalValue || '').split(',')[0] || '').trim();
-            if (processedNewValue !== firstOriginalCoach) {
-                cellValueChanged = true;
-            }
-          } else if (fieldName === 'referral_source') { // Dropdown, not contentEditable
-            const selectEl = td.querySelector('select.history-referral-select');
-            if (selectEl) {
-              processedNewValue = selectEl.value;
-              const normalizedOriginalValue = originalValue === '—' ? '' : originalValue;
-              if (processedNewValue !== normalizedOriginalValue) cellValueChanged = true;
-            }
-          } else if (td.contentEditable === 'true') { // For other directly editable fields
-            processedNewValue = td.innerText.trim();
-            
-            // Type-specific processing
-            if (fieldName === 'time') { 
-              if (processedNewValue === '' || processedNewValue.toLowerCase() === 'n/a') processedNewValue = null;
-            } else if (fieldName === 'program' || fieldName === 'student') { 
-              if (processedNewValue === '' || processedNewValue.toLowerCase() === 'null') processedNewValue = null;
-            } else if (fieldName === 'date' && td.innerText.includes('/')) {
-              const parts = processedNewValue.split('/');
-              if (parts.length === 3) processedNewValue = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
-            } else if (fieldName === 'lesson_cost') {
-              processedNewValue = processedNewValue.replace('$', '').trim();
-              if (processedNewValue === '' && originalValue !== '') processedNewValue = null;
-              else if (processedNewValue !== '' && isNaN(Number(processedNewValue))) {
-                console.warn(`Invalid cost for booking ${bookingId}: ${processedNewValue}. Skipping update.`);
-                return; // Skip this cell's update
-              } else if (processedNewValue !== '') {
-                processedNewValue = Number(processedNewValue); 
-              }
-            } else if (fieldName === 'paid') {
-              const lowerNewValue = processedNewValue.toLowerCase();
-              processedNewValue = (lowerNewValue === 'yes' || lowerNewValue === 'true');
-            }
-            // General change check for these other fields
-            if (String(processedNewValue) !== String(originalValue)) cellValueChanged = true;
-          }
-
-          if (cellValueChanged) {
-            if (fieldName === 'coach') { // For non-grouped rows, coach field
-                updates.push({
-                    bookingId: bookingId,
-                    fieldName: 'coach', // Explicitly 'coach'
-                    newValue: processedNewValue, // The single selected coach
-                    originalValueForDebug: originalValue // The full original string "CoachA, CoachB"
-                });
-            } else { // For all other fields in non-grouped rows
-              updates.push({ bookingId, fieldName, newValue: processedNewValue, originalValueForDebug: originalValue });
-            }
-          }
-        }
-      });
-
-      // Time select processing needs to be separate as it's not a .history-cell
-      document.querySelectorAll('select.history-time-select').forEach(select => {
-        const bookingId = select.dataset.id;
-        const originalTime = select.dataset.originalTime; // Should be HH:MM
-        let newValue = select.value; // Value from select is HH:MM
-
-        // Handle cases where "-- Select Time --" (empty value) might be chosen
-        if (newValue === "") {
-          newValue = null; // Or whatever the backend expects for clearing a time
-        }
-
-        // Compare newValue with originalTime.
-        // Note: If originalTime was an empty string from dataset and newValue is null,
-        // they might not be strictly equal. Adjust comparison if needed.
-        // For example, treat empty string and null as equivalent for "no change".
-        const hasChanged = (newValue === null && originalTime !== "") || 
-                           (newValue !== null && newValue !== originalTime) ||
-                           (newValue === null && originalTime === "") || // Handles case where original was empty and new is null (no change)
-                           (newValue !== originalTime); // General case for actual change
-
-        // Refined hasChanged logic:
-        // A change occurs if:
-        // 1. New value is null AND original time was not an empty string (it was set, now cleared)
-        // 2. New value is not null AND it's different from originalTime
-        // This logic needs to be careful about (null vs "")
-        let trulyChanged = false;
-        if (newValue === null) { // User selected "-- Select Time --" or it was programmatically set to null
-            if (originalTime !== "" && originalTime !== null) { // Original time was actually set
-                trulyChanged = true;
-            }
-        } else { // User selected a specific time
-            if (newValue !== originalTime) {
-                trulyChanged = true;
-            }
-        }
-
-        if (trulyChanged) {
-          updates.push({
-            bookingId: bookingId,
-            fieldName: 'time',
-            newValue: newValue, // This will be HH:MM string or null
-            originalValueForDebug: originalTime
-          });
-        }
-      });
-
-      if (updates.length === 0 && groupedUpdates.length === 0) {
-        alert('No actual changes detected to save.');
-        if (enableHistoryEditingBtn) enableHistoryEditingBtn.disabled = false;
-        if (editing) saveHistoryBtn.disabled = false;
-        else saveHistoryBtn.disabled = true;
-        return;
-      }
-
-      let successes = 0;
-      let failures = 0;
-      const failureDetails = [];
-
-      // Process individual updates
-      for (const upd of updates) {
-        try {
-          const res = await fetch(`/api/admin/history/${upd.bookingId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
-            body: JSON.stringify({ field: upd.fieldName, value: upd.newValue })
-          });
-          if (res.ok) {
-            successes++;
-          } else {
-            failures++;
-            const errData = await res.json().catch(() => ({ message: `Update failed for ID ${upd.bookingId}, Field ${upd.fieldName} with status ${res.status}` }));
-            failureDetails.push(`Individual: ${errData.message || `Failed for ${upd.fieldName}`}`);
-          }
-        } catch (networkError) {
-          failures++;
-          failureDetails.push(`Individual Network error for ID ${upd.bookingId}, Field ${upd.fieldName}: ${networkError.message}`);
-        }
-      }
-
-      // Process grouped updates
-      // Consolidate groupedUpdates to ensure one entry per group with all changes
-      const finalGroupedUpdates = {};
-      groupedUpdates.forEach(upd => {
-          const key = JSON.stringify(upd.originalBookingIds);
-          if (!finalGroupedUpdates[key]) {
-              finalGroupedUpdates[key] = {
-                  program: upd.program,
-                  date: upd.date,
-                  time: upd.time,
-                  originalBookingIds: upd.originalBookingIds,
-                  newCoaches: upd.newCoaches, // This might be an array or string, ensure backend handles
-                  lesson_cost: upd.lesson_cost,
-                  student: upd.student,
-                  email: upd.email,
-                  phone: upd.phone
-              };
-          } else {
-              // Update fields if this update entry has more recent info (e.g. specific date/time change)
-              if (upd.isDateUpdate) finalGroupedUpdates[key].date = upd.date;
-              if (upd.isTimeUpdate) finalGroupedUpdates[key].time = upd.time;
-              if (upd.isCoachUpdate) finalGroupedUpdates[key].newCoaches = upd.newCoaches; 
-              // Potentially merge other fields if necessary, but current logic implies separate pushes for coach/date/time fields
-          }
-      });
-
-
-      for (const groupUpd of Object.values(finalGroupedUpdates)) {
-        // Determine the correct API endpoint based on what changed.
-        // This example assumes one versatile endpoint or specific ones for date/time/coach.
-        // For simplicity, let's assume '/api/admin/lessons/update-group-details' can handle these.
-        // The backend will need to parse which fields are provided and update accordingly.
-        
-        // Make sure newCoaches is in the expected format (e.g. array of strings)
-        // If newCoaches was derived from textContent, it might be a string. Convert if necessary.
-        let coachesToUpdate = groupUpd.newCoaches;
-        if (typeof coachesToUpdate === 'string') {
-            coachesToUpdate = coachesToUpdate.split(',').map(c => c.trim()).filter(c => c);
-        }
-
-
-        const payload = {
-            originalBookingIds: groupUpd.originalBookingIds,
-            date: groupUpd.date, // YYYY-MM-DD
-            time: groupUpd.time, // HH:MM
-            coaches: coachesToUpdate, // Array of coach names
-            // program: groupUpd.program, // Program is usually part of the key, not updatable here
-            // lesson_cost, student, email, phone are typically not editable for groups in this UI
-        };
-
-        try {
-          // Using a generic endpoint, assuming backend can differentiate based on payload
-          const res = await fetch('/api/admin/lessons/update-group-details', { 
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Credentials': 'include' },
-            body: JSON.stringify(payload)
-          });
-          if (res.ok) {
-            successes++;
-          } else {
-            failures++;
-            const errData = await res.json().catch(() => ({ message: `Group update failed for IDs ${groupUpd.originalBookingIds.join(', ')} with status ${res.status}` }));
-            failureDetails.push(`Group: ${errData.message || `Failed for IDs ${groupUpd.originalBookingIds.join(', ')}`}`);
-          }
-        } catch (networkError) {
-          failures++;
-          failureDetails.push(`Group Network error for IDs ${groupUpd.originalBookingIds.join(', ')}: ${networkError.message}`);
-        }
-      }
-
-      let summaryMessage = `${successes} update(s) successful.`;
-      if (failures > 0) summaryMessage += `\n${failures} updates failed.\nDetails:\n${failureDetails.join('\n')}`;
-      alert(summaryMessage);
-
-      editing = false;
-      if (enableHistoryEditingBtn) {
-        enableHistoryEditingBtn.disabled = false;
-        enableHistoryEditingBtn.textContent = 'Enable Editing';
-      }
-      if (saveHistoryBtn) saveHistoryBtn.disabled = true;
-      document.querySelectorAll('.history-cell').forEach(cell => cell.contentEditable = false);
-      loadHistory();
-    });
-  }
-
-  const bulkCostUpdateButton = document.querySelector('.bulk-update-costs-btn');
-  if (bulkCostUpdateButton) {
-    // This button seems to be for a different bulk update type (costs from inputs, not general actions)
-    // Its existing logic (handleBulkUpdatePrices) should be preserved if it's still meant to function.
-    // For now, I'm assuming its event listener setup is separate or handled by its own function.
-    // If it was meant to be the `bulkUpdateButton` for checkbox actions, this needs clarification.
-    // The original prompt mentioned adding a new button with ID "bulkUpdateButton".
-    // The existing button with class "bulk-update-costs-btn" might be different.
-    // The provided code has `bulkUpdateButton = document.getElementById('bulkUpdateButton');`
-    // and its event listener. The `handleBulkUpdatePrices` and its button seems distinct.
-  }
-
-  const searchInput = document.getElementById('historySearchInput');
-  if (searchInput) {
-    searchInput.addEventListener('input', () => {
-      filterAndRenderHistory(searchInput.value.toLowerCase().trim());
-    });
-  }
-
-  const filterButtons = document.querySelectorAll('#category-filters .category-filter-button');
-  filterButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      activeCategoryFilter = button.getAttribute('data-category');
-      filterButtons.forEach(btn => btn.classList.remove('active-filter-button'));
-      button.classList.add('active-filter-button');
-      filterAndRenderHistory(searchInput ? searchInput.value.toLowerCase().trim() : '');
-    });
-  });
-});
-// Corrected JavaScript logic provided by the user ends here
-</script>
-  <script>
-  // This entire block is for mobile menu and session management, remains unchanged.
-  document.addEventListener('DOMContentLoaded', () => {
-      const menuToggle = document.querySelector('.mobile-menu-toggle');
-      const mobileMenuClose = document.querySelector('.mobile-menu-close');
-      const mainNav = document.querySelector('nav.main-navigation');
-
-      if (menuToggle && mainNav && mobileMenuClose) {
-          menuToggle.addEventListener('click', () => {
-              const isMenuOpen = mainNav.classList.toggle('mobile-menu--open');
-              menuToggle.setAttribute('aria-expanded', isMenuOpen);
-              if (isMenuOpen) {
-                  menuToggle.innerHTML = '&times;'; 
-                  menuToggle.setAttribute('aria-label', 'Close navigation menu');
-              } else {
-                  menuToggle.innerHTML = '&#9776;'; 
-                  menuToggle.setAttribute('aria-label', 'Open navigation menu');
-              }
-          });
-          mobileMenuClose.addEventListener('click', () => {
-              mainNav.classList.remove('mobile-menu--open');
-              if (menuToggle) {
-                 menuToggle.setAttribute('aria-expanded', 'false');
-                 menuToggle.innerHTML = '&#9776;'; 
-                 menuToggle.setAttribute('aria-label', 'Open navigation menu');
-              }
-          });
-      }
-      const mobileNavLinks = document.querySelectorAll('.mobile-menu-container a');
-      if (mainNav && mobileNavLinks.length > 0) {
-          mobileNavLinks.forEach(link => {
-              link.addEventListener('click', () => {
-                  if (mainNav.classList.contains('mobile-menu--open')) {
-                      mainNav.classList.remove('mobile-menu--open');
-                      if (menuToggle) {
-                          menuToggle.setAttribute('aria-expanded', 'false');
-                          menuToggle.innerHTML = '&#9776;';
-                          menuToggle.setAttribute('aria-label', 'Open navigation menu');
-                      }
-                  }
-              });
-          });
-      }
-      async function checkSession() {
-          const existingGreeting = document.querySelector('.welcome-greeting');
-          if (existingGreeting) existingGreeting.remove();
-          try {
-              const res = await fetch('/api/check-session', { credentials: 'include' });
-              const data = await res.json(); 
-              const authContainerDesktop = document.getElementById('authContainerDesktop');
-              const authContainerMobile = document.getElementById('authContainerMobile');
-              if (data && data.loggedIn === true && data.isAdmin === true) {
-                  const portalButtonText = data.firstName ? 'Admin (' + data.firstName + ')' : 'Admin Portal';
-                  const loggedInHTML = '<a href="admin.html"><button>' + portalButtonText + '</button></a><button onclick="logout()">Logout</button>';
-                  const loggedInMobileHTML = loggedInHTML; 
-                  if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInHTML;
-                  if (authContainerMobile) authContainerMobile.innerHTML = loggedInMobileHTML;
-                  const welcomeMessageText = data.firstName ? 'Welcome, ' + data.firstName + '!' : 'Welcome, Admin!';
-                  const greeting = document.createElement('div');
-                  greeting.className = 'welcome-greeting';
-                  greeting.textContent = welcomeMessageText;
-                  greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
-                  const existingGreeting = document.querySelector('.welcome-greeting');
-                  if (existingGreeting) existingGreeting.remove();
-                  if(document.body.firstChild) { 
-                      document.body.insertBefore(greeting, document.body.firstChild);
-                  } else { 
-                      document.body.appendChild(greeting);
-                  }
-              } else {
-                  window.location.href = 'login.html'; 
-                  const loggedOutHTML = `<a href="login.html"><button>Login</button></a>`;
-                  if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutHTML;
-                  if (authContainerMobile) authContainerMobile.innerHTML = loggedOutHTML;
-              }
-          } catch (err) {
-              console.error('Session check failed, redirecting to login:', err);
-              window.location.href = 'login.html'; 
-              const authContainerDesktop = document.getElementById('authContainerDesktop');
-              const authContainerMobile = document.getElementById('authContainerMobile');
-              const loggedOutHTML = `<a href="login.html"><button>Login</button></a>`;
-              if (authContainerDesktop) authContainerDesktop.innerHTML = loggedOutHTML;
-              if (authContainerMobile) authContainerMobile.innerHTML = loggedOutHTML;
-          }
-      }
-      window.logout = function() { 
-          fetch('/api/logout', { method: 'POST', credentials: 'include' })
-              .then(() => {
-                  const existingGreeting = document.querySelector('.welcome-greeting');
-                  if (existingGreeting) existingGreeting.remove();
-                  document.cookie = "userFirstName=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                  window.location.href = 'login.html'; 
-              });
-      }
-      checkSession(); 
-  });
-  </script>
+<!-- The duplicated script block and its content will be removed by the diff -->
 </body>
 </html>

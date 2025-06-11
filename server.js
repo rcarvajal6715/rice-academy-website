@@ -448,6 +448,15 @@ function normalizeProgramType(program) {
   return "Other";
 }
 
+// Helper function to add days to a date (handles 'YYYY-MM-DD' strings)
+function addDays(input, days) {
+  const baseDate = input instanceof Date ? new Date(input) : new Date(input); // Parses 'YYYY-MM-DD'
+  // Create date in UTC using parts from baseDate to avoid timezone issues with day arithmetic
+  const utcDate = new Date(Date.UTC(baseDate.getUTCFullYear(), baseDate.getUTCMonth(), baseDate.getUTCDate()));
+  utcDate.setUTCDate(utcDate.getUTCDate() + days);
+  return utcDate.toISOString().slice(0, 10);
+}
+
 // ---- Admin Update Coaches for a Session Route ----
 app.post('/api/admin/lessons/update-coaches', async (req, res) => {
   if (!req.session?.user?.isAdmin) {
@@ -1572,6 +1581,186 @@ app.get('/api/check-session', (req, res) => {
     });
   }
   res.status(401).json({ loggedIn: false });
+});
+
+app.get('/api/coach/financials', async (req, res) => {
+  if (!req.session.coachId || !req.session.coachName) {
+    return res.status(401).json({ message: "Unauthorized: Coach not logged in." });
+  }
+
+  const loggedInCoachName = req.session.coachName;
+
+  const now = new Date();
+  const firstDayCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const lastDayCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
+  
+  const sqlStartDate = req.query.start_date || firstDayCurrentMonth.toISOString().slice(0, 10);
+  const sqlEndDate = req.query.end_date || lastDayCurrentMonth.toISOString().slice(0, 10);
+
+  try {
+    let coachPrivatesPay = 0;
+    let coachCampsPay = 0;
+
+    // --- Calculate Private Lesson Pay for the logged-in coach ---
+    const privateLessonsQuery = `
+      SELECT program, lesson_cost, referral_source, coach
+      FROM bookings
+      WHERE 
+        LOWER(coach) = LOWER($1)
+        AND date >= $2 AND date <= $3
+        AND (LOWER(program) LIKE '%private%' OR LOWER(program) LIKE '%tennis private%')
+        AND lesson_cost IS NOT NULL AND lesson_cost > 0
+    `;
+    const privateLessonsResult = await pool.query(privateLessonsQuery, [loggedInCoachName, sqlStartDate, sqlEndDate]);
+
+    for (const booking of privateLessonsResult.rows) {
+      const lessonCost = parseFloat(booking.lesson_cost);
+      const simpleLoggedInCoachName = loggedInCoachName.split(' ')[0]; 
+      const referral = booking.referral_source ? booking.referral_source.trim() : '';
+      
+      let coachGetsThisLesson = 0;
+      if (simpleLoggedInCoachName === 'Ricardo') {
+        coachGetsThisLesson = lessonCost;
+      } else if (referral === 'FriendReferral') {
+        coachGetsThisLesson = Math.max(0, lessonCost - 10);
+      } else if (referral === 'WebsiteReferral' || referral === 'Ricardo') {
+        coachGetsThisLesson = Math.max(0, lessonCost - 20);
+      } else if (simpleLoggedInCoachName === 'Jacob' && (referral === '' || referral === 'Jacob' || referral === 'JacobOwn')) {
+        coachGetsThisLesson = Math.max(0, lessonCost - 10);
+      } else if ((simpleLoggedInCoachName === 'Paula' || simpleLoggedInCoachName === 'Zach') && (referral === '' || referral === simpleLoggedInCoachName || referral === simpleLoggedInCoachName + 'Own')) {
+        coachGetsThisLesson = lessonCost * 0.90; 
+      } else {
+        coachGetsThisLesson = lessonCost; 
+      }
+      coachPrivatesPay += coachGetsThisLesson;
+    }
+
+    // --- Calculate Camps/Clinics Pay for the logged-in coach ---
+    const campBookingsRawResult = await pool.query(
+      `SELECT program, date, coach, lesson_cost, student, email
+        FROM bookings
+        WHERE 
+            date >= $1 AND date <= $2
+          AND (
+              LOWER(program) LIKE '%summer%' OR
+              LOWER(program) LIKE '%kid%' OR
+              LOWER(program) LIKE '%group%' OR
+              LOWER(program) LIKE '%adult%' OR
+              LOWER(program) LIKE '%camp%' OR 
+              LOWER(program) LIKE '%clinic%' OR
+              LOWER(program) LIKE '%high performance%'
+          )
+          AND lesson_cost IS NOT NULL AND lesson_cost > 0;
+      `,
+      [sqlStartDate, sqlEndDate]
+    );
+    const campBookingsRaw = campBookingsRawResult.rows;
+
+    let expandedBookings = [];
+    for (const booking of campBookingsRaw) {
+      const originalProgram = booking.program;
+      const lessonCostCurrent = booking.lesson_cost != null ? parseFloat(booking.lesson_cost) : null;
+      const normalizedProgramTypeForProcessing = normalizeProgramType(originalProgram); // Normalize once
+
+      if (normalizedProgramTypeForProcessing === "Summer Camp" && originalProgram.toLowerCase().includes("week pass")) {
+        const dailyRevenue = lessonCostCurrent / 5; // Assume 5 days
+        for (let i = 0; i < 5; i++) {
+          expandedBookings.push({ ...booking, date: addDays(booking.date, i), lesson_cost: dailyRevenue, program_type_for_processing: "Summer Camp" });
+        }
+      } else if (normalizedProgramTypeForProcessing === "Kids Camp" && originalProgram.toLowerCase().includes("week pass")) {
+        const bookingDateObj = new Date(booking.date);
+        // Ensure date parts are extracted in UTC to avoid timezone shift issues
+        const year = bookingDateObj.getUTCFullYear();
+        const month = bookingDateObj.getUTCMonth(); // 0-indexed
+        const day = bookingDateObj.getUTCDate();
+
+        let campDaysOffsets = [];
+        // Find next Tue, Thu, Sat on or after booking.date by checking the next 7 days
+        for (let i = 0; i < 7; i++) { 
+            const tempDate = new Date(Date.UTC(year, month, day + i));
+            const dayOfWeek = tempDate.getUTCDay(); // 0 (Sun) to 6 (Sat)
+            if (dayOfWeek === 2 || dayOfWeek === 4 || dayOfWeek === 6) { // Tuesday, Thursday, Saturday
+                campDaysOffsets.push(i); // Store offset from original booking date
+            }
+        }
+        // Ensure we only take up to 3 unique, sorted days from the found offsets
+        campDaysOffsets = [...new Set(campDaysOffsets)].sort((a,b)=>a-b).slice(0,3);
+
+        if (campDaysOffsets.length > 0) {
+            const effectiveDailyRevenue = lessonCostCurrent / campDaysOffsets.length;
+            for (const offset of campDaysOffsets) {
+                // addDays should correctly handle the original booking.date (which might be a string or Date object)
+                expandedBookings.push({ ...booking, date: addDays(booking.date, offset), lesson_cost: effectiveDailyRevenue, program_type_for_processing: "Kids Camp" });
+            }
+        }
+      } else {
+        expandedBookings.push({ ...booking, program_type_for_processing: normalizedProgramTypeForProcessing });
+      }
+    }
+    
+    const filteredCampBookings = expandedBookings.filter(b => {
+      if (b.lesson_cost == null || b.lesson_cost <= 0) return false;
+      const normalized = b.program_type_for_processing;
+      return normalized === "Summer Camp" || normalized === "Kids Camp" || normalized === "Group Lesson";
+    });
+
+    const campSessions = {}; 
+    for (const booking of filteredCampBookings) {
+      const bookingDateObj = new Date(booking.date);
+      const sessionDateString = new Date(Date.UTC(bookingDateObj.getUTCFullYear(), bookingDateObj.getUTCMonth(), bookingDateObj.getUTCDate()))
+                                .toISOString().slice(0,10);
+      
+      const sessionKey = `${sessionDateString}_${booking.program_type_for_processing}`;
+
+      if (sessionDateString < sqlStartDate || sessionDateString > sqlEndDate) continue;
+      
+      if (!campSessions[sessionKey]) {
+        campSessions[sessionKey] = {
+          program: booking.program_type_for_processing,
+          date: sessionDateString,
+          coaches: new Set(),
+          totalRevenue: 0,
+          participants: new Set(), 
+        };
+      }
+      if (booking.coach && booking.coach.trim() !== '') {
+        campSessions[sessionKey].coaches.add(booking.coach.trim());
+      }
+      
+      const studentIdentifier = (booking.student || 'UnknownStudent').trim() + '_' + (booking.email || 'NoEmail');
+      if (!campSessions[sessionKey].participants.has(studentIdentifier)) {
+        campSessions[sessionKey].participants.add(studentIdentifier);
+        campSessions[sessionKey].totalRevenue += parseFloat(booking.lesson_cost);
+      }
+    }
+
+    for (const sessionKey in campSessions) {
+      const session = campSessions[sessionKey];
+      if (!session.coaches.has(loggedInCoachName)) {
+        continue; // Skip if the logged-in coach didn't teach this session
+      }
+
+      const coachCount = session.coaches.size;
+      let sessionCoachPayoutPot = session.totalRevenue * 0.90; // 90% of this specific session's revenue
+
+      if (coachCount > 0) {
+        const individualCoachPayout = sessionCoachPayoutPot / coachCount;
+        coachCampsPay += individualCoachPayout;
+      }
+    }
+
+    const totalPay = coachPrivatesPay + coachCampsPay;
+
+    res.json({
+      privatesPay: parseFloat(coachPrivatesPay.toFixed(2)),
+      campsPay: parseFloat(coachCampsPay.toFixed(2)),
+      totalPay: parseFloat(totalPay.toFixed(2))
+    });
+
+  } catch (error) {
+    console.error(`Error fetching financials for coach ${loggedInCoachName}: ${error.stack}`);
+    res.status(500).json({ message: "Error calculating coach financials." });
+  }
 });
 
 // ---- Parent Portal Routes ----

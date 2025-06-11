@@ -607,7 +607,7 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
         date: originalDate, // YYYY-MM-DD
         time: les.time || 'notime', // Store full original time (e.g., HH:MM:SS or HH:MM) from first lesson for display
         studentDetailsList: [],
-        _tempStudentSet: new Set(), // For uniqueness check
+        // _tempStudentSet: new Set(), // Removed: For uniqueness check
         lesson_cost: les.lesson_cost,
         referral_source: les.referral_source || '—',
         coaches: new Set(),
@@ -619,12 +619,9 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
     }
 
     if (les.student && les.student.trim() !== '') {
-      const studentObj = { name: les.student.trim(), email: les.email || null, phone: les.phone || null };
-      const studentObjString = JSON.stringify(studentObj);
-      if (!groupedLessons[compositeKey]._tempStudentSet.has(studentObjString)) {
-        groupedLessons[compositeKey].studentDetailsList.push(studentObj);
-        groupedLessons[compositeKey]._tempStudentSet.add(studentObjString);
-      }
+      // Modified: studentObj now includes bookingId. Uniqueness check via _tempStudentSet is removed.
+      const studentObj = { name: les.student.trim(), email: les.email || null, phone: les.phone || null, bookingId: les.id };
+      groupedLessons[compositeKey].studentDetailsList.push(studentObj);
     }
     
     const lessonCoaches = [les.coach, les.coach2, les.coach3].filter(Boolean);
@@ -641,10 +638,10 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
     }
   });
 
-  // Clean up temporary sets
-  Object.values(groupedLessons).forEach(group => {
-    delete group._tempStudentSet;
-  });
+  // Clean up temporary sets - _tempStudentSet was removed, so this is no longer needed.
+  // Object.values(groupedLessons).forEach(group => {
+  // delete group._tempStudentSet;
+  // });
 
   Object.values(groupedLessons).forEach(group => {
     const rowDataId = group.originalBookingIds[0]; 
@@ -662,21 +659,8 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
       // Task 3: Add class "student-list-editing" to UL and remove inline styles
       let studentsHtml = '<ul class="student-list-editing">';
       group.studentDetailsList.forEach(student => {
-        let studentBookingId = null;
-        // Find the student's specific bookingId
-        if (allFetchedPastLessons && group.originalBookingIds) {
-          for (const id of group.originalBookingIds) {
-            const lesson = allFetchedPastLessons.find(l => 
-              l.id === id &&
-              l.student === student.name &&
-              (l.email ? l.email === student.email : true) // Match email if available and reliable
-            );
-            if (lesson) {
-              studentBookingId = lesson.id;
-              break;
-            }
-          }
-        }
+        // Modified: student.bookingId is now directly available
+        const studentBookingId = student.bookingId; 
         // Task 3: Remove inline style from li
         studentsHtml += `<li>${student.name}`; 
         if (studentBookingId) {

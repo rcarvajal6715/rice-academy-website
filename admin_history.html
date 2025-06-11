@@ -6,6 +6,53 @@
   <title>Lesson History - Admin Portal - C2 Tennis Academy</title>
 
   <style>
+    .student-marked-for-deletion {
+      text-decoration: line-through;
+      color: #999; /* Optional: change color to indicate deletion */
+    }
+    .student-marked-for-deletion button {
+      /* Optional: style for the button when student is marked for deletion */
+    }
+
+    /* Styles for student list in edit mode */
+    .student-list-editing {
+      list-style-type: none; /* Removes default list bullets */
+      padding-left: 0;      /* Removes default padding */
+      margin-top: 0;         /* Removes default margin */
+      margin-bottom: 0;      /* Removes default margin */
+    }
+    .student-list-editing li {
+      display: flex;          /* Align student name and button in a row */
+      align-items: center;    /* Vertically align items in the middle */
+      justify-content: space-between; /* Pushes button to the right */
+      padding: 2px 0;       /* Minimal padding for each student item */
+    }
+
+    /* Styles for Delete Student and Undo buttons */
+    .delete-student-btn, .undo-student-delete-btn {
+      margin-left: 8px; /* Space between student name and button */
+      padding: 2px 6px; /* Smaller padding for a compact button */
+      font-size: 0.8em; /* Smaller font size */
+      background-color: #f8f9fa; /* Light background */
+      color: #dc3545; /* Reddish text for delete */
+      border: 1px solid #dc3545; /* Reddish border */
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .delete-student-btn:hover, .undo-student-delete-btn:hover {
+      background-color: #dc3545; /* Reddish background on hover */
+      color: white;
+    }
+
+    .undo-student-delete-btn {
+      color: #28a745; /* Greenish text for undo */
+      border-color: #28a745; /* Greenish border */
+    }
+    .undo-student-delete-btn:hover {
+      background-color: #28a745; /* Greenish background on hover */
+      color: white;
+    }
+
     html, body { height: 100%; margin: 0; display: flex; flex-direction: column; font-family: Arial, sans-serif; }
     header, footer { background-color: #0c3c78; color: white; text-align: center; padding: 20px; }
     nav { background-color: #092e5e; display: flex; justify-content: center; }
@@ -400,6 +447,7 @@ let allFetchedPastLessons = [];
 let activeCategoryFilter = 'All'; 
 let editing = false;
 let pendingDeletes = new Set();
+let pendingStudentDeletes = new Set(); // Task 1: Initialize pendingStudentDeletes
 
 const validCoaches = [
     "Ricardo Carvajalino",
@@ -607,11 +655,52 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
 
     const studentCount = group.studentDetailsList.length;
     const studentDetailsJSON = JSON.stringify(group.studentDetailsList);
-    let studentDisplay = '—';
-    if (studentCount > 0) {
+    let studentDisplay = '—'; // Default display
+
+    if (editing && group.studentDetailsList && group.studentDetailsList.length > 0) {
+      // In editing mode for a grouped row with students
+      // Task 3: Add class "student-list-editing" to UL and remove inline styles
+      let studentsHtml = '<ul class="student-list-editing">';
+      group.studentDetailsList.forEach(student => {
+        let studentBookingId = null;
+        // Find the student's specific bookingId
+        if (allFetchedPastLessons && group.originalBookingIds) {
+          for (const id of group.originalBookingIds) {
+            const lesson = allFetchedPastLessons.find(l => 
+              l.id === id &&
+              l.student === student.name &&
+              (l.email ? l.email === student.email : true) // Match email if available and reliable
+            );
+            if (lesson) {
+              studentBookingId = lesson.id;
+              break;
+            }
+          }
+        }
+        // Task 3: Remove inline style from li
+        studentsHtml += `<li>${student.name}`; 
+        if (studentBookingId) {
+          // Task 3: Remove inline style from button (it's now handled by .delete-student-btn class)
+          studentsHtml += ` <button class="delete-student-btn" 
+                                     data-student-booking-id="${studentBookingId}" 
+                                     data-group-id="${rowDataId}">Delete Student</button>`;
+        }
+        studentsHtml += `</li>`;
+      });
+      studentsHtml += '</ul>';
+      studentDisplay = studentsHtml;
+    } else if (studentCount > 0) {
+      // Not in editing mode, or no studentDetailsList, but there are students (original behavior)
       studentDisplay = group.studentDetailsList.map(s => s.name).filter(name => name && name.trim() !== '').join(', ');
       if (studentDisplay === '') studentDisplay = '—';
     }
+    
+    // Determine the value for data-original-value for the student cell.
+    // If in editing mode, it should be the comma-separated list of names for comparison/revert purposes.
+    // Otherwise, it's just the studentDisplay (which would be the same comma-separated list or '—').
+    const originalStudentDisplayValue = group.studentDetailsList && group.studentDetailsList.length > 0 
+      ? group.studentDetailsList.map(s => s.name).filter(name => name && name.trim() !== '').join(', ') 
+      : '—';
 
     tableHTML += `
       <tr data-id="${rowDataId}" 
@@ -620,13 +709,13 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
           data-program="${group.program || ''}"
           data-date="${group.date || ''}" /* YYYY-MM-DD */
           data-time="${group.time || ''}" /* Original full time, e.g., HH:MM:SS or HH:MM */
-          data-student="${studentDisplay}" // This studentDisplay is for the "Student" column
+          data-student="${originalStudentDisplayValue}" // This studentDisplay is for the "Student" column's original value
           data-lesson-cost="${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}">
         <td class="history-cell" data-id="${rowDataId}" data-field="program" data-original-value="${group.program || ''}" style="padding:8px; border:1px solid #ddd;">${group.program || '—'}</td>
         <td class="history-cell" data-id="${rowDataId}" data-field="coach" data-original-value="${coachesDisplay}" style="padding:8px; border:1px solid #ddd;">${coachesDisplay || '—'}</td>
         <td class="history-cell" data-id="${rowDataId}" data-field="date" data-original-value="${group.date}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
         <td class="history-cell" data-id="${rowDataId}" data-field="time" data-original-value="${group.time ? group.time.substring(0,5) : ''}" style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
-        <td class="history-cell" data-id="${rowDataId}" data-field="student" data-original-value="${studentDisplay}" style="padding:8px; border:1px solid #ddd;">${studentDisplay}</td>
+        <td class="history-cell" data-id="${rowDataId}" data-field="student" data-original-value="${originalStudentDisplayValue}" style="padding:8px; border:1px solid #ddd;">${studentDisplay}</td>
         <td style="padding:8px; border:1px solid #ddd;"><button class="view-contact-btn" data-students='${studentDetailsJSON.replace(/'/g, "&apos;")}'>View Contact (${studentCount})</button></td>
         <td class="history-cell" data-id="${rowDataId}" data-field="lesson_cost" data-original-value="${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}</td>
         <td class="history-cell" data-id="${rowDataId}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
@@ -736,7 +825,7 @@ async function deleteAdminLesson(id, isGroup = false) {
   // Check if we are in editing mode and deleting an individual lesson
   if (editing === true && isGroup === false) {
     // Action: Add to pendingDeletes and remove from DOM
-    if (confirm('Delete this student?')) {
+    if (confirm('Mark this entire lesson for deletion?')) {
       pendingDeletes.add(id);
       const rowToRemove = document.querySelector(`tr[data-id='${id}'][data-is-grouped='false']`);
       if (rowToRemove) {
@@ -903,18 +992,20 @@ window.addEventListener('DOMContentLoaded', () => {
     enableHistoryEditingBtn.addEventListener('click', () => {
       editing = !editing;
       pendingDeletes.clear();
+      if (!editing) { // Task 5: Clear pendingStudentDeletes when editing is disabled
+        pendingStudentDeletes.clear();
+      }
 
       enableHistoryEditingBtn.textContent = editing ? 'Disable Editing' : 'Enable Editing';
       if (saveHistoryBtn) saveHistoryBtn.disabled = !editing;
 
       if (editing) {
         // Entering edit mode: Refresh the table display.
-        // Make sure searchInput is available in this scope (it is usually declared in DOMContentLoaded).
         const searchInput = document.getElementById('historySearchInput');
         filterAndRenderHistory(searchInput ? searchInput.value.toLowerCase().trim() : '');
       } else {
         // Exiting edit mode: Reload original table from server.
-        loadHistory();
+        loadHistory(); // This will re-render and clear visual states like student-marked-for-deletion
       }
 
       document.querySelectorAll('.history-cell').forEach(td => {
@@ -1129,52 +1220,98 @@ window.addEventListener('DOMContentLoaded', () => {
 
   if (saveHistoryBtn) {
     saveHistoryBtn.addEventListener('click', async () => {
-      if (!confirm('Are you sure you want to save all changes to the history?')) return;
+      // Adjusted confirmation message
+      let confirmationMessage = 'Are you sure you want to save all changes to the history?';
+      const hasPendingLessonDeletes = pendingDeletes.size > 0;
+      const hasPendingStudentDeletes = pendingStudentDeletes.size > 0;
+
+      if (hasPendingLessonDeletes || hasPendingStudentDeletes) {
+        let deleteParts = [];
+        if (hasPendingLessonDeletes) {
+          deleteParts.push(`${pendingDeletes.size} entire lesson(s)`);
+        }
+        if (hasPendingStudentDeletes) {
+          deleteParts.push(`${pendingStudentDeletes.size} student(s) from groups`);
+        }
+        confirmationMessage = `Are you sure you want to save all changes, including permanently deleting ${deleteParts.join(' AND ')}? This action cannot be undone.`;
+      }
+      
+      if (!confirm(confirmationMessage)) return;
+
       if (enableHistoryEditingBtn) enableHistoryEditingBtn.disabled = true;
       saveHistoryBtn.disabled = true;
 
-      let pendingDeletionsProcessed = false;
+      let pendingDeletionsProcessed = false; // This will be true if any deletion (lesson or student) is attempted
       let pendingDeletionSuccesses = 0;
       let pendingDeletionFailures = 0;
       const pendingDeletionFailureDetails = [];
 
+      // Process pendingDeletes (whole lesson deletions)
       if (pendingDeletes.size > 0) {
-        if (confirm(`Are you sure you want to permanently delete ${pendingDeletes.size} student(s)? This action cannot be undone.`)) {
-          const deletePromises = [];
-          for (const lessonId of pendingDeletes) {
-            deletePromises.push(
-              fetch(`/api/admin/lessons/${lessonId}`, {
-                method: 'DELETE',
-                credentials: 'include',
-              })
-              .then(res => {
-                if (res.ok) {
-                  return { status: 'fulfilled', id: lessonId };
-                } else {
-                  return res.json().catch(() => ({ message: `Failed with status ${res.status}` }))
-                    .then(errData => ({ status: 'rejected', id: lessonId, reason: errData.message || `Failed with status ${res.status}` }));
-                }
-              })
-              .catch(networkError => ({ status: 'rejected', id: lessonId, reason: networkError.message }))
-            );
-          }
-
-          const results = await Promise.allSettled(deletePromises);
-          results.forEach(result => {
-            if (result.status === 'fulfilled' && result.value.status === 'fulfilled') {
-              pendingDeletionSuccesses++;
-            } else {
-              pendingDeletionFailures++;
-              // Ensure result.value exists and has a reason, otherwise provide a default message
-              const reason = result.value && result.value.reason ? result.value.reason : 'Unknown error during deletion';
-              const id = result.value && result.value.id ? result.value.id : 'Unknown ID';
-              pendingDeletionFailureDetails.push(`ID ${id}: ${reason}`);
-            }
-          });
-          pendingDeletionsProcessed = true;
-        } else {
-          alert('Pending deletions were not processed.');
+        pendingDeletionsProcessed = true;
+        const deletePromises = [];
+        for (const lessonId of pendingDeletes) {
+          deletePromises.push(
+            fetch(`/api/admin/lessons/${lessonId}`, {
+              method: 'DELETE',
+              credentials: 'include',
+            })
+            .then(res => {
+              if (res.ok) {
+                return { status: 'fulfilled', id: lessonId, type: 'Lesson' };
+              } else {
+                return res.json().catch(() => ({ message: `Failed with status ${res.status}` }))
+                  .then(errData => ({ status: 'rejected', id: lessonId, type: 'Lesson', reason: errData.message || `Failed with status ${res.status}` }));
+              }
+            })
+            .catch(networkError => ({ status: 'rejected', id: lessonId, type: 'Lesson', reason: networkError.message }))
+          );
         }
+        const results = await Promise.allSettled(deletePromises);
+        results.forEach(result => {
+          if (result.status === 'fulfilled' && result.value.status === 'fulfilled') {
+            pendingDeletionSuccesses++;
+          } else {
+            pendingDeletionFailures++;
+            const reason = result.value?.reason || result.reason || 'Unknown error during lesson deletion';
+            const id = result.value?.id || 'Unknown ID';
+            pendingDeletionFailureDetails.push(`Lesson ID ${id}: ${reason}`);
+          }
+        });
+      }
+
+      // Process pendingStudentDeletes
+      if (pendingStudentDeletes.size > 0) {
+        pendingDeletionsProcessed = true;
+        const studentDeletePromises = [];
+        for (const studentBookingId of pendingStudentDeletes) {
+          studentDeletePromises.push(
+            fetch(`/api/admin/lessons/${studentBookingId}`, { // Assuming the same endpoint for deleting a student's booking
+              method: 'DELETE',
+              credentials: 'include',
+            })
+            .then(res => {
+              if (res.ok) {
+                return { status: 'fulfilled', id: studentBookingId, type: 'Student' };
+              } else {
+                return res.json().catch(() => ({ message: `Failed with status ${res.status}` }))
+                  .then(errData => ({ status: 'rejected', id: studentBookingId, type: 'Student', reason: errData.message || `Failed with status ${res.status}` }));
+              }
+            })
+            .catch(networkError => ({ status: 'rejected', id: studentBookingId, type: 'Student', reason: networkError.message }))
+          );
+        }
+        const studentResults = await Promise.allSettled(studentDeletePromises);
+        studentResults.forEach(result => {
+          if (result.status === 'fulfilled' && result.value.status === 'fulfilled') {
+            pendingDeletionSuccesses++;
+          } else {
+            pendingDeletionFailures++;
+            const reason = result.value?.reason || result.reason || 'Unknown error during student deletion';
+            const id = result.value?.id || 'Unknown ID';
+            pendingDeletionFailureDetails.push(`Student Deletion (Booking ID ${id}): ${reason}`);
+          }
+        });
       }
 
       const updates = [];
@@ -1514,6 +1651,7 @@ window.addEventListener('DOMContentLoaded', () => {
       alert(summaryMessage);
 
       pendingDeletes.clear();
+      pendingStudentDeletes.clear(); // Clear pendingStudentDeletes
       editing = false;
       if (enableHistoryEditingBtn) {
         enableHistoryEditingBtn.disabled = false;
@@ -1545,6 +1683,38 @@ window.addEventListener('DOMContentLoaded', () => {
       filterAndRenderHistory(searchInput ? searchInput.value.toLowerCase().trim() : '');
     });
   });
+
+  // Task 2: Add event listener to historyTableContainer for .delete-student-btn and .undo-student-delete-btn
+  if (historyTableContainer) {
+    historyTableContainer.addEventListener('click', function(event) {
+      const target = event.target;
+      const studentBookingIdStr = target.dataset.studentBookingId;
+
+      if (studentBookingIdStr) { // Ensure we have a booking ID to work with
+        const studentBookingId = parseInt(studentBookingIdStr, 10);
+        // Task 3c & 4c: Find the parent list item or container
+        const listItem = target.closest('li'); 
+
+        if (target.classList.contains('delete-student-btn')) {
+          // Task 3a: Get bookingId (already got studentBookingId)
+          // Task 3b: Add bookingId to pendingStudentDeletes
+          pendingStudentDeletes.add(studentBookingId);
+          if (listItem) listItem.classList.add('student-marked-for-deletion'); // Task 3c
+          target.textContent = 'Undo'; // Task 3d
+          target.classList.remove('delete-student-btn'); // Task 3e
+          target.classList.add('undo-student-delete-btn'); // Task 3e
+        } else if (target.classList.contains('undo-student-delete-btn')) {
+          // Task 4a: Get bookingId (already got studentBookingId)
+          // Task 4b: Remove bookingId from pendingStudentDeletes
+          pendingStudentDeletes.delete(studentBookingId);
+          if (listItem) listItem.classList.remove('student-marked-for-deletion'); // Task 4c
+          target.textContent = 'Delete Student'; // Task 4d
+          target.classList.remove('undo-student-delete-btn'); // Task 4e
+          target.classList.add('delete-student-btn'); // Task 4e
+        }
+      }
+    });
+  }
 
 // --- View Contact Modal Logic (copy from admin.html) ---
 const viewContactModal       = document.getElementById('viewContactModal');

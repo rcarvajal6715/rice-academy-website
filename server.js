@@ -938,16 +938,46 @@ FROM bookings
         }
       } else if (originalProgram === "Kids Camp - Week Pass" && lessonCost != null && lessonCost > 0) {
         const dailyRevenue = lessonCost / 3;
-        const KCPassDaysOffsets = [1, 3, 5]; // Tuesday, Wednesday, Saturday (assuming Mon=0 for booking.date)
-        for (const offset of KCPassDaysOffsets) {
-          expandedBookings.push({
-            ...booking,
-            date: addDays(booking.date, offset), // booking.date is the start date (Monday)
-            lesson_cost: dailyRevenue,
-            program: "Kids Camp - Week Pass" // Retain for normalization
-          });
+        const bookingDateObj = new Date(booking.date); 
+        const startDay = bookingDateObj.getUTCDay(); // Sunday:0, Monday:1, ..., Saturday:6
+        
+        // Assuming the 3 days of a Kids Camp Week Pass are typically Tuesday, Thursday, Saturday
+        let calculatedOffsets = [];
+        if (startDay <= 2) { // Booking starts on Sunday (0), Monday (1), or Tuesday (2)
+            calculatedOffsets.push(2 - startDay); // Offset to Tuesday
+            calculatedOffsets.push(4 - startDay); // Offset to Thursday
+            calculatedOffsets.push(6 - startDay); // Offset to Saturday
+        } else if (startDay === 3) { // Booking starts on Wednesday (3)
+            // Pass started on Wed, so gets Thu, Sat sessions of that week.
+            calculatedOffsets.push(4 - startDay); // Offset to Thursday (1 day after Wed)
+            calculatedOffsets.push(6 - startDay); // Offset to Saturday (3 days after Wed)
+        } else if (startDay === 4) { // Booking starts on Thursday (4)
+            // Pass started on Thu, so gets Thu, Sat sessions of that week.
+            calculatedOffsets.push(4 - startDay); // Offset to Thursday (0 days after Thu)
+            calculatedOffsets.push(6 - startDay); // Offset to Saturday (2 days after Thu)
+        } else if (startDay === 5) { // Booking starts on Friday (5)
+            // Pass started on Fri, so gets Sat session of that week.
+            calculatedOffsets.push(6 - startDay); // Offset to Saturday (1 day after Fri)
+        } else if (startDay === 6) { // Booking starts on Saturday (6)
+            // Pass started on Sat, so gets Sat session of that week.
+            calculatedOffsets.push(6 - startDay); // Offset to Saturday (0 days after Sat)
         }
-      } else {
+        // Note: This logic ensures the student gets camp days that are on or after their booking's start day of the week.
+        // The dailyRevenue is lessonCost / 3. If fewer than 3 sessions are generated (e.g., for a Friday start),
+        // only those generated sessions will get that 1/3rd revenue. This might be a point for future review
+        // if the full pass value should always be distributed over 3 actual sessions.
+
+        const KCPassDaysOffsets = calculatedOffsets.filter(offset => offset >= 0); // Filter just in case, though current logic should yield >=0.
+
+        for (const offset of KCPassDaysOffsets) {
+            expandedBookings.push({
+              ...booking,
+              date: addDays(booking.date, offset),
+              lesson_cost: dailyRevenue, 
+              program: "Kids Camp - Week Pass"
+            });
+        }
+    } else {
         // For non-week-pass bookings or week passes with no/zero cost
         expandedBookings.push({ ...booking });
       }

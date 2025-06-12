@@ -1800,10 +1800,10 @@ app.get('/api/coach/dashboard/financials', ensureCoach, async (req, res) => {
         'Kids Camp - Week Pass': 4.5,    // Assuming 3 days * 1.5 hours/day
         'Adult Clinics': 1,
         'Group Lesson': 1,
-        'Tennis Private': 1,
-        'DEFAULT_HOURS': 0
+        'Tennis Private': 1
+        // 'DEFAULT_HOURS': 0, // DEFAULT_HOURS is no longer used, hours default to 1 if program not found
     };
-    const DEFAULT_HOURS = PROGRAM_HOURS.DEFAULT_HOURS;
+    // const DEFAULT_HOURS = PROGRAM_HOURS.DEFAULT_HOURS; // DEFAULT_HOURS is no longer used
 
     function getFinancialCategory(programName) {
         if (!programName || typeof programName !== 'string') return null;

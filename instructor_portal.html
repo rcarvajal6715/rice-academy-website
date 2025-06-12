@@ -457,6 +457,8 @@ ul.nav-links-mobile li a {
           <button id="open-picker" type="button">Pick Date & Time</button>
           <span id="chosen-datetime" style="margin-left:.5rem;"></span>
         </div>
+        <div id="appointment-root"></div>
+        <div id="appointment-picker-root"></div>
         <div style="margin-top:10px;">
           <label for="coach-price">Price</label>
           <input type="number" id="coach-price" placeholder="Enter lesson price" />
@@ -1244,5 +1246,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 </script>
   <script src="/js/appointmentPicker.umd.js"></script>
+  <div id="appointment-root"></div>
+  <script src="/public/js/appointmentPicker.umd.js"></script>
+  <script>
+  window.mountAppointmentPicker({}, document.getElementById("appointment-picker-root"));
+</script>
 </body>
 </html>

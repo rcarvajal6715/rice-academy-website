@@ -506,6 +506,21 @@ ul.nav-links-mobile li a {
           Click again to unblock. Click "Submit Off-Days" to save.
         </small>
       </div>
+
+  <div id="viewFinancesModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 550px;">
+        <div style="padding: 15px 20px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center;">
+            <h4 style="margin: 0; font-size: 1.2em; color: #0c3c78;">My Finances</h4>
+            <button type="button" class="close-modal-btn" aria-label="Close" style="background: transparent; border: none; font-size: 1.6em; cursor: pointer; color: #777; padding: 0;">&times;</button>
+        </div>
+        <div id="financesModalBody" style="padding: 20px;">
+            <p>Loading financial data...</p>
+        </div>
+        <div style="padding: 15px 20px; border-top: 1px solid #ddd; text-align: right;">
+            <button type="button" class="close-modal-btn" style="padding: 8px 18px; background-color: #0c3c78; color: white; border: none; border-radius: 5px; cursor: pointer;">Close</button>
+        </div>
+    </div>
+  </div>
   </main>
   <!-- End of main content -->
 
@@ -1127,5 +1142,131 @@ document.addEventListener('DOMContentLoaded', () => {
       checkSession(); // Call checkSession when DOM is ready
   });
   </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const viewFinancesBtn = document.getElementById('viewFinancesBtn');
+    const viewFinancesModal = document.getElementById('viewFinancesModal');
+    const financesModalBody = document.getElementById('financesModalBody');
+    // Get all buttons that should close this specific modal
+    const closeModalBtns = viewFinancesModal.querySelectorAll('.close-modal-btn');
+
+    // Function to open the modal
+    function openModal() {
+        if (viewFinancesModal) {
+            viewFinancesModal.style.display = 'block'; // Or 'flex' if using flexbox for centering
+            fetchFinancialData();
+        }
+    }
+
+    // Function to close the modal
+    function closeModal() {
+        if (viewFinancesModal) {
+            viewFinancesModal.style.display = 'none';
+        }
+    }
+
+    // Attach event listener to the main button to open the modal
+    if (viewFinancesBtn) {
+        viewFinancesBtn.addEventListener('click', openModal);
+    }
+
+    // Attach event listeners to all close buttons within this modal
+    closeModalBtns.forEach(btn => {
+        btn.addEventListener('click', closeModal);
+    });
+
+    // Optional: Close modal if user clicks outside the modal-content
+    if (viewFinancesModal) {
+        viewFinancesModal.addEventListener('click', (event) => {
+            if (event.target === viewFinancesModal) { // Check if the click is on the modal backdrop itself
+                closeModal();
+            }
+        });
+    }
+
+    async function fetchFinancialData() {
+        if (!financesModalBody) return;
+        financesModalBody.innerHTML = '<p>Loading financial data...</p>'; // Show loading message
+
+        try {
+            const response = await fetch('/api/coach/dashboard/financials', {
+                method: 'GET',
+                credentials: 'include', // Crucial for sending session cookies
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                let errorMsg = 'Failed to fetch financial data.';
+                if (response.status === 401) {
+                    errorMsg = 'Unauthorized. Please ensure you are logged in as a coach.';
+                } else {
+                    try {
+                        const errData = await response.json();
+                        errorMsg = errData.message || `Error ${response.status}: ${response.statusText}`;
+                    } catch (e) { 
+                        errorMsg = `Error ${response.status}: ${response.statusText}`;
+                    }
+                }
+                throw new Error(errorMsg);
+            }
+
+            const data = await response.json();
+
+            // Clear loading message
+            financesModalBody.innerHTML = '';
+
+            // Define the order and display names for categories
+            const categories = [
+                { key: 'privates', name: 'Privates' },
+                { key: 'summerCamps', name: 'Summer Camps' },
+                { key: 'kidsCamps', name: 'Kids Camps' },
+                { key: 'adultClinics', name: 'Adult Clinics' },
+                { key: 'totals', name: 'Totals' }
+            ];
+
+            categories.forEach(categoryInfo => {
+                const categoryData = data[categoryInfo.key];
+                if (categoryData) {
+                    const section = document.createElement('div');
+                    section.style.marginBottom = '15px';
+                    if (categoryInfo.key === 'totals') {
+                        section.style.borderTop = '1px solid #eee';
+                        section.style.paddingTop = '10px';
+                        section.style.marginTop = '10px';
+                    }
+
+                    const title = document.createElement('h5');
+                    title.textContent = categoryInfo.name;
+                    title.style.color = '#0c3c78';
+                    title.style.marginBottom = '5px';
+                    section.appendChild(title);
+
+                    const payText = document.createElement('p');
+                    payText.textContent = `Pay: $${categoryData.pay.toFixed(2)}`;
+                    payText.style.margin = '2px 0';
+                    section.appendChild(payText);
+
+                    const hoursText = document.createElement('p');
+                    hoursText.textContent = `Hours: ${categoryData.hours}`;
+                    hoursText.style.margin = '2px 0';
+                    section.appendChild(hoursText);
+                    
+                    financesModalBody.appendChild(section);
+                }
+            });
+
+        } catch (error) {
+            console.error('Error fetching or displaying financials:', error);
+            if (financesModalBody) {
+                financesModalBody.innerHTML = `<p style="color: red;">${error.message}</p>`;
+            }
+        }
+    }
+});
+</script>
 </body>
 </html>

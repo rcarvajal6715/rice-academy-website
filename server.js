@@ -1781,6 +1781,113 @@ app.get('/api/coach/financials', async (req, res) => {
   }
 });
 
+// Middleware to ensure the user is a logged-in coach
+const ensureCoach = (req, res, next) => {
+    if (req.session && req.session.coachId && req.session.coachName) {
+        next();
+    } else {
+        res.status(401).json({ message: 'Unauthorized: Coach access required. Please log in.' });
+    }
+};
+
+// ---- Coach Dashboard Financials Route ----
+app.get('/api/coach/dashboard/financials', ensureCoach, async (req, res) => {
+    const PROGRAM_HOURS = {
+        'Private Lesson': 1,
+        'Summer Camp - Day Pass': 2.5,
+        'Summer Camp - Week Pass': 12.5, // Assuming 5 days * 2.5 hours/day
+        'Kids Camp - Day Pass': 1.5,
+        'Kids Camp - Week Pass': 4.5,    // Assuming 3 days * 1.5 hours/day
+        'Adult Clinics': 1,
+        'Group Lesson': 1,
+        'Tennis Private': 1,
+        'DEFAULT_HOURS': 0
+    };
+    const DEFAULT_HOURS = PROGRAM_HOURS.DEFAULT_HOURS;
+
+    function getFinancialCategory(programName) {
+        if (!programName || typeof programName !== 'string') return null;
+        const lowerProgram = programName.toLowerCase();
+        if (lowerProgram.includes('private') || lowerProgram.includes('tennis private')) return "privates";
+        if (lowerProgram.includes('summer camp')) return "summerCamps";
+        if (lowerProgram.includes('kids camp')) return "kidsCamps";
+        if (lowerProgram.includes('adult clinic')) return "adultClinics"; // Matches 'Adult Clinics'
+        if (lowerProgram.includes('group lesson') || lowerProgram.includes('clinic')) return "adultClinics"; // Matches 'Group Lesson' and other clinics
+        return null;
+    }
+
+    const loggedInCoachName = req.session.coachName;
+    const financials = {
+        privates: { pay: 0, hours: 0 },
+        summerCamps: { pay: 0, hours: 0 },
+        kidsCamps: { pay: 0, hours: 0 },
+        adultClinics: { pay: 0, hours: 0 },
+        totals: { pay: 0, hours: 0 }
+    };
+
+    try {
+        const dbResult = await pool.query(
+            "SELECT program, lesson_cost, referral_source FROM bookings WHERE LOWER(coach) = LOWER($1) AND lesson_cost IS NOT NULL AND lesson_cost > 0",
+            [loggedInCoachName]
+        );
+
+        for (const booking of dbResult.rows) {
+            const currentCategory = getFinancialCategory(booking.program);
+            let coachPayForThisBooking = 0;
+            const lessonCost = parseFloat(booking.lesson_cost);
+            const simpleLoggedInCoachName = loggedInCoachName.split(' ')[0];
+            const referral = booking.referral_source ? booking.referral_source.trim() : '';
+
+            if (currentCategory === 'privates') {
+                if (simpleLoggedInCoachName === 'Ricardo') {
+                    coachPayForThisBooking = lessonCost;
+                } else if (referral === 'Ricardo') {
+                    coachPayForThisBooking = Math.max(0, lessonCost - 20);
+                } else if (referral === 'FriendReferral') {
+                    coachPayForThisBooking = Math.max(0, lessonCost - 10);
+                } else if (referral === 'WebsiteReferral') {
+                    coachPayForThisBooking = Math.max(0, lessonCost - 20);
+                } else if (referral === simpleLoggedInCoachName || referral.endsWith('Own') || referral === '' || referral === null) {
+                    if (simpleLoggedInCoachName === 'Jacob') {
+                        coachPayForThisBooking = Math.max(0, lessonCost - 10);
+                    } else if (simpleLoggedInCoachName === 'Paula' || simpleLoggedInCoachName === 'Zach') {
+                        coachPayForThisBooking = lessonCost * 0.90;
+                    } else {
+                        coachPayForThisBooking = lessonCost; // Default for other coaches' own if not specified
+                    }
+                } else {
+                    coachPayForThisBooking = lessonCost; // Fallback for other referral sources
+                }
+            } else if (currentCategory === 'summerCamps' || currentCategory === 'kidsCamps' || currentCategory === 'adultClinics') {
+                coachPayForThisBooking = lessonCost * 0.90;
+            } else {
+                coachPayForThisBooking = 0; // Should not happen if getFinancialCategory is comprehensive
+            }
+
+            const programSpecificHours = PROGRAM_HOURS[booking.program] !== undefined ? PROGRAM_HOURS[booking.program] : DEFAULT_HOURS;
+
+            if (currentCategory && financials[currentCategory]) {
+                financials[currentCategory].pay += coachPayForThisBooking;
+                financials[currentCategory].hours += programSpecificHours;
+                financials.totals.pay += coachPayForThisBooking;
+                financials.totals.hours += programSpecificHours;
+            }
+        }
+
+        for (const category in financials) {
+            if (financials.hasOwnProperty(category)) {
+                financials[category].pay = parseFloat(financials[category].pay.toFixed(2));
+            }
+        }
+
+        res.json(financials);
+
+    } catch (error) {
+        console.error("Error in /api/coach/dashboard/financials for " + loggedInCoachName + ":", error);
+        res.status(500).json({ message: "Error calculating detailed financials." });
+    }
+});
+
 // ---- Parent Portal Routes ----
 app.get('/api/parent/remaining-lessons', async (req, res) => {
   if (!req.session.user || !req.session.user.id || !req.session.user.email) {

@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>C2 Tennis Academy</title>
 
+  <!-- head… -->
+   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cosmic+Octo:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="footer.css">
   
   <!-- SEO Meta Tags -->
@@ -67,30 +72,74 @@
       position: relative; /* Kept from original, might not be needed globally */
     }
     
-    .hero { /* Specific to index.html, kept */
-      background: url('Tennis background.png') no-repeat center center/cover;
-      color: white;
-      text-align: center;
-      padding: 200px 20px;
-      min-height: 600px;
-    }
-    .hero h1 {
-      font-size: 3.5em;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-      margin-bottom: 20px;
-    }
-    .hero p {
-      font-size: 1.5em;
-      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
-    }
-    .mobile-hero-spinning-image {
-        display: none; /* Hidden by default (desktop) */
-    }
-    .hero-image-text-wrapper {
+    /* === Full-screen hero container === */
+    .hero {
       position: relative;
-      display: flex; 
-      justify-content: center;
+      width: 100%;
+      height: 100vh;
+      background: url('newbackground.png') center/cover no-repeat;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+    }
+
+    /* === Centered content === */
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
       align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: white;
+    }
+
+    /* === Animation keyframe === */
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* === Staggered animated elements === */
+    .hero-title,
+    .hero-subtitle,
+    .hero-cta {
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeSlide 0.6s ease-out forwards;
+    }
+    .hero-title {
+      animation-delay: 0.3s;
+      font-size: 3rem;
+      margin: 0;
+    }
+    .hero-subtitle {
+      animation-delay: 0.6s;
+      font-size: 1.5rem;
+      margin: 1rem 0 0;
+    }
+    .hero-cta {
+      animation-delay: 0.9s;
+      display: inline-block;
+      margin-top: 2rem;
+      padding: 0.75rem 1.5rem;
+      background-color: #d8f352; /* C2 green */
+      color: #0c3c78;            /* C2 dark */
+      text-decoration: none;
+      font-weight: bold;
+      border-radius: 9999px;
+      transition: transform 0.2s ease;
+    }
+    .hero-cta:hover {
+      transform: scale(1.05);
+    }
+    .hero-cta:active {
+      transform: scale(0.95);
     }
     
 /* === Global Header & Navigation Styles (Revised for Desktop) === */
@@ -256,27 +305,16 @@
 }
 
 @media (max-width: 480px) {
-    /* .site-title h1 already adjusted by 768px rule */
-    /* .site-title p already hidden by 768px rule */
-    .hero {
-        padding: 50px 10px;
-    }
-    .hero h1 {
-        font-size: 2.2em; /* Corrected font size for 480px */
-        color: white; /* Adjusted color */
-        position: absolute;
-        top: 25%; /* Adjusted top position */
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 90%; /* Adjusted width */
-        max-width: 600px; /* Max-width for safety */
-        text-align: center; /* Ensure text is centered */
-    }
-    .hero p {
-        font-size: 1em;
-        color: white; /* Changed for visibility on black background */
-        text-shadow: none; 
-    }
+  .hero-title {
+    font-size: 2rem; /* Smaller on mobile phones */
+  }
+  .hero-subtitle {
+    font-size: 1rem;
+  }
+  .hero-cta {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+  }
 }
 /* Make desktop nav links more pill-shaped */
 ul.nav-links-desktop li a {
@@ -430,6 +468,46 @@ footer.site-footer {
 }
 
 
+.hero-content {
+  /* add a little gap between items */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.10rem;   /* ← controls vertical spacing */
+}
+
+.hero-logo {
+  max-width: 200px;
+  width: 50%;
+  
+  /* remove animation margin */
+  margin: -0.8rem auto 0;  /* pull it up by 0.2rem */
+  
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeSlide 0.6s ease-out forwards;
+  animation-delay: 0.6s;
+}
+
+/* apply it just to the hero */
+.hero-content {
+  font-family: 'Cosmic Octo', sans-serif;
+}
+
+/* or override only the title and button */
+.hero-title,
+.hero-cta {
+  font-family: 'Cosmic Octo', sans-serif;
+}
+.hero-title {
+  font-size: 3rem;   /* tweak as desired */
+}
+
+.hero-title,
+.hero-cta {
+  font-family: 'Orbitron', sans-serif;
+}
   </style>
 </head>
 <body>
@@ -481,17 +559,18 @@ footer.site-footer {
   </nav>
 
   <main>
-    <section class="hero">
-      <div class="hero-text-content"> <!-- New wrapper for text -->
-        <h1>Welcome to C2 Tennis Academy</h1>
-        <p>Where passion meets performance</p>
-        <button class="explore-button" onclick="location.href='/mission.html'">
-        Our Mission
-      </button>
-      </div>
-      <img src="mobilebackground.png" alt="Spinning background element" class="mobile-hero-spinning-image">
-    </section>
-  </main>
+  <!-- === Hero Section === -->
+  <section class="hero">
+  <div class="hero-content">
+    <h1 class="hero-title">WELCOME TO</h1>
+    <img
+      src="C2white.png"
+      alt="C2 Tennis Academy logo"
+      class="hero-logo"
+    />
+    <a href="/mission" class="hero-cta">Our Mission</a>
+  </div>
+</section>
 
   <footer class="site-footer">
   <div class="footer-wrapper">

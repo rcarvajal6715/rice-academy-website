@@ -1803,7 +1803,7 @@ app.get('/api/coach/dashboard/financials', ensureCoach, async (req, res) => {
         'Tennis Private': 1
         // 'DEFAULT_HOURS': 0, // DEFAULT_HOURS is no longer used, hours default to 1 if program not found
     };
-    // const DEFAULT_HOURS = PROGRAM_HOURS.DEFAULT_HOURS; // DEFAULT_HOURS is no longer used
+    const DEFAULT_HOURS = 1; // PROGRAM_HOURS.DEFAULT_HOURS no longer exists
 
     function getFinancialCategory(programName) {
         if (!programName || typeof programName !== 'string') return null;
@@ -1825,9 +1825,11 @@ app.get('/api/coach/dashboard/financials', ensureCoach, async (req, res) => {
         totals: { pay: 0, hours: 0 }
     };
 
+    const processedSummerCampSessionsForHours = new Set();
+
     try {
         const dbResult = await pool.query(
-            "SELECT program, lesson_cost, referral_source FROM bookings WHERE LOWER(coach) = LOWER($1) AND lesson_cost IS NOT NULL AND lesson_cost > 0",
+            "SELECT program, date, time, lesson_cost, referral_source FROM bookings WHERE LOWER(coach) = LOWER($1) AND lesson_cost IS NOT NULL AND lesson_cost > 0",
             [loggedInCoachName]
         );
 
@@ -1837,8 +1839,23 @@ app.get('/api/coach/dashboard/financials', ensureCoach, async (req, res) => {
             const lessonCost = parseFloat(booking.lesson_cost);
             const simpleLoggedInCoachName = loggedInCoachName.split(' ')[0];
             const referral = booking.referral_source ? booking.referral_source.trim() : '';
+            const programSpecificHours = PROGRAM_HOURS[booking.program] !== undefined ? PROGRAM_HOURS[booking.program] : DEFAULT_HOURS;
 
-            if (currentCategory === 'privates') {
+            if (currentCategory === 'summerCamps') {
+                if (booking.program === 'Summer Camp - Day Pass') {
+                    coachPayForThisBooking = lessonCost * 0.90;
+                    financials.summerCamps.pay += coachPayForThisBooking;
+                    financials.totals.pay += coachPayForThisBooking;
+
+                    const sessionKey = booking.date + '_' + booking.time + '_' + booking.program;
+                    if (!processedSummerCampSessionsForHours.has(sessionKey)) {
+                        financials.summerCamps.hours += programSpecificHours;
+                        financials.totals.hours += programSpecificHours;
+                        processedSummerCampSessionsForHours.add(sessionKey);
+                    }
+                }
+                // For 'Summer Camp - Week Pass' or other summer camp types, pay and hours are NOT added here.
+            } else if (currentCategory === 'privates') {
                 if (simpleLoggedInCoachName === 'Ricardo') {
                     coachPayForThisBooking = lessonCost;
                 } else if (referral === 'Ricardo') {
@@ -1858,20 +1875,24 @@ app.get('/api/coach/dashboard/financials', ensureCoach, async (req, res) => {
                 } else {
                     coachPayForThisBooking = lessonCost; // Fallback for other referral sources
                 }
-            } else if (currentCategory === 'summerCamps' || currentCategory === 'kidsCamps' || currentCategory === 'adultClinics') {
+                financials.privates.pay += coachPayForThisBooking;
+                financials.privates.hours += programSpecificHours;
+                financials.totals.pay += coachPayForThisBooking;
+                financials.totals.hours += programSpecificHours;
+            } else if (currentCategory === 'kidsCamps') {
                 coachPayForThisBooking = lessonCost * 0.90;
-            } else {
-                coachPayForThisBooking = 0; // Should not happen if getFinancialCategory is comprehensive
-            }
-
-            const programSpecificHours = PROGRAM_HOURS[booking.program] !== undefined ? PROGRAM_HOURS[booking.program] : DEFAULT_HOURS;
-
-            if (currentCategory && financials[currentCategory]) {
-                financials[currentCategory].pay += coachPayForThisBooking;
-                financials[currentCategory].hours += programSpecificHours;
+                financials.kidsCamps.pay += coachPayForThisBooking;
+                financials.kidsCamps.hours += programSpecificHours;
+                financials.totals.pay += coachPayForThisBooking;
+                financials.totals.hours += programSpecificHours;
+            } else if (currentCategory === 'adultClinics') {
+                coachPayForThisBooking = lessonCost * 0.90;
+                financials.adultClinics.pay += coachPayForThisBooking;
+                financials.adultClinics.hours += programSpecificHours;
                 financials.totals.pay += coachPayForThisBooking;
                 financials.totals.hours += programSpecificHours;
             }
+            // Note: if currentCategory is null or not one of the above, nothing is added.
         }
 
         for (const category in financials) {
@@ -2810,3 +2831,4 @@ if (require.main === module) {
 }
 
 module.exports = { app, pool, normalizeProgramType };
+

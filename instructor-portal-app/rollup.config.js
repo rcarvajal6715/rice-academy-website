@@ -1,4 +1,5 @@
 // rollup.config.js
+import replace from '@rollup/plugin-replace';
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import babel    from '@rollup/plugin-babel';
@@ -24,6 +25,10 @@ export default {
     }
   },
   plugins: [
+    replace({
+      'process.env.NODE_ENV': JSON.stringify('production'),
+      preventAssignment: true
+    }),
     // 1) let Rollup understand CSS imports
     postcss({
       // extract: true,      // uncomment if you want a separate CSS file

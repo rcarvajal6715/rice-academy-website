@@ -2091,6 +2091,122 @@ app.post('/api/admin/attendance/:bookingId', async (req, res) => {
   }
 });
 
+// ---- API Endpoints for Lessons ----
+
+// GET /api/lessons - Fetches upcoming lessons
+app.get('/api/lessons', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, program, coach, date, time, student, email, phone, lesson_cost, paid, session_id, referral_source, coach2, coach3, total_lessons, used_lessons 
+       FROM bookings 
+       WHERE date >= CURRENT_DATE 
+       ORDER BY date ASC, time ASC`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('Error fetching upcoming lessons:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch upcoming lessons.' });
+  }
+});
+
+// POST /api/lessons/create - Creates a new lesson
+app.post('/api/lessons/create', async (req, res) => {
+  const { program, coach, date, time, students } = req.body;
+
+  if (!program || !coach || !date || !time || !students) {
+    return res.status(400).json({ success: false, message: 'Missing required fields (program, coach, date, time, students).' });
+  }
+
+  // Basic date validation (YYYY-MM-DD)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({ success: false, message: 'Invalid date format. Use YYYY-MM-DD.' });
+  }
+  // Basic time validation (HH:MM or HH:MM:SS)
+  if (!/^\d{2}:\d{2}(:\d{2})?$/.test(time)) {
+    return res.status(400).json({ success: false, message: 'Invalid time format. Use HH:MM or HH:MM:SS.' });
+  }
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO bookings (program, coach, date, time, student, paid, email, phone) 
+       VALUES ($1, $2, $3, $4, $5, FALSE, '', '') 
+       RETURNING id`,
+      [program, coach, date, time, students] // Assuming 'students' from req.body maps to 'student' column
+    );
+    res.status(201).json({ 
+      success: true, 
+      message: 'Lesson created successfully', 
+      lessonId: result.rows[0].id 
+    });
+  } catch (err) {
+    console.error('Error creating lesson:', err);
+    res.status(500).json({ success: false, message: 'Failed to create lesson.' });
+  }
+});
+
+// POST /api/lessons/update - Updates an existing lesson
+app.post('/api/lessons/update', async (req, res) => {
+  const { id, program, coach, date, time, students } = req.body;
+
+  if (!id || typeof id !== 'number' || id <= 0) {
+    return res.status(400).json({ success: false, message: 'Invalid or missing lesson ID.' });
+  }
+  if (!program || !coach || !date || !time || !students) {
+    return res.status(400).json({ success: false, message: 'Missing required fields for update (program, coach, date, time, students).' });
+  }
+  // Basic date validation (YYYY-MM-DD)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({ success: false, message: 'Invalid date format. Use YYYY-MM-DD.' });
+  }
+  // Basic time validation (HH:MM or HH:MM:SS)
+  if (!/^\d{2}:\d{2}(:\d{2})?$/.test(time)) {
+    return res.status(400).json({ success: false, message: 'Invalid time format. Use HH:MM or HH:MM:SS.' });
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE bookings 
+       SET program = $1, coach = $2, date = $3, time = $4, student = $5
+       WHERE id = $6`,
+      [program, coach, date, time, students, id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ success: false, message: 'Lesson not found with the provided ID.' });
+    }
+
+    res.status(200).json({ success: true, message: 'Lesson updated successfully.' });
+  } catch (err) {
+    console.error('Error updating lesson:', err);
+    res.status(500).json({ success: false, message: 'Failed to update lesson.' });
+  }
+});
+
+// POST /api/lessons/delete - Deletes a lesson
+app.post('/api/lessons/delete', async (req, res) => {
+  const { id } = req.body;
+
+  if (!id || typeof id !== 'number' || id <= 0) {
+    return res.status(400).json({ success: false, message: 'Invalid or missing lesson ID.' });
+  }
+
+  try {
+    const result = await pool.query(
+      'DELETE FROM bookings WHERE id = $1',
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ success: false, message: 'Lesson not found with the provided ID.' });
+    }
+
+    res.status(200).json({ success: true, message: 'Lesson deleted successfully.' });
+  } catch (err) {
+    console.error('Error deleting lesson:', err);
+    res.status(500).json({ success: false, message: 'Failed to delete lesson.' });
+  }
+});
+
 // ---- Coach Specific Routes ----
 app.get('/api/my-lessons', async (req, res) => {
   if (!req.session.coachId || !req.session.coachName) { 

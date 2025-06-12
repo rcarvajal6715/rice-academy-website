@@ -421,22 +421,7 @@ footer.site-footer {
       </div>
 
       <div class="schedule-container">
-        <div class="class-entry">
-          <h3>Junior Development (Ages 4–7)</h3>
-          <p><strong>Time:</strong> Mon & Wed, 4:00–5:30 PM</p>
-        </div>
-        <div class="class-entry">
-          <h3>High Performance (Ages 13–18)</h3>
-          <p><strong>Time:</strong> To be determined</p>
-        </div>
-        <div class="class-entry">
-          <h3>Adult Clinics (Ages 18+)</h3>
-          <p><strong>Time:</strong> To be determined</p>
-        </div>
-        <div class="class-entry">
-          <h3>Summer Camps (Ages 13–17)</h3>
-          <p><strong>Time:</strong> Mon–Fri (June & July), 10:00–12:30 PM</p>
-        </div>
+        <!-- Lessons will be dynamically loaded here -->
       </div>
     </section>
   </main>
@@ -506,6 +491,70 @@ footer.site-footer {
   </script>
 
   <script>
+    // Function to format time to 12-hour AM/PM
+    function formatTime_12hr(timeStr) {
+        if (!timeStr || !timeStr.includes(':')) return timeStr;
+        const parts = timeStr.split(':');
+        let hours = parseInt(parts[0], 10);
+        const minutes = parseInt(parts[1], 10);
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // 0 should be 12
+        return `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+    }
+
+    async function displaySchedule() {
+        const scheduleContainer = document.querySelector('.schedule-container');
+        if (!scheduleContainer) {
+            console.error('Schedule container not found');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/lessons'); // Assumes API is at this path
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const lessons = await response.json();
+
+            scheduleContainer.innerHTML = ''; // Clear any existing content
+
+            if (lessons.length === 0) {
+                scheduleContainer.innerHTML = '<p>No upcoming lessons scheduled at the moment. Please check back later!</p>';
+                return;
+            }
+
+            lessons.forEach(lesson => {
+                const lessonEntry = document.createElement('div');
+                lessonEntry.className = 'class-entry';
+
+                const lessonDate = new Date(lesson.date);
+                // Adjust for timezone offset to display date as it was entered
+                const adjustedDate = new Date(lessonDate.getUTCFullYear(), lessonDate.getUTCMonth(), lessonDate.getUTCDate());
+                const dateString = adjustedDate.toLocaleDateString('en-US', {
+                    year: 'numeric', month: 'long', day: 'numeric'
+                });
+
+                const timeString = lesson.time ? formatTime_12hr(lesson.time) : 'Time TBD';
+                // Assuming 'student' column from 'bookings' table is used for 'students' display
+                const studentsDisplay = lesson.student || 'N/A'; 
+
+                lessonEntry.innerHTML = `
+                    <h3>${lesson.program || 'Program TBD'}</h3>
+                    <p><strong>Date:</strong> ${dateString}</p>
+                    <p><strong>Time:</strong> ${timeString}</p>
+                    <p><strong>Coach:</strong> ${lesson.coach || 'Coach TBD'}</p>
+                    <p><strong>Students:</strong> ${studentsDisplay}</p>
+                `;
+                scheduleContainer.appendChild(lessonEntry);
+            });
+
+        } catch (error) {
+            console.error('Error fetching schedule:', error);
+            scheduleContainer.innerHTML = '<p style="color:red;">Could not load the schedule at this time. Please try again later.</p>';
+        }
+    }
+
   document.addEventListener('DOMContentLoaded', () => {
     // --- Menu Toggle Script ---
     const menuToggle = document.querySelector('.mobile-menu-toggle');
@@ -555,6 +604,7 @@ footer.site-footer {
       }
     }
     checkSession(); 
+    displaySchedule(); // Call the function to load lessons
   }); 
 
   function logout() { fetch('/api/logout', { method: 'POST', credentials: 'include' }).then(() => { document.cookie = "userFirstName=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; const existingGreeting = document.querySelector('.welcome-greeting'); if (existingGreeting) existingGreeting.remove(); location.reload(); }); }

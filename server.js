@@ -119,6 +119,36 @@ ensureNewsletterTable().catch(err => {
   // process.exit(1); // Optionally exit if schema setup is critical
 });
 
+// Function to ensure 'general_schedule' table exists
+async function ensureGeneralScheduleTable() {
+  const client = await pool.connect();
+  try {
+    const createGeneralScheduleTableQuery = `
+      CREATE TABLE IF NOT EXISTS general_schedule (
+          id SERIAL PRIMARY KEY,
+          program TEXT NOT NULL,
+          day_of_week INTEGER NOT NULL,
+          start_time TIME NOT NULL,
+          end_time TIME NOT NULL
+      );
+    `;
+    await client.query(createGeneralScheduleTableQuery);
+    console.log('Table "general_schedule" is ready (created if it did not exist).');
+  } catch (err) {
+    console.error('Error creating "general_schedule" table:', err.stack);
+    // Decide if the application should exit or continue if table creation fails
+    // For now, just log the error. In production, you might want to process.exit(1)
+  } finally {
+    client.release();
+  }
+}
+
+// Call this function at startup
+ensureGeneralScheduleTable().catch(err => {
+  console.error('Failed to ensure general_schedule schema:', err.stack);
+  // process.exit(1); // Optionally exit if schema setup is critical
+});
+
 // Ensure 'expenses' table exists
 (async () => {
   const createExpensesTableQuery = `
@@ -2590,6 +2620,97 @@ app.delete('/api/admin/expenses/:id', async (req, res) => {
   } catch (err) {
     console.error(`Error deleting expense with ID ${expenseId}:`, err);
     res.status(500).json({ message: 'Failed to delete expense due to a server error.' });
+  }
+});
+
+// GET /api/general-schedule - Fetches the general weekly schedule
+app.get('/api/general-schedule', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, program, day_of_week, start_time, end_time 
+       FROM general_schedule 
+       ORDER BY program ASC, day_of_week ASC, start_time ASC`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('Error fetching general schedule:', err.stack);
+    res.status(500).json({ error: "Failed to fetch general schedule." });
+  }
+});
+
+// POST /api/general-schedule - Creates or updates a general schedule slot
+app.post('/api/general-schedule', async (req, res) => {
+  const { id, program, day_of_week, start_time, end_time } = req.body;
+
+  // Basic validation
+  if (!program || typeof program !== 'string' || program.trim() === '') {
+    return res.status(400).json({ error: "Program is required and must be a non-empty string." });
+  }
+  if (day_of_week === undefined || typeof day_of_week !== 'number' || !Number.isInteger(day_of_week) || day_of_week < 0 || day_of_week > 6) {
+    return res.status(400).json({ error: "Day of week is required and must be an integer between 0 and 6." });
+  }
+  // Basic time validation (HH:MM or HH:MM:SS).
+  const timeRegex = /^\d{2}:\d{2}(:\d{2})?$/;
+  if (!start_time || !timeRegex.test(start_time)) {
+    return res.status(400).json({ error: "Start time is required and must be in HH:MM or HH:MM:SS format." });
+  }
+  if (!end_time || !timeRegex.test(end_time)) {
+    return res.status(400).json({ error: "End time is required and must be in HH:MM or HH:MM:SS format." });
+  }
+
+  try {
+    if (id) {
+      // Update existing entry
+      const result = await pool.query(
+        `UPDATE general_schedule 
+         SET program = $1, day_of_week = $2, start_time = $3, end_time = $4 
+         WHERE id = $5`,
+        [program.trim(), day_of_week, start_time, end_time, id]
+      );
+      if (result.rowCount === 0) {
+        return res.status(404).json({ error: "Schedule slot not found for the given ID." });
+      }
+      res.json({ success: true, id: id });
+    } else {
+      // Insert new entry
+      const result = await pool.query(
+        `INSERT INTO general_schedule (program, day_of_week, start_time, end_time) 
+         VALUES ($1, $2, $3, $4) 
+         RETURNING id`,
+        [program.trim(), day_of_week, start_time, end_time]
+      );
+      res.status(201).json({ success: true, id: result.rows[0].id });
+    }
+  } catch (err) {
+    console.error('Error saving general schedule slot:', err.stack);
+    res.status(500).json({ error: "Failed to save schedule slot." });
+  }
+});
+
+// DELETE /api/general-schedule/:id - Deletes a general schedule slot
+app.delete('/api/general-schedule/:id', async (req, res) => {
+  const { id } = req.params;
+  const scheduleId = parseInt(id, 10);
+
+  // Validate ID
+  if (isNaN(scheduleId) || scheduleId <= 0) {
+    return res.status(400).json({ error: "Invalid ID format. ID must be a positive integer." });
+  }
+
+  try {
+    const result = await pool.query(
+      `DELETE FROM general_schedule WHERE id = $1`,
+      [scheduleId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Slot not found." });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error deleting general schedule slot:', err.stack);
+    res.status(500).json({ error: "Failed to delete schedule slot." });
   }
 });
 

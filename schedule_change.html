@@ -1,550 +1,303 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Manage Schedule - C2 Tennis Academy</title>
-
-  <style>
-    html, body { height: 100%; margin: 0; display: flex; flex-direction: column; font-family: Arial, sans-serif; }
-    header, footer { background-color: #0c3c78; color: white; text-align: center; padding: 20px; }
-    nav { background-color: #092e5e; display: flex; justify-content: center; }
-    nav a { color: white; padding: 14px 20px; text-decoration: none; }
-    nav a:hover { background-color: #0f4fa0; }
-    section { flex: 1; padding: 40px 20px; max-width: 1400px; width: 90%; margin: auto; background: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    h2 { color: #0c3c78; margin-bottom: 20px; }
-    form { margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 40px; }
-    .full-width { grid-column: 1 / -1; }
-    label { display: block; font-weight: bold; color: #0c3c78; margin-bottom: 5px; }
-    input, select, button { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
-    button { 
-      background-color: #0c3c78; 
-      color: white; 
-      cursor: pointer; 
-      display: inline-block;
-      width: auto; 
-      margin: 5px; 
-      text-align: center; 
-      padding: 10px 15px; 
-    }
-    button:hover { background-color: #0f4fa0; }
-    .form-actions button { margin-right: 10px;}
-
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { padding: 10px; border:1px solid #ddd; text-align: left; }
-    thead th { background: #0c3c78; color: white; }
-    .edit-btn, .delete-btn {
-        padding: 5px 10px;
-        font-size: 0.9em;
-        margin-right: 5px;
-    }
-    .edit-btn { background-color: #ffc107; color: black; }
-    .edit-btn:hover { background-color: #e0a800; }
-    .delete-btn { background-color: #dc3545; color: white; }
-    .delete-btn:hover { background-color: #c82333; }
-
-    #message-banner {
-        padding: 10px;
-        border-radius: 5px;
-        color: white;
-        text-align: center;
-        margin-bottom: 20px; /* Added margin for spacing */
-    }
-    #message-banner.success { background-color: #28a745; }
-    #message-banner.error { background-color: #dc3545; }
-
-/* === Global Header & Navigation Styles (Copied from admin.html) === */
-     header {
-       background-color: #0c3c78; 
-       color: white; 
-       padding: 30px 20px; 
-       position: relative; 
-       text-align: center; 
-     }
-     .header-content { 
-       display: flex; justify-content: center; align-items: center; 
-       max-width: 1200px; margin: 0 auto;
-       position: relative; 
-     }
-     .site-title { text-align: center; } 
-     .site-title h1 { 
-       font-size: 2.2em;    
-       margin-top: 0;
-       margin-bottom: 0; 
-       color: white; 
-     } 
-     .site-title p { 
-       font-size: 1em;    
-       margin-top: 0;
-       margin-bottom: 0;
-       color: #f0f0f0;
-     }
-     
-     .mobile-menu-toggle { display: none; background: none; border: none; color: white; font-size: 28px; cursor: pointer; padding: 5px; }
-     nav.main-navigation { background-color: #092e5e; }
-     .nav-wrapper-desktop { 
-         display: flex; justify-content: center; align-items: center;
-         width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 20px; box-sizing: border-box;
-     }
-     ul.nav-links-desktop { list-style: none; margin: 0; padding: 0; display: flex; }
-     ul.nav-links-desktop li a { color: white; padding: 14px 20px; text-decoration: none; display: block; border-radius: 9999px;} 
-     ul.nav-links-desktop li a:hover { background-color: #0f4fa0; }
-     ul.nav-links-desktop li a.highlighted-nav, ul.nav-links-desktop li a.current-page { 
-        background-color: #d8f352; color: black; font-weight: bold; border-radius: 9999px; 
-     }
-     ul.nav-links-desktop li a.highlighted-nav:hover, ul.nav-links-desktop li a.current-page:hover { background-color: #c1da3b; }
-     
-     .auth-buttons-desktop { 
-       position: absolute;
-       top: 20px; 
-       right: 20px; 
-       display: flex;
-       align-items: center;
-       gap: 15px; 
-     }
-     .auth-buttons-desktop a button, .auth-buttons-desktop button {
-       background-color: white; color: #0c3c78; border: none; padding: 10px 20px; 
-       border-radius: 5px; font-weight: bold; cursor: pointer;
-       transition: all 0.3s ease; white-space: nowrap;
-     }
-     .auth-buttons-desktop a button:hover, .auth-buttons-desktop button:hover { background-color: #0f4fa0; color: white; }
-     .mobile-menu-container {
-       display: none; background-color: #092e5e; position: fixed;
-       top: 0; left: 0; width: 100%; height: 100%;
-       z-index: 1000; padding-top: 20px;
-       box-sizing: border-box; overflow-y: auto; text-align: center;
-     }
-     nav.main-navigation.mobile-menu--open .mobile-menu-container { display: block; }
-     .mobile-menu-close {
-        display: block; 
-        position: absolute; 
-        top: 10px; 
-        right: 10px; 
-        left: auto; 
-        bottom: auto; 
-        background: none; 
-        border: none; 
-        color: white; 
-        font-size: 28px; 
-        cursor: pointer;
-        z-index: 10; 
-     }
-     ul.nav-links-mobile { list-style: none; padding: 0; margin: 50px 0 20px; }
-     ul.nav-links-mobile li a {
-       color: white; padding: 15px 20px; text-decoration: none; display: block;
-       border-bottom: 1px solid #0c3c78; border-radius: 9999px;
-     }
-     ul.nav-links-mobile li:last-child a { border-bottom: none; }
-     ul.nav-links-mobile li a:hover { background-color: #0f4fa0; }
-     .auth-buttons-mobile { padding: 20px; }
-     .auth-buttons-mobile a button, .auth-buttons-mobile button {
-       background-color: #d8f352; color: #0c3c78; border: none; padding: 12px 20px;
-       border-radius: 5px; font-weight: bold; cursor: pointer; display: block;
-       width: 80%; max-width: 250px; margin: 10px auto; box-sizing: border-box;
-     }
-     .auth-buttons-mobile a button:hover, .auth-buttons-mobile button:hover { 
-       background-color: #0f4fa0; 
-       color: white; 
-     }
-     
-     footer { 
-        background-color: #0c3c78; color: white; text-align: center; padding: 20px; margin-top:auto; 
-     }
-
-     @media (max-width: 768px) {
-       body { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; } 
-       header { padding: 10px 15px; } 
-       .header-content {
-         justify-content: space-between; 
-         width:100%; 
-       }
-       .site-title { text-align: left; }
-       .site-title h1 { font-size: 1.2em; margin-bottom: 0; }
-       .site-title p { display: none; } 
-       .mobile-menu-toggle { display: block; }
-       .nav-wrapper-desktop { display: none; }
-       .auth-buttons-desktop { display: none; } 
-       nav.main-navigation { padding: 0; background-color: transparent; }
-       form { grid-template-columns: 1fr; }
-       section { padding: 20px 10px; }
-       #lessons-table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    }
-/* === End Global Header & Navigation Styles === */
-  </style>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Schedule - C2 Tennis Academy</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1, h2 { color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #007bff; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="time"], input[type="date"], input[type="number"], select {
+            width: calc(100% - 22px);
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 5px;
+        }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-primary:hover { background-color: #0056b3; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .btn-danger:hover { background-color: #c82333; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .btn-secondary:hover { background-color: #545b62; }
+        .action-buttons button { margin-right: 5px; }
+        #cancel-slot-btn { display: none; } /* Initially hidden */
+        #message-banner { display: none; padding: 10px; margin-bottom: 15px; border-radius: 4px; text-align: center; font-weight: bold;}
+        .message-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .message-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <h1>Manage General Weekly Schedule</h1>
 
-<header>
-  <div class="header-content">
-    <div class="site-title">
-      <h1>Manage Schedule</h1> 
-      <p>C2 Tennis Academy</p> 
-    </div>
-    <button class="mobile-menu-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mainNavigation">
-      &#9776; 
-    </button>
-  </div>
-  <div class="auth-buttons-desktop" id="authContainerDesktop">
-    <!-- Populated by checkSession JS -->
-  </div>
-</header>
+        <div id="message-banner"></div>
 
-<nav class="main-navigation" id="mainNavigation">
-  <div class="nav-wrapper-desktop"> 
-     <ul class="nav-links-desktop">
-       <li><a href="index.html">Home</a></li>
-       <li><a href="admin.html">Admin Dashboard</a></li>
-       <li><a href="schedule.html">View Schedule</a></li>
-       <li><a href="contact.html">Contact</a></li>
-     </ul>
-  </div>
-  <div class="mobile-menu-container">
-    <button class="mobile-menu-close" aria-label="Close navigation menu">&times;</button>
-    <ul class="nav-links-mobile">
-      <li><a href="index.html">Home</a></li>
-      <li><a href="admin.html">Admin Dashboard</a></li>
-      <li><a href="schedule.html">View Schedule</a></li>
-      <li><a href="contact.html">Contact</a></li>
-    </ul>
-    <div class="auth-buttons-mobile" id="authContainerMobile">
-      <!-- Populated by checkSession JS -->
-    </div>
-  </div>
-</nav>
+        <h2>Add/Edit Schedule Slot</h2>
+        <form id="slot-form">
+            <input type="hidden" id="slot-id">
+            <div class="form-group">
+                <label for="slot-program">Program:</label>
+                <select id="slot-program" required>
+                    <option value="Summer Camp">Summer Camp</option>
+                    <option value="Kids Camp">Kids Camp</option>
+                    <option value="Adult Clinics">Adult Clinics</option>
+                    <option value="Private Lesson">Private Lesson</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="slot-day">Day of Week:</label>
+                <select id="slot-day" required>
+                    <option value="0">Sunday</option>
+                    <option value="1">Monday</option>
+                    <option value="2">Tuesday</option>
+                    <option value="3">Wednesday</option>
+                    <option value="4">Thursday</option>
+                    <option value="5">Friday</option>
+                    <option value="6">Saturday</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="slot-start">Start Time:</label>
+                <input type="time" id="slot-start" required>
+            </div>
+            <div class="form-group">
+                <label for="slot-end">End Time:</label>
+                <input type="time" id="slot-end" required>
+            </div>
+            <button type="submit" id="add-slot-btn" class="btn btn-primary">Add Slot</button>
+            <button type="button" id="cancel-slot-btn" class="btn btn-secondary">Cancel Edit</button>
+        </form>
 
-<section>
-    <h2>Add/Edit Lesson</h2>
-    <div id="message-banner" style="display: none;"></div>
-    <form id="lesson-form">
-        <input type="hidden" id="lesson-id">
-        <div>
-            <label for="program">Program:</label>
-            <select id="program" name="program" required>
-                <option value="" disabled selected>Select Program</option>
-                <option value="Private Lesson">Private Lesson</option>
-                <option value="Summer Camp - Day Pass">Summer Camp - Day Pass</option>
-                <option value="Summer Camp - Week Pass">Summer Camp - Week Pass</option>
-                <option value="Kids Camp - Day Pass">Kids Camp - Day Pass</option>
-                <option value="Kids Camp - Week Pass">Kids Camp - Week Pass</option>
-                <option value="Adult Clinics">Adult Clinics</option>
-                <!-- Add other programs as needed -->
-            </select>
-        </div>
-        <div>
-            <label for="coach">Coach:</label>
-            <select id="coach" name="coach" required>
-                <option value="" disabled selected>Select Coach</option>
-                <option value="Ricardo Carvajalino">Ricardo Carvajalino</option>
-                <option value="Jacob Capone">Jacob Capone</option>
-                <option value="Zachary Capone">Zachary Capone</option>
-                <option value="Paula Carvajalino">Paula Carvajalino</option>
-                <!-- Add other coaches as needed -->
-            </select>
-        </div>
-        <div>
-            <label for="date">Date:</label>
-            <input type="text" id="date" name="date" placeholder="YYYY-MM-DD" required>
-        </div>
-        <div>
-            <label for="time">Time:</label>
-            <input type="text" id="time" name="time" placeholder="HH:MM" required>
-        </div>
-        <div class="full-width">
-            <label for="students">Students:</label>
-            <input type="text" id="students" name="students" placeholder="Enter student names (comma-separated if multiple)" required>
-        </div>
-        <div class="full-width form-actions">
-            <button type="submit" id="add-lesson-btn">Add Lesson</button>
-            <button type="submit" id="save-lesson-btn" style="display:none;">Save Changes</button>
-            <button type="button" id="cancel-edit-btn" style="display:none;">Cancel Edit</button>
-        </div>
-    </form>
-
-    <h2>Upcoming Lessons</h2>
-    <div id="lessons-table-container">
-        <!-- Table will be rendered here by JavaScript -->
-    </div>
-</section>
-
-<footer>
-    <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
-</footer>
-
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    flatpickr('#date', { dateFormat: 'Y-m-d', altInput: true, altFormat: 'F j, Y' });
-    flatpickr('#time', { enableTime: true, noCalendar: true, dateFormat: 'H:i', altInput: true, altFormat: 'h:i K' });
-
-    const lessonForm = document.getElementById('lesson-form');
-    const lessonIdInput = document.getElementById('lesson-id');
-    const programInput = document.getElementById('program');
-    const coachInput = document.getElementById('coach');
-    const dateInput = document.getElementById('date');
-    const timeInput = document.getElementById('time');
-    const studentsInput = document.getElementById('students');
-    
-    const addLessonBtn = document.getElementById('add-lesson-btn');
-    const saveLessonBtn = document.getElementById('save-lesson-btn');
-    const cancelEditBtn = document.getElementById('cancel-edit-btn');
-    
-    const messageBanner = document.getElementById('message-banner');
-    const lessonsTableContainer = document.getElementById('lessons-table-container');
-
-    let currentEditLessonId = null;
-    let allLessonsData = []; // To store fetched lessons for editing
-
-    function displayMessage(message, isError = false) {
-        messageBanner.textContent = message;
-        messageBanner.className = isError ? 'error' : 'success';
-        messageBanner.style.display = 'block';
-        setTimeout(() => {
-            messageBanner.style.display = 'none';
-        }, 5000); // Hide after 5 seconds
-    }
-
-    function renderLessonsTable(lessons) {
-        allLessonsData = lessons; // Store for easy access when editing
-        lessonsTableContainer.innerHTML = ''; // Clear previous table
-
-        if (!lessons || lessons.length === 0) {
-            lessonsTableContainer.innerHTML = '<p>No upcoming lessons.</p>';
-            return;
-        }
-
-        const table = document.createElement('table');
-        table.innerHTML = `
+        <h2>Current Schedule</h2>
+        <table id="slots-table">
             <thead>
                 <tr>
                     <th>Program</th>
-                    <th>Coach</th>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Students</th>
+                    <th>Day</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
+                <!-- Rows will be populated by JavaScript -->
             </tbody>
-        `;
-        const tbody = table.querySelector('tbody');
+        </table>
+    </div>
 
-        lessons.forEach(lesson => {
-            const tr = tbody.insertRow();
-            tr.innerHTML = `
-                <td>${lesson.program || ''}</td>
-                <td>${lesson.coach || ''}</td>
-                <td>${lesson.date ? new Date(lesson.date).toLocaleDateString() : ''}</td>
-                <td>${lesson.time || ''}</td>
-                <td>${lesson.student || ''}</td> 
-                <td>
-                    <button class="edit-btn" data-id="${lesson.id}">Edit</button>
-                    <button class="delete-btn" data-id="${lesson.id}">Delete</button>
-                </td>
-            `;
-        });
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            let currentScheduleData = []; // Store fetched schedule
 
-        lessonsTableContainer.appendChild(table);
+            // DOM Elements
+            const tableBody = document.getElementById('slots-table').querySelector('tbody');
+            const slotForm = document.getElementById('slot-form');
+            const slotIdInput = document.getElementById('slot-id');
+            const programInput = document.getElementById('slot-program');
+            const dayInput = document.getElementById('slot-day');
+            const startTimeInput = document.getElementById('slot-start');
+            const endTimeInput = document.getElementById('slot-end');
+            const addSlotBtn = document.getElementById('add-slot-btn');
+            const cancelSlotBtn = document.getElementById('cancel-slot-btn');
+            const messageBanner = document.getElementById('message-banner');
 
-        // Add event listeners to new buttons
-        document.querySelectorAll('.edit-btn').forEach(button => {
-            button.addEventListener('click', handleEditClick);
-        });
-        document.querySelectorAll('.delete-btn').forEach(button => {
-            button.addEventListener('click', handleDeleteClick);
-        });
-    }
-
-    async function fetchLessons() {
-        try {
-            const response = await fetch('/api/lessons');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+            // Function to display messages
+            function displayMessage(message, isError) {
+                messageBanner.textContent = message;
+                messageBanner.className = isError ? 'message-error' : 'message-success';
+                messageBanner.style.display = 'block';
+                setTimeout(() => {
+                    messageBanner.style.display = 'none';
+                }, 5000); // Hide after 5 seconds
             }
-            const lessons = await response.json();
-            renderLessonsTable(lessons);
-        } catch (error) {
-            console.error('Error fetching lessons:', error);
-            displayMessage('Failed to load lessons. ' + error.message, true);
-        }
-    }
 
-    function switchToEditMode(lesson) {
-        lessonForm.reset(); // Clear form first
-        currentEditLessonId = lesson.id;
-        
-        lessonIdInput.value = lesson.id;
-        programInput.value = lesson.program;
-        coachInput.value = lesson.coach;
-        // Flatpickr instances need to be set with their setDate method
-        flatpickrInstanceDate.setDate(lesson.date, true); // true to triggerFormat
-        flatpickrInstanceTime.setDate(lesson.time, true); // true to triggerFormat
-        studentsInput.value = lesson.student; // 'student' not 'students' from GET /api/lessons
-
-        addLessonBtn.style.display = 'none';
-        saveLessonBtn.style.display = 'inline-block';
-        cancelEditBtn.style.display = 'inline-block';
-        lessonForm.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    function switchToAddMode() {
-        lessonForm.reset();
-        currentEditLessonId = null;
-        lessonIdInput.value = ''; // Clear hidden ID field
-        // Reset flatpickr instances
-        flatpickrInstanceDate.clear();
-        flatpickrInstanceTime.clear();
-
-        addLessonBtn.style.display = 'inline-block';
-        saveLessonBtn.style.display = 'none';
-        cancelEditBtn.style.display = 'none';
-    }
-
-    function handleEditClick(event) {
-        const lessonId = parseInt(event.target.dataset.id);
-        const lessonToEdit = allLessonsData.find(lesson => lesson.id === lessonId);
-        if (lessonToEdit) {
-            switchToEditMode(lessonToEdit);
-        } else {
-            displayMessage('Could not find lesson data to edit.', true);
-        }
-    }
-
-    async function handleDeleteClick(event) {
-        const lessonId = parseInt(event.target.dataset.id);
-        if (!confirm(`Are you sure you want to delete lesson ID ${lessonId}?`)) {
-            return;
-        }
-
-        event.target.disabled = true;
-        try {
-            const response = await fetch('/api/lessons/delete', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: lessonId })
-            });
-            const result = await response.json();
-            if (result.success) {
-                displayMessage('Lesson deleted successfully.');
-                fetchLessons(); // Refresh table
-            } else {
-                displayMessage(result.message || 'Error deleting lesson.', true);
+            // Function to reset form and UI mode
+            function resetFormAndUIMode() {
+                slotForm.reset();
+                slotIdInput.value = '';
+                addSlotBtn.textContent = 'Add Slot';
+                addSlotBtn.disabled = false;
+                cancelSlotBtn.style.display = 'none';
             }
-        } catch (error) {
-            console.error('Error deleting lesson:', error);
-            displayMessage('Error deleting lesson: ' + error.message, true);
-        } finally {
-            if (event.target) event.target.disabled = false;
-        }
-    }
 
-    cancelEditBtn.addEventListener('click', switchToAddMode);
+            // Function to populate form for editing
+            function handleEditButtonClick(event) {
+                const slotId = event.target.dataset.id;
+                const slotToEdit = currentScheduleData.find(slot => slot.id == slotId);
 
-    lessonForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const submitButton = currentEditLessonId ? saveLessonBtn : addLessonBtn;
-        submitButton.disabled = true;
+                if (slotToEdit) {
+                    slotIdInput.value = slotToEdit.id;
+                    programInput.value = slotToEdit.program;
+                    dayInput.value = slotToEdit.day_of_week;
+                    startTimeInput.value = slotToEdit.start_time;
+                    endTimeInput.value = slotToEdit.end_time;
 
-        const formData = {
-            program: programInput.value,
-            coach: coachInput.value,
-            date: dateInput.value, // Flatpickr ensures YYYY-MM-DD
-            time: timeInput.value, // Flatpickr ensures HH:MM
-            students: studentsInput.value 
-        };
-
-        let url = '/api/lessons/create';
-        let method = 'POST';
-
-        if (currentEditLessonId) {
-            url = '/api/lessons/update';
-            formData.id = currentEditLessonId;
-        }
-
-        try {
-            const response = await fetch(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
-            const result = await response.json();
-
-            if (result.success) {
-                displayMessage(`Lesson ${currentEditLessonId ? 'updated' : 'created'} successfully.`);
-                switchToAddMode();
-                fetchLessons();
-            } else {
-                displayMessage(result.message || 'Error saving lesson.', true);
-            }
-        } catch (error) {
-            console.error('Error saving lesson:', error);
-            displayMessage('Error saving lesson: ' + error.message, true);
-        } finally {
-            submitButton.disabled = false;
-        }
-    });
-    
-    // Store flatpickr instances to use their API methods like setDate or clear
-    const flatpickrInstanceDate = flatpickr('#date', { dateFormat: 'Y-m-d', altInput: true, altFormat: 'F j, Y' });
-    const flatpickrInstanceTime = flatpickr('#time', { enableTime: true, noCalendar: true, dateFormat: 'H:i', altInput: true, altFormat: 'h:i K' });
-
-
-    // Initial setup
-    fetchLessons();
-    switchToAddMode();
-
-
-    // --- checkSession and logout functions for Admin Portal (copied from admin.html) --- 
-    async function checkSession() {
-        const existingGreeting = document.querySelector('.welcome-greeting');
-        if (existingGreeting) existingGreeting.remove();
-         
-        try {
-            const res = await fetch('/api/check-session', { credentials: 'include' });
-            const data = await res.json(); 
-
-            const authContainerDesktop = document.getElementById('authContainerDesktop');
-            const authContainerMobile = document.getElementById('authContainerMobile');
-            
-            if (data && data.loggedIn === true && data.isAdmin === true) {
-                const portalButtonText = data.firstName ? 'Admin (' + data.firstName + ')' : 'Admin Portal';
-                const loggedInHTML = '<a href="admin.html"><button>' + portalButtonText + '</button></a><button onclick="logout()">Logout</button>';
-                
-                if (authContainerDesktop) authContainerDesktop.innerHTML = loggedInHTML;
-                if (authContainerMobile) authContainerMobile.innerHTML = loggedInHTML; // Assuming same for mobile
-
-                const welcomeMessageText = data.firstName ? 'Welcome, ' + data.firstName + '!' : 'Welcome, Admin!';
-                const greeting = document.createElement('div');
-                greeting.className = 'welcome-greeting';
-                greeting.textContent = welcomeMessageText;
-                greeting.style.cssText = 'background:#0c3c78;color:white;padding:10px;text-align:center;font-weight:bold;';
-                
-                if(document.body.firstChild) { 
-                    document.body.insertBefore(greeting, document.body.firstChild);
-                } else { 
-                    document.body.appendChild(greeting);
+                    addSlotBtn.textContent = 'Save Slot';
+                    cancelSlotBtn.style.display = 'inline-block';
+                    slotForm.scrollIntoView({ behavior: 'smooth' });
                 }
-            } else {
-                window.location.href = 'login.html'; 
             }
-        } catch (err) {
-            console.error('Session check failed, redirecting to login:', err);
-            window.location.href = 'login.html'; 
-        }
-    }
 
-    window.logout = function() { 
-        fetch('/api/logout', { method: 'POST', credentials: 'include' })
-            .then(() => {
-                const existingGreeting = document.querySelector('.welcome-greeting');
-                if (existingGreeting) existingGreeting.remove();
-                window.location.href = 'login.html'; 
+            // Function to handle delete button click
+            async function handleDeleteButtonClick(event) {
+                const slotId = event.target.dataset.id;
+                if (!confirm(`Are you sure you want to delete this slot (ID: ${slotId})?`)) {
+                    return;
+                }
+
+                event.target.disabled = true;
+
+                try {
+                    const response = await fetch(`/api/general-schedule/${slotId}`, {
+                        method: 'DELETE',
+                    });
+
+                    if (response.ok) {
+                        displayMessage("Slot deleted successfully.", false);
+                        fetchAndRenderSchedule(); // Refresh the table
+                    } else {
+                        const errData = await response.json().catch(() => ({ error: "Failed to parse error response." }));
+                        displayMessage(`Error deleting slot: ${errData.error || response.statusText}`, true);
+                        event.target.disabled = false;
+                    }
+                } catch (error) {
+                    console.error('Error deleting slot:', error);
+                    displayMessage("An unexpected error occurred while deleting.", true);
+                    event.target.disabled = false;
+                }
+            }
+            
+            // Function to attach event listeners to buttons in table rows
+            function attachActionListeners() {
+                document.querySelectorAll('.edit-btn').forEach(btn => {
+                    // Remove old listener before adding new one to prevent duplicates
+                    // Clone and replace is a common way to do this
+                    const newBtn = btn.cloneNode(true);
+                    btn.parentNode.replaceChild(newBtn, btn);
+                    newBtn.addEventListener('click', handleEditButtonClick);
+                });
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                     const newBtn = btn.cloneNode(true);
+                     btn.parentNode.replaceChild(newBtn, btn);
+                     newBtn.addEventListener('click', handleDeleteButtonClick);
+                });
+            }
+
+
+            async function fetchAndRenderSchedule() {
+                try {
+                    const response = await fetch('/api/general-schedule');
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    currentScheduleData = await response.json(); // Store data
+
+                    tableBody.innerHTML = ''; // Clear existing rows
+
+                    currentScheduleData.forEach(slot => {
+                        const row = tableBody.insertRow();
+                        
+                        row.insertCell().textContent = slot.program;
+                        row.insertCell().textContent = DAYS_OF_WEEK[slot.day_of_week] || 'Invalid Day';
+                        row.insertCell().textContent = slot.start_time;
+                        row.insertCell().textContent = slot.end_time;
+
+                        const actionsCell = row.insertCell();
+                        actionsCell.classList.add('action-buttons');
+
+                        const editButton = document.createElement('button');
+                        editButton.textContent = 'Edit';
+                        editButton.classList.add('btn', 'btn-secondary', 'edit-btn');
+                        editButton.dataset.id = slot.id;
+                        
+                        const deleteButton = document.createElement('button');
+                        deleteButton.textContent = 'Delete';
+                        deleteButton.classList.add('btn', 'btn-danger', 'delete-btn');
+                        deleteButton.dataset.id = slot.id;
+                        
+                        actionsCell.appendChild(editButton);
+                        actionsCell.appendChild(deleteButton);
+                    });
+                    
+                    attachActionListeners(); // Attach listeners after rows are created
+
+                } catch (error) {
+                    console.error('Error fetching schedule:', error);
+                    displayMessage('Failed to load the schedule. ' + error.message, true);
+                }
+            }
+
+            // Form submission handler (Add/Update)
+            slotForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                addSlotBtn.disabled = true;
+
+                const id = slotIdInput.value;
+                const payload = {
+                    program: programInput.value,
+                    day_of_week: parseInt(dayInput.value, 10),
+                    start_time: startTimeInput.value,
+                    end_time: endTimeInput.value,
+                };
+
+                let url = '/api/general-schedule';
+                // Method is always POST as per backend, differentiation is done by presence of ID in payload
+                // let method = 'POST'; // Not needed to change method
+
+                if (id) {
+                    payload.id = parseInt(id, 10);
+                }
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST', // Always POST
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                    });
+
+                    if (response.ok) {
+                        // const result = await response.json(); // Not strictly needed unless using the ID from result
+                        displayMessage(id ? "Slot updated successfully." : "Slot added successfully.", false);
+                        resetFormAndUIMode();
+                        fetchAndRenderSchedule(); // Refresh table
+                    } else {
+                        const errData = await response.json().catch(() => ({ error: "Failed to parse error response." }));
+                        displayMessage(`Error: ${errData.error || response.statusText}`, true);
+                    }
+                } catch (error) {
+                    console.error('Error saving slot:', error);
+                    displayMessage("An unexpected error occurred while saving.", true);
+                } finally {
+                    addSlotBtn.disabled = false;
+                }
             });
-    }
 
-    checkSession(); // Call on page load
-});
-</script>
+            // Cancel button handler
+            cancelSlotBtn.addEventListener('click', () => {
+                resetFormAndUIMode();
+            });
+
+            // Initial load
+            resetFormAndUIMode(); // Ensure form is in initial state
+            fetchAndRenderSchedule();
+        });
+    </script>
 </body>
 </html>

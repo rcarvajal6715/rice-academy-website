@@ -28,8 +28,6 @@
       flex: 1;
     }
     /* Original Page-specific styles for schedule.html */
-    /* Footer style will be handled by global styles */
-    /* Main title "Training Schedule" */
     section h2 { /* Made selector more specific to avoid affecting header h1 if it were h2 */
       text-align: center;
       color: #0c3c78;
@@ -49,18 +47,39 @@
       border-radius: 10px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
-    .class-entry {
-      border-bottom: 1px solid #ddd;
-      padding: 15px 0;
+    /* Styles for dynamically generated general schedule */
+    .program-group {
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
     }
-    .class-entry:last-child {
-      border-bottom: none;
+    .program-group:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
     }
-    .class-entry h3 {
-      margin: 0 0 5px;
-      color: #0c3c78;
+    .program-group h3 {
+        color: #0c3c78; /* Theme color */
+        margin-top: 0;
+        margin-bottom: 10px;
+        font-size: 1.5em;
     }
-    /* End of Original Page-specific styles */
+    .program-group p {
+        margin: 5px 0;
+        font-size: 1em;
+        line-height: 1.6;
+        color: #333;
+    }
+    .schedule-container .error-message {
+        color: #dc3545; /* Red for errors */
+        font-weight: bold;
+        text-align: center;
+    }
+     .schedule-container .no-schedule-message {
+        color: #6c757d; /* Gray for informative messages */
+        text-align: center;
+        font-style: italic;
+    }
 
 
 /* === Global Header & Navigation Styles (Finalized Version) === */
@@ -207,10 +226,10 @@ ul.nav-links-mobile li a {
         margin-left: 0; 
         margin-right: 0; 
     }
-    .class-entry h3 {
-        font-size: 1.1em;
+    .program-group h3 { /* Adjusted for new structure */
+        font-size: 1.3em;
     }
-    .class-entry p {
+    .program-group p { /* Adjusted for new structure */
         font-size: 0.9em;
     }
 }
@@ -226,10 +245,10 @@ ul.nav-links-mobile li a {
     .schedule-container {
         padding: 15px;
     }
-    .class-entry h3 {
-        font-size: 1em;
+    .program-group h3 { /* Adjusted for new structure */
+        font-size: 1.1em;
     }
-    .class-entry p {
+    .program-group p { /* Adjusted for new structure */
         font-size: 0.85em;
     }
 }
@@ -421,7 +440,7 @@ footer.site-footer {
       </div>
 
       <div class="schedule-container">
-        <!-- Lessons will be dynamically loaded here -->
+        <!-- General schedule will be dynamically loaded here -->
       </div>
     </section>
   </main>
@@ -491,69 +510,68 @@ footer.site-footer {
   </script>
 
   <script>
+    // THIS IS THE OLD FUNCTION, RETAINED BUT NOT CALLED ON PAGE LOAD ANYMORE FOR THIS PAGE
     // Function to format time to 12-hour AM/PM
-    function formatTime_12hr(timeStr) {
-        if (!timeStr || !timeStr.includes(':')) return timeStr;
-        const parts = timeStr.split(':');
-        let hours = parseInt(parts[0], 10);
-        const minutes = parseInt(parts[1], 10);
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12;
-        hours = hours ? hours : 12; // 0 should be 12
-        return `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
-    }
+    // function formatTime_12hr(timeStr) { 
+    //     if (!timeStr || !timeStr.includes(':')) return timeStr;
+    //     const parts = timeStr.split(':');
+    //     let hours = parseInt(parts[0], 10);
+    //     const minutes = parseInt(parts[1], 10);
+    //     const ampm = hours >= 12 ? 'PM' : 'AM';
+    //     hours = hours % 12;
+    //     hours = hours ? hours : 12; // 0 should be 12
+    //     return `${hours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+    // }
 
-    async function displaySchedule() {
-        const scheduleContainer = document.querySelector('.schedule-container');
-        if (!scheduleContainer) {
-            console.error('Schedule container not found');
-            return;
-        }
+    // async function displaySchedule() { // RENAMED TO AVOID CONFLICT IF NEEDED, OR REMOVE IF UNUSED
+    //     const scheduleContainer = document.querySelector('.schedule-container');
+    //     if (!scheduleContainer) {
+    //         console.error('Schedule container not found');
+    //         return;
+    //     }
 
-        try {
-            const response = await fetch('/api/lessons'); // Assumes API is at this path
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const lessons = await response.json();
+    //     try {
+    //         const response = await fetch('/api/lessons'); 
+    //         if (!response.ok) {
+    //             throw new Error(`HTTP error! status: ${response.status}`);
+    //         }
+    //         const lessons = await response.json();
 
-            scheduleContainer.innerHTML = ''; // Clear any existing content
+    //         scheduleContainer.innerHTML = ''; 
 
-            if (lessons.length === 0) {
-                scheduleContainer.innerHTML = '<p>No upcoming lessons scheduled at the moment. Please check back later!</p>';
-                return;
-            }
+    //         if (lessons.length === 0) {
+    //             scheduleContainer.innerHTML = '<p>No upcoming lessons scheduled at the moment. Please check back later!</p>';
+    //             return;
+    //         }
 
-            lessons.forEach(lesson => {
-                const lessonEntry = document.createElement('div');
-                lessonEntry.className = 'class-entry';
+    //         lessons.forEach(lesson => {
+    //             const lessonEntry = document.createElement('div');
+    //             lessonEntry.className = 'class-entry'; // This class might be removed if not styled/used
 
-                const lessonDate = new Date(lesson.date);
-                // Adjust for timezone offset to display date as it was entered
-                const adjustedDate = new Date(lessonDate.getUTCFullYear(), lessonDate.getUTCMonth(), lessonDate.getUTCDate());
-                const dateString = adjustedDate.toLocaleDateString('en-US', {
-                    year: 'numeric', month: 'long', day: 'numeric'
-                });
+    //             const lessonDate = new Date(lesson.date);
+    //             const adjustedDate = new Date(lessonDate.getUTCFullYear(), lessonDate.getUTCMonth(), lessonDate.getUTCDate());
+    //             const dateString = adjustedDate.toLocaleDateString('en-US', {
+    //                 year: 'numeric', month: 'long', day: 'numeric'
+    //             });
 
-                const timeString = lesson.time ? formatTime_12hr(lesson.time) : 'Time TBD';
-                // Assuming 'student' column from 'bookings' table is used for 'students' display
-                const studentsDisplay = lesson.student || 'N/A'; 
+    //             const timeString = lesson.time ? formatTime_12hr(lesson.time) : 'Time TBD';
+    //             const studentsDisplay = lesson.student || 'N/A'; 
 
-                lessonEntry.innerHTML = `
-                    <h3>${lesson.program || 'Program TBD'}</h3>
-                    <p><strong>Date:</strong> ${dateString}</p>
-                    <p><strong>Time:</strong> ${timeString}</p>
-                    <p><strong>Coach:</strong> ${lesson.coach || 'Coach TBD'}</p>
-                    <p><strong>Students:</strong> ${studentsDisplay}</p>
-                `;
-                scheduleContainer.appendChild(lessonEntry);
-            });
+    //             lessonEntry.innerHTML = `
+    //                 <h3>${lesson.program || 'Program TBD'}</h3>
+    //                 <p><strong>Date:</strong> ${dateString}</p>
+    //                 <p><strong>Time:</strong> ${timeString}</p>
+    //                 <p><strong>Coach:</strong> ${lesson.coach || 'Coach TBD'}</p>
+    //                 <p><strong>Students:</strong> ${studentsDisplay}</p>
+    //             `;
+    //             scheduleContainer.appendChild(lessonEntry);
+    //         });
 
-        } catch (error) {
-            console.error('Error fetching schedule:', error);
-            scheduleContainer.innerHTML = '<p style="color:red;">Could not load the schedule at this time. Please try again later.</p>';
-        }
-    }
+    //     } catch (error) {
+    //         console.error('Error fetching schedule:', error);
+    //         scheduleContainer.innerHTML = '<p style="color:red;">Could not load the schedule at this time. Please try again later.</p>';
+    //     }
+    // }
 
   document.addEventListener('DOMContentLoaded', () => {
     // --- Menu Toggle Script ---
@@ -604,7 +622,94 @@ footer.site-footer {
       }
     }
     checkSession(); 
-    displaySchedule(); // Call the function to load lessons
+    // displaySchedule(); // OLD CALL - REMOVED / COMMENTED OUT
+
+    // --- NEW: General Schedule Display Logic ---
+    const scheduleContainer = document.querySelector('.schedule-container');
+    const DAYS_OF_WEEK_ABBREV = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    function formatTime12Hour(timeString) {
+        if (!timeString || !timeString.includes(':')) return 'N/A';
+        const [hoursStr, minutesStr] = timeString.split(':');
+        let hours = parseInt(hoursStr, 10);
+        const minutes = parseInt(minutesStr, 10);
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // the hour '0' should be '12'
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+    }
+
+    async function fetchAndRenderGeneralSchedule() {
+        if (!scheduleContainer) {
+            console.error('.schedule-container element not found.');
+            return;
+        }
+        scheduleContainer.innerHTML = ''; // Clear previous content
+
+        try {
+            const response = await fetch('/api/general-schedule');
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            const slots = await response.json();
+
+            if (!slots || slots.length === 0) {
+                scheduleContainer.innerHTML = '<p class="no-schedule-message">No general schedule available at the moment.</p>';
+                return;
+            }
+
+            const scheduleByProgram = {};
+            slots.forEach(slot => {
+                if (!scheduleByProgram[slot.program]) {
+                    scheduleByProgram[slot.program] = [];
+                }
+                scheduleByProgram[slot.program].push(slot);
+            });
+            
+            // Sort programs by name for consistent order
+            const sortedProgramNames = Object.keys(scheduleByProgram).sort();
+
+            for (const programName of sortedProgramNames) {
+                const programGroupDiv = document.createElement('div');
+                programGroupDiv.className = 'program-group';
+
+                const programTitle = document.createElement('h3');
+                programTitle.textContent = programName;
+                programGroupDiv.appendChild(programTitle);
+
+                // Sort slots within a program by day, then by start time
+                scheduleByProgram[programName].sort((a, b) => {
+                    if (a.day_of_week !== b.day_of_week) {
+                        return a.day_of_week - b.day_of_week;
+                    }
+                    // Convert time to minutes from midnight for comparison
+                    const timeToMinutes = (timeStr) => {
+                        const [h, m] = timeStr.split(':').map(Number);
+                        return h * 60 + m;
+                    };
+                    return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
+                });
+
+                scheduleByProgram[programName].forEach(slot => {
+                    const dayName = DAYS_OF_WEEK_ABBREV[slot.day_of_week] || 'N/A';
+                    const startTimeFormatted = formatTime12Hour(slot.start_time);
+                    const endTimeFormatted = formatTime12Hour(slot.end_time);
+
+                    const slotPara = document.createElement('p');
+                    slotPara.textContent = `${dayName}: ${startTimeFormatted} – ${endTimeFormatted}`;
+                    programGroupDiv.appendChild(slotPara);
+                });
+                scheduleContainer.appendChild(programGroupDiv);
+            }
+
+        } catch (error) {
+            console.error('Failed to fetch general schedule:', error);
+            scheduleContainer.innerHTML = `<p class="error-message">Failed to load schedule. Please try again later. (${error.message})</p>`;
+        }
+    }
+
+    fetchAndRenderGeneralSchedule(); // Call to load the general schedule
+
   }); 
 
   function logout() { fetch('/api/logout', { method: 'POST', credentials: 'include' }).then(() => { document.cookie = "userFirstName=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; const existingGreeting = document.querySelector('.welcome-greeting'); if (existingGreeting) existingGreeting.remove(); location.reload(); }); }

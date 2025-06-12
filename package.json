@@ -10,10 +10,12 @@
     "test": "mocha test_financials.js"
   },
   "dependencies": {
+    "@radix-ui/react-slot": "^1.2.3",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "connect-pg-simple": "^9.0.0",
     "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
     "dotenv": "^16.5.0",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
@@ -22,6 +24,7 @@
     "nodemailer": "^7.0.3",
     "pdfkit": "^0.17.1",
     "pg": "^8.16.0",
+    "react-day-picker": "^9.7.0",
     "shadcn-ui": "^0.9.5",
     "stripe": "^18.1.0",
     "tailwindcss": "^4.1.10",

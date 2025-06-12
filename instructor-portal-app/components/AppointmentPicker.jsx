@@ -1,15 +1,16 @@
+cat > components/AppointmentPicker.jsx << 'EOF'
+"use client"
 
-
-import React, { useState } from "react";
-import { Button } from "./ui/button";
-import { Calendar } from "./ui/calendar";
-import { ScrollArea } from "./ui/scroll-area";
-import { format } from "date-fns";
+import React, { useState } from "react"
+import { Button } from "./ui/button"
+import { Calendar } from "./ui/calendar"
+import { ScrollArea } from "./ui/scroll-area"
+import { format } from "date-fns"
 
 export default function AppointmentPicker() {
-  const today = new Date();
-  const [date, setDate] = useState(today);
-  const [time, setTime] = useState(null);
+  const today = new Date()
+  const [date, setDate] = useState(today)
+  const [time, setTime] = useState(null)
 
   const timeSlots = [
     { time: "09:00", available: false },
@@ -30,7 +31,7 @@ export default function AppointmentPicker() {
     { time: "16:30", available: true },
     { time: "17:00", available: true },
     { time: "17:30", available: true },
-  ];
+  ]
 
   return (
     <div className="rounded-lg border border-border p-4 bg-white">
@@ -39,14 +40,12 @@ export default function AppointmentPicker() {
           mode="single"
           selected={date}
           onSelect={(d) => {
-            if (d) {
-              setDate(d);
-              setTime(null);
-            }
+            if (d) { setDate(d); setTime(null) }
           }}
           className="p-2 bg-background"
           disabled={[{ before: today }]}
         />
+
         <div className="relative w-full max-sm:h-48 sm:w-40">
           <ScrollArea className="h-full py-4 border-t sm:border-l border-border">
             <div className="space-y-3">
@@ -71,15 +70,12 @@ export default function AppointmentPicker() {
           </ScrollArea>
         </div>
       </div>
-      <p
-        className="mt-4 text-center text-xs text-muted-foreground"
-        role="region"
-        aria-live="polite"
-      >
-        Selected: {time || "none"}
-        <br />
+
+      <p className="mt-4 text-center text-xs text-muted-foreground" role="region" aria-live="polite">
+        Selected: {time || "none"}<br/>
         Appointment picker powered by React DayPicker.
       </p>
     </div>
-  );
+  )
 }
+EOF

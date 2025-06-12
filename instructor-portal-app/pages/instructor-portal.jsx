@@ -1,28 +1,34 @@
 import React, { useState } from 'react';
-import AppointmentPicker from '../components/AppointmentPicker'
+import AppointmentPicker from '../components/AppointmentPicker';
 // import { cn } from '../rice-academy-app/src/lib/utils'; // cn might not be needed yet
-import { Calendar } from '@/components/ui/calendar'
+// import { Calendar } from '@/components/ui/calendar'; // No longer directly used here
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
-import { Button } from '@/components/ui/button'
+import Footer from '@/components/Footer';
+import { Button } from '@/components/ui/button';
 
 const InstructorPortal = () => {
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [selectedTime, setSelectedTime] = useState('');
+  // const [selectedDate, setSelectedDate] = useState(null); // Replaced by hiddenDate/hiddenTime logic
+  // const [selectedTime, setSelectedTime] = useState(''); // Replaced by hiddenDate/hiddenTime logic
   const [program, setProgram] = useState(''); // New state for program
   const [isBooking, setIsBooking] = useState(false);
   const [bookingMessage, setBookingMessage] = useState('');
   const [bookingStatus, setBookingStatus] = useState(''); // 'success' or 'error'
+  const [showAppointmentPicker, setShowAppointmentPicker] = useState(false);
+  const [hiddenDate, setHiddenDate] = useState('');
+  const [hiddenTime, setHiddenTime] = useState('');
+  // const [pickedDateObject, setPickedDateObject] = useState(null); // If needed for display beyond the new p tag
+  // const [pickedTimeValue, setPickedTimeValue] = useState(''); // If needed for display beyond the new p tag
+
 
   const handleBooking = async () => {
-    if (!selectedDate || !selectedTime) {
+    if (!hiddenDate || !hiddenTime) {
       setBookingMessage('Please select a date and time.');
       setBookingStatus('error');
       return;
     }
 
     // Program state is now used directly
-    // const program = document.getElementById('coach-program')?.value; 
+    // const program = document.getElementById('coach-program')?.value;
     const studentName = document.getElementById('coach-student')?.value;
     const price = document.getElementById('coach-price')?.value;
 
@@ -49,8 +55,8 @@ const InstructorPortal = () => {
     }
 
     const payload = {
-      date: selectedDate.toISOString().split('T')[0], // YYYY-MM-DD
-      time: selectedTime,
+      date: hiddenDate, // YYYY-MM-DD
+      time: hiddenTime,
       program: program,
       ...(program === 'Private Lesson' && { student: studentName }),
       lesson_cost: price ? parseFloat(price) : null,
@@ -112,12 +118,14 @@ const InstructorPortal = () => {
     
         <h2>Add Lesson</h2>
         <form id="coach-lesson-form">
+          <input type="hidden" id="coach-date" name="coach-date" value={hiddenDate} />
+          <input type="hidden" id="coach-time" name="coach-time" value={hiddenTime} />
           <div>
             <label htmlFor="coach-program">Program</label>
-            <select 
-              id="coach-program" 
-              value={program} 
-              onChange={(e) => setProgram(e.target.value)} 
+            <select
+              id="coach-program"
+              value={program}
+              onChange={(e) => setProgram(e.target.value)}
               required
             >
               <option value="" disabled >Choose a program</option>
@@ -143,34 +151,17 @@ const InstructorPortal = () => {
               </select>
             </div>
           )}
-          <div style={{marginTop: '10px'}}>
-            <label htmlFor="coach-date-calendar" className="block mb-1 font-medium">Date</label>
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={setSelectedDate}
-              className="rounded-md border"
-              disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-            />
-            {selectedDate && <p className="mt-1 text-sm">Selected: {selectedDate.toLocaleDateString()}</p>}
-          </div>
-          <div style={{marginTop: '10px'}}>
-            <label htmlFor="coach-time" className="block mb-1 font-medium">Time</label>
-            <select
-              id="coach-time"
-              value={selectedTime}
-              onChange={(e) => setSelectedTime(e.target.value)}
-              required
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+          <div style={{ marginTop: '10px' }}>
+            <Button
+              type="button" // Important: type="button" to prevent form submission
+              onClick={() => setShowAppointmentPicker(true)}
+              className="w-full bg-green-500 hover:bg-green-600 text-white" // Example Tailwind classes
             >
-              <option value="" disabled>Select a time</option>
-              {Array.from({ length: (20 - 8) * 2 + 1 }, (_, i) => { // From 8:00 to 20:00
-                const hour = 8 + Math.floor(i / 2);
-                const minute = (i % 2) * 30;
-                const timeValue = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-                return <option key={timeValue} value={timeValue}>{timeValue}</option>;
-              })}
-            </select>
+              Pick Date & Time
+            </Button>
+            {(hiddenDate && hiddenTime) && (
+              <p className="mt-2 text-sm text-gray-600">Selected: {new Date(hiddenDate + 'T' + hiddenTime).toLocaleString()}</p>
+            )}
           </div>
           <div style={{marginTop: '10px'}}>
             <label htmlFor="coach-price">Price</label>
@@ -251,6 +242,19 @@ const InstructorPortal = () => {
     {/* End of main content */}
       </div>
       <Footer />
+      {showAppointmentPicker && (
+        <AppointmentPicker
+          onDateTimeChange={(isoDate, timeStr) => {
+            setHiddenDate(isoDate);
+            setHiddenTime(timeStr);
+            // Optionally, update pickedDateObject and pickedTimeValue if still needed elsewhere
+            // For example, if you want to display the selected date/time immediately in a human-readable format
+            // For now, we'll directly use isoDate and timeStr for the hidden fields
+            setShowAppointmentPicker(false);
+          }}
+          onClose={() => setShowAppointmentPicker(false)}
+        />
+      )}
     </>
   );
 };

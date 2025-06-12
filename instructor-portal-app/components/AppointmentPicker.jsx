@@ -1,74 +1,74 @@
-"use client"
+import React, { useState } from 'react';
+import { Calendar } from '@/components/ui/calendar';
+import { Button } from '@/components/ui/button';
 
-import React, { useState } from "react"
-import { Button } from "./ui/button"
-import { Calendar } from "./ui/calendar"
-import { ScrollArea } from "./ui/scroll-area"
-import { format } from "date-fns"
+const AppointmentPicker = ({ onDateTimeChange, onClose }) => {
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedTime, setSelectedTime] = useState(null);
 
-export default function AppointmentPicker() {
-  const today = new Date()
-  const [date, setDate] = useState(today)
-  const [time, setTime] = useState(null)
+  const timeSlots = Array.from({ length: (20 - 8) * 2 + 1 }, (_, i) => {
+    const hour = 8 + Math.floor(i / 2);
+    const minute = (i % 2) * 30;
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  });
 
-  const timeSlots = [
-    { time: "09:00", available: false },
-    { time: "09:30", available: false },
-    { time: "10:00", available: true },
-    { time: "10:30", available: true },
-    { time: "11:00", available: true },
-    { time: "11:30", available: true },
-    { time: "12:00", available: false },
-    { time: "12:30", available: true },
-    { time: "13:00", available: true },
-    { time: "13:30", available: true },
-    { time: "14:00", available: true },
-    { time: "14:30", available: false },
-    { time: "15:00", available: false },
-    { time: "15:30", available: true },
-    { time: "16:00", available: true },
-    { time: "16:30", available: true },
-    { time: "17:00", available: true },
-    { time: "17:30", available: true },
-  ]
+  const handleConfirm = () => {
+    if (selectedDate && selectedTime) {
+      onDateTimeChange(selectedDate.toISOString().split('T')[0], selectedTime);
+    } else {
+      alert('Please select a date and time.');
+    }
+  };
 
   return (
-    <div className="rounded-lg border border-gray-200 p-4 bg-white">
-      <div className="flex flex-col sm:flex-row gap-4">
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 50,
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        padding: '20px',
+        borderRadius: '8px',
+        minWidth: '300px',
+      }}>
+        <h2 className="text-lg font-semibold mb-4">Select Date and Time</h2>
         <Calendar
           mode="single"
-          selected={date}
-          onSelect={(d) => d && (setDate(d), setTime(null))}
-          className="bg-background p-2"
-          disabled={[{ before: today }]}
+          selected={selectedDate}
+          onSelect={setSelectedDate}
+          disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+          className="rounded-md border mb-4"
         />
-
-        <div className="flex-1">
-          <ScrollArea className="h-64 border-t sm:border-l border-gray-200">
-            <div className="p-4 space-y-3">
-              <p className="text-sm font-medium">{format(date, "EEEE, MMM d")}</p>
-              <div className="grid grid-cols-2 gap-2">
-                {timeSlots.map(({ time: ts, available }) => (
-                  <Button
-                    key={ts}
-                    variant={time === ts ? "default" : "outline"}
-                    size="sm"
-                    className="w-full"
-                    onClick={() => available && setTime(ts)}
-                    disabled={!available}
-                  >
-                    {ts}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </ScrollArea>
+        <div className="mb-4">
+          <h3 className="text-md font-semibold mb-2">Select Time Slot</h3>
+          <div className="grid grid-cols-4 gap-2">
+            {timeSlots.map(time => (
+              <Button
+                key={time}
+                variant={selectedTime === time ? "default" : "outline"}
+                onClick={() => setSelectedTime(time)}
+                className="m-1"
+              >
+                {time}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <div className="flex justify-end space-x-2">
+          <Button variant="outline" onClick={onClose}>Close</Button>
+          <Button onClick={handleConfirm}>Confirm</Button>
         </div>
       </div>
-
-      <p className="mt-4 text-center text-sm text-gray-500">
-        Selected time: {time || "none"}
-      </p>
     </div>
-  )
-}
+  );
+};
+
+export default AppointmentPicker;

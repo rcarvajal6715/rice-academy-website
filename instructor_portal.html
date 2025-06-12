@@ -5,8 +5,6 @@
   rel="stylesheet"
   href="https://cdn.jsdelivr.net/npm/react-day-picker@9.7.0/lib/style.css"
 />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Coach Portal - C2 Tennis Academy</title>
@@ -432,6 +430,8 @@ ul.nav-links-mobile li a {
   
       <h2>Add Lesson</h2>
       <form id="coach-lesson-form">
+<input type="hidden" id="coach-date" name="date" />
+<input type="hidden" id="coach-time" name="time" />
         <div>
           <label for="coach-program">Program</label>
           <select id="coach-program" required>
@@ -453,13 +453,9 @@ ul.nav-links-mobile li a {
             <option value="" disabled selected>Choose session owner</option>
           </select>
         </div>
-        <div style="margin-top:10px;">
-          <label for="coach-date">Date</label>
-          <input type="date" id="coach-date" required />
-        </div>
-        <div style="margin-top:10px;">
-          <label for="coach-time">Time</label>
-          <input type="time" id="coach-time" required />
+        <div style="margin-top:1rem;">
+          <button id="open-picker" type="button">Pick Date & Time</button>
+          <span id="chosen-datetime" style="margin-left:.5rem;"></span>
         </div>
         <div style="margin-top:10px;">
           <label for="coach-price">Price</label>
@@ -741,10 +737,6 @@ function showToast(message, type = 'success') {
 document.addEventListener('DOMContentLoaded', async function() {
    populateTimeDropdowns();
   
-   flatpickr("#time-block-date", {
-    dateFormat: "Y-m-d",
-    minDate: "today"
-  });
   const calendarEl = document.getElementById('coach-availability-calendar');
   const submitBtn = document.getElementById('submit-offdays');
   const { formatDate } = FullCalendar;
@@ -1215,18 +1207,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </script>
 <!-- placeholder -->
-<div id="react-appointment-root" style="margin:1em 0;"></div>
 
 <!-- react & your UMD bundle -->
+<div id="react-appointment-root"></div>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="/js/appointmentPicker.umd.js"></script>
 <script>
-  document.addEventListener("DOMContentLoaded", () => {
-    mountAppointmentPicker("react-appointment-root", {
-      onChange: ({date, time}) => {
-        document.getElementById("coach-date").value = date.toISOString().slice(0,10);
-        document.getElementById("coach-time").value = time;
+  document.getElementById('open-picker').addEventListener('click', () => {
+    mountAppointmentPicker('react-appointment-root', {
+      onSelect: ({ date, time }) => {
+        document.getElementById('coach-date').value = date.toISOString().slice(0,10);
+        document.getElementById('coach-time').value = time;
+        document.getElementById('chosen-datetime').textContent =
+          `${date.toLocaleDateString()} @ ${time}`;
       }
     });
   });

@@ -30,7 +30,7 @@ export default {
       preventAssignment: true
     }),
     // 1) let Rollup understand CSS imports
-    postcss({
+    ({
       // extract: true,      // uncomment if you want a separate CSS file
       minimize: true,
     }),

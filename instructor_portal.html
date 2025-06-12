@@ -1212,20 +1212,45 @@ document.addEventListener('DOMContentLoaded', () => {
 <div id="react-appointment-root"></div>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script>
-      window.process = { env: { NODE_ENV: 'production' } };
-    </script>
+<script src="https://unpkg.com/date-fns@2.30.0/dist/date-fns.min.js"></script>
+<script src="https://unpkg.com/react-day-picker@9.7.0/dist/index.umd.min.js"></script>
 <script src="/instructor-portal-app/public/js/appointmentPicker.umd.js"></script>
 <script>
   document.getElementById('open-picker').addEventListener('click', () => {
-    ReactDOM.render(React.createElement(window.mountAppointmentPicker, {
-      onSelect: ({ date, time }) => {
-        document.getElementById('coach-date').value = date.toISOString().slice(0,10);
-        document.getElementById('coach-time').value = time;
-        document.getElementById('chosen-datetime').textContent =
-          `${date.toLocaleDateString()} @ ${time}`;
-      }
-    }), document.getElementById('react-appointment-root'));
+    let rootElement = document.getElementById('react-appointment-root');
+    // Ensure the root element exists, create if not (though it's already in the HTML)
+    if (!rootElement) {
+      console.error('The react-appointment-root element was not found!');
+      // As a fallback, create and append, though this indicates an issue if it's missing.
+      // rootElement = document.createElement('div');
+      // rootElement.id = 'react-appointment-root';
+      // Append to a sensible default if #react-appointment-root is unexpectedly missing.
+      // document.body.appendChild(rootElement); 
+      // For this specific HTML, it's better to ensure it's where it's expected,
+      // or error out if critical structure is missing.
+      // The div#react-appointment-root is already present, so direct usage is fine.
+    }
+   
+    // Ensure window.mountAppointmentPicker is available
+    if (typeof window.mountAppointmentPicker === 'function') {
+      window.mountAppointmentPicker({
+        onSelect: ({ date, time }) => {
+          document.getElementById('coach-date').value = date.toISOString().slice(0,10);
+          document.getElementById('coach-time').value = time;
+          document.getElementById('chosen-datetime').textContent =
+            `${date.toLocaleDateString()} @ ${time}`;
+          
+          // Optional: unmount the component after selection to hide it
+          // if (rootElement) {
+          //   ReactDOM.unmountComponentAtNode(rootElement);
+          // }
+        },
+        // Pass any other initial props needed by AppointmentPicker here
+        // initialDate: new Date(), // Example
+      }, rootElement);
+    } else {
+      console.error('mountAppointmentPicker function not found on window object.');
+    }
   });
 </script>
 </body>

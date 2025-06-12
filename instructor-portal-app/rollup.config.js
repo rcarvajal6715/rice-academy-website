@@ -6,7 +6,7 @@ import babel    from '@rollup/plugin-babel';
 import postcss  from 'rollup-plugin-postcss';
 
 export default {
-  input: 'components/AppointmentPicker.jsx',
+  input: 'src/entry-appointment-picker.js',
   external: [
     'react',
     'react-dom',

@@ -1215,14 +1215,14 @@ document.addEventListener('DOMContentLoaded', () => {
 <script src="/instructor-portal-app/public/js/appointmentPicker.umd.js"></script>
 <script>
   document.getElementById('open-picker').addEventListener('click', () => {
-    mountAppointmentPicker('react-appointment-root', {
+    ReactDOM.render(React.createElement(window.mountAppointmentPicker, {
       onSelect: ({ date, time }) => {
         document.getElementById('coach-date').value = date.toISOString().slice(0,10);
         document.getElementById('coach-time').value = time;
         document.getElementById('chosen-datetime').textContent =
           `${date.toLocaleDateString()} @ ${time}`;
       }
-    });
+    }), document.getElementById('react-appointment-root'));
   });
 </script>
 </body>

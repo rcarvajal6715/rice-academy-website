@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 // import { cn } from '../rice-academy-app/src/lib/utils'; // cn might not be needed yet
-import { Calendar } from '../rice-academy-app/src/components/ui/calendar';
-import Header from '../../components/Header';
-import Footer from '../../Footer';
+import { Calendar } from './rice-academy-app/src/components/ui/calendar';
+import Header from './Header';
+import Footer from './Footer';
 
 const InstructorPortal = () => {
   const [selectedDate, setSelectedDate] = useState(null);

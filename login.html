@@ -470,14 +470,14 @@ footer.site-footer {
       let response = await fetch('/api/coach/login', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
       });
-      if (response.ok) { window.location.href = 'instructor_portal.jsx'; return; }
+      if (response.ok) { window.location.href = '/instructor-portal';return; }
       response = await fetch('/api/login', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
       });
        if (response.ok) {
         const data = await response.json();
         if (data.isAdmin) { window.location.href = 'admin.html'; }
-        else if (data.isCoach) { window.location.href = 'instructor_portal.jsx';} 
+        else if (data.isCoach) { window.location.href = '/instructor-portal';} 
         else { window.location.href = 'parent_portal.html'; }
       } else { const errorText = await response.text(); alert('Login failed: ' + errorText); }
     } catch (error) { alert('An error occurred: ' + error.message); }

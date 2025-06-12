@@ -27,10 +27,11 @@ export default {
   plugins: [
     replace({
       'process.env.NODE_ENV': JSON.stringify('production'),
-      preventAssignment: true
+      preventAssignment: true,
+      include: ['node_modules/**']
     }),
     // 1) let Rollup understand CSS imports
-    ({
+    postcss({
       // extract: true,      // uncomment if you want a separate CSS file
       minimize: true,
     }),
@@ -39,7 +40,9 @@ export default {
     resolve({ extensions: ['.js', '.jsx'] }),
 
     // 3) convert CommonJS modules to ES
-    commonjs(),
+    commonjs({
+      transformMixedEsModules: true
+    }),
 
     // 4) transpile JSX → JS
     babel({

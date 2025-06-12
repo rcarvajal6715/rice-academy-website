@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import AppointmentPicker from '../components/AppointmentPicker'
 // import { cn } from '../rice-academy-app/src/lib/utils'; // cn might not be needed yet
 import { Calendar } from '@/components/ui/calendar'
 import Header from '@/components/Header'

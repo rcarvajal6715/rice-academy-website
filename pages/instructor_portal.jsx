@@ -1,23 +1,25 @@
-import React, { useState } from 'react';
-// import { cn } from '../rice-academy-app/src/lib/utils'; // cn might not be needed yet
-import { Calendar } from '@/components/ui/calendar'
-import Header from '@/components/Header'
-import Footer from '@/components/Footer'
-import { Button } from '@/components/ui/button'
+import '../styles/globals.css'
+import React, { useState } from 'react'
 
-const InstructorPortal = () => {
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [selectedTime, setSelectedTime] = useState('');
-  const [program, setProgram] = useState(''); // New state for program
-  const [isBooking, setIsBooking] = useState(false);
-  const [bookingMessage, setBookingMessage] = useState('');
-  const [bookingStatus, setBookingStatus] = useState(''); // 'success' or 'error'
+import Header   from '../components/Header'
+import Footer   from '../components/Footer'
+import { Calendar } from '../components/ui/calendar'
+import { Button }   from '../components/ui/button'
+
+
+export default function InstructorPortal() {
+  const [selectedDate, setSelectedDate] = useState(null)
+  const [selectedTime, setSelectedTime] = useState('')
+  const [program, setProgram] = useState('')
+  const [isBooking, setIsBooking] = useState(false)
+  const [bookingMessage, setBookingMessage] = useState('')
+  const [bookingStatus, setBookingStatus] = useState('') // 'success' or 'error'
 
   const handleBooking = async () => {
     if (!selectedDate || !selectedTime) {
-      setBookingMessage('Please select a date and time.');
-      setBookingStatus('error');
-      return;
+      setBookingMessage('Please select a date and time.')
+      setBookingStatus('error')
+      return
     }
 
     // Program state is now used directly
@@ -254,4 +256,4 @@ const InstructorPortal = () => {
   );
 };
 
-export default InstructorPortal;
+

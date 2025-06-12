@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/> 
   <title>Login - C2 Tennis Academy</title> 
+  <link rel="stylesheet" href="footer.css">
 
   <meta name="description" content="C2 Tennis Academy in Texas offers elite tennis training, junior programs, and high-performance coaching using AI and video analysis.">
   <meta name="keywords" content="C2 Tennis Academy, tennis lessons Texas, UTR tennis, junior tennis, adult clinics, tennis training academy">
@@ -151,9 +152,12 @@
      }
      .auth-buttons-mobile a button:hover, .auth-buttons-mobile button:hover { background-color: #c1da3b; }
      
-     footer { /* Global footer style */
-        background-color: #0c3c78; color: white; text-align: center; padding: 20px; margin-top:auto; 
-     }
+     footer {
+  background-color: #0c3c78;
+  color: white;
+  text-align: center;
+  padding: 20px;
+}
 
      @media (max-width: 768px) {
        body { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; } 
@@ -200,6 +204,135 @@ ul.nav-links-mobile li a {
   border-radius: 9999px;
 }
 /* End of Global Header & Navigation Styles */
+
+ 
+
+/* Make all footer links white */
+.site-footer a {
+  color: white !important;
+}
+
+/* Color the social-icon <img> white via CSS filter */
+.social-icon {
+  filter: brightness(0) invert(1);
+}
+
+/* Footer contact icons */
+.contact-item {
+  display: flex;
+  align-items: center;
+  margin: 6px 0;
+}
+.contact-item .contact-icon {
+  width: 20px;
+  height: 20px;
+  fill: white;
+  margin-right: 8px;
+}
+
+/* Newsletter form */
+.newsletter-signup input[type="email"] {
+  width: calc(100% - 90px);
+  padding: 10px;
+  margin-right: 5px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  box-sizing: border-box;
+  display: inline-block;
+  vertical-align: middle;
+}
+.newsletter-signup button[type="submit"] {
+  width: 80px;
+  padding: 10px;
+  background-color: #d8f352;
+  color: #0c3c78;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-weight: bold;
+  display: inline-block;
+  vertical-align: middle;
+}
+.newsletter-signup button[type="submit"]:hover {
+  background-color: #c1da3b;
+}
+.newsletter-message {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+.newsletter-message.success {
+  background-color: #e6ffed;
+  color: #006421;
+  border: 1px solid #c3e6cb;
+}
+.newsletter-message.error {
+  background-color: #ffe6e6;
+  color: #800000;
+  border: 1px solid #f5c6cb;
+}
+
+@media (max-width: 480px) {
+  .newsletter-signup input[type="email"],
+  .newsletter-signup button[type="submit"] {
+    width: 100%;
+    display: block;
+    margin-right: 0;
+    margin-bottom: 5px;
+  }
+  .newsletter-signup input[type="email"] {
+    margin-bottom: 10px;
+  }
+}
+
+.footer-logo {
+  display: block;
+  max-width: 120px;
+  margin: 0 auto 12px;
+}
+
+/* Final wrapper override */
+.footer-wrapper {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.footer-col {
+  flex: 0 0 auto;
+  margin: 0 16px;
+}
+
+/* ---- Reduce footer height ---- */
+footer.site-footer {
+  /* shrink top & bottom padding from 20px to 8px */
+  padding: 8px 10px;
+}
+
+/* tighten up column gutters */
+.footer-col {
+  /* shrink margin from 10px to 5px */
+  flex: 1 1 200px;
+  margin: 5px;
+}
+
+/* reduce spacing under each heading */
+.footer-col h4 {
+  margin-bottom: 4px; /* was 8px */
+}
+
+/* tighten up contact items vertically */
+.contact-item {
+  margin: 4px 0; /* was 6px 0 */
+}
+
+/* if you want the newsletter and social blocks a bit tighter: */
+.newsletter-signup,
+.social {
+  margin-bottom: 8px; /* add if you need extra control */
+}
   </style>
 </head>
 <body>
@@ -257,8 +390,60 @@ ul.nav-links-mobile li a {
 </div>
 </main>
 
-<footer>
-  <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
+<footer class="site-footer">
+  <div class="footer-wrapper">
+    <!-- Contact Column -->
+    <div class="footer-col">
+      <img src="C2white.png" alt="C2 Tennis Academy logo" class="footer-logo" />
+      <h4>Contact Us</h4>
+      <p class="contact-item">
+        <!-- Phone icon (Heroicon phone) -->
+        <svg xmlns="http://www.w3.org/2000/svg" class="contact-icon" viewBox="0 0 24 24">
+          <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l.82 2.464a1 1 0 01-.161.995l-2.16 
+                   2.16a16.025 16.025 0 006.586 6.586l2.16-2.16a1 1 0 01.995-.161l2.464.82a1 
+                   1 0 01.684.949V19a2 2 0 01-2 2h-1C9.715 21 3 14.285 3 6V5z"/>
+        </svg>
+        <a href="tel:6827022027">682-702-2027</a>
+      </p>
+      <p class="contact-item">
+        <!-- Mail icon (Material Design envelope) -->
+        <svg xmlns="http://www.w3.org/2000/svg" class="contact-icon" viewBox="0 0 24 24">
+          <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1
+                   -.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+        </svg>
+        <a href="mailto:c2tennisacademy@gmail.com">c2tennisacademy@gmail.com</a>
+      </p>
+    </div>
+
+    <!-- Newsletter Column -->
+    <div class="footer-col newsletter-signup">
+      <h4>Subscribe to our Newsletter</h4>
+      <form id="newsletterForm">
+        <input type="email" id="newsletterEmail" name="email" placeholder="Enter your email" required>
+        <button type="submit">Subscribe</button>
+      </form>
+      <div id="newsletterMessage" class="newsletter-message" style="display:none;"></div>
+    </div>
+
+    <!-- Social Column -->
+    <div class="footer-col social">
+      <h4>Follow Us</h4>
+      <a href="https://www.instagram.com" target="_blank" rel="noopener">
+        <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/instagram.svg"
+             alt="Instagram" class="social-icon">
+      </a>
+      <a href="https://www.facebook.com" target="_blank" rel="noopener">
+        <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/facebook.svg"
+             alt="Facebook" class="social-icon">
+      </a>
+    </div>
+
+    <!-- Copyright Column -->
+    <div class="footer-col">
+      <p>© 2025 C2 Tennis Academy. All Rights Reserved.<br>
+         Developing Champions On & Off the Court</p>
+    </div>
+  </div>
 </footer>
 
 <script>

@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>C2 Tennis Academy</title>
+
+  <link rel="stylesheet" href="footer.css">
   
   <!-- SEO Meta Tags -->
   <meta name="description" content="C2 Tennis Academy in Texas offers elite tennis training, junior programs, and high-performance coaching using AI and video analysis.">
@@ -235,22 +237,6 @@
         /* Centering is handled by parent .hero flex properties */
     }
 
-    .hero-text-content {
-        position: static;
-        transform: none;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-    }
-
-    .hero-text-content h1 { /* More specific selector */
-        margin-bottom: 0.5em;
-    }
-    .hero-text-content p { /* More specific selector */
-        margin-bottom: 1.5em;
-    }
-
     .hero h1 {
         font-size: 2.8em; /* Adjusted font size */
         color: white; /* Adjusted color */
@@ -315,6 +301,135 @@ ul.nav-links-desktop li a.highlighted-nav {
 ul.nav-links-mobile li a.highlighted-nav {
   border-radius: 9999px;
 }
+
+/* Make all footer links white */
+.site-footer a {
+  color: white !important;
+}
+
+/* Color the social-icon <img> white via CSS filter */
+.social-icon {
+  filter: brightness(0) invert(1);
+}
+
+/* Footer contact icons */
+.contact-item {
+  display: flex;
+  align-items: center;
+  margin: 6px 0;
+}
+.contact-item .contact-icon {
+  width: 20px;
+  height: 20px;
+  fill: white;
+  margin-right: 8px;
+}
+
+/* Newsletter form */
+.newsletter-signup input[type="email"] {
+  width: calc(100% - 90px);
+  padding: 10px;
+  margin-right: 5px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  box-sizing: border-box;
+  display: inline-block;
+  vertical-align: middle;
+}
+.newsletter-signup button[type="submit"] {
+  width: 80px;
+  padding: 10px;
+  background-color: #d8f352;
+  color: #0c3c78;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-weight: bold;
+  display: inline-block;
+  vertical-align: middle;
+}
+.newsletter-signup button[type="submit"]:hover {
+  background-color: #c1da3b;
+}
+.newsletter-message {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+.newsletter-message.success {
+  background-color: #e6ffed;
+  color: #006421;
+  border: 1px solid #c3e6cb;
+}
+.newsletter-message.error {
+  background-color: #ffe6e6;
+  color: #800000;
+  border: 1px solid #f5c6cb;
+}
+
+@media (max-width: 480px) {
+  .newsletter-signup input[type="email"],
+  .newsletter-signup button[type="submit"] {
+    width: 100%;
+    display: block;
+    margin-right: 0;
+    margin-bottom: 5px;
+  }
+  .newsletter-signup input[type="email"] {
+    margin-bottom: 10px;
+  }
+}
+
+.footer-logo {
+  display: block;
+  max-width: 120px;
+  margin: 0 auto 12px;
+}
+
+/* Final wrapper override */
+.footer-wrapper {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.footer-col {
+  flex: 0 0 auto;
+  margin: 0 16px;
+}
+
+/* ---- Reduce footer height ---- */
+footer.site-footer {
+  /* shrink top & bottom padding from 20px to 8px */
+  padding: 8px 10px;
+}
+
+/* tighten up column gutters */
+.footer-col {
+  /* shrink margin from 10px to 5px */
+  flex: 1 1 200px;
+  margin: 5px;
+}
+
+/* reduce spacing under each heading */
+.footer-col h4 {
+  margin-bottom: 4px; /* was 8px */
+}
+
+/* tighten up contact items vertically */
+.contact-item {
+  margin: 4px 0; /* was 6px 0 */
+}
+
+/* if you want the newsletter and social blocks a bit tighter: */
+.newsletter-signup,
+.social {
+  margin-bottom: 8px; /* add if you need extra control */
+}
+
+
   </style>
 </head>
 <body>
@@ -374,11 +489,11 @@ ul.nav-links-mobile li a.highlighted-nav {
         Our Mission
       </button>
       </div>
-     
+      <img src="mobilebackground.png" alt="Spinning background element" class="mobile-hero-spinning-image">
     </section>
   </main>
 
-<footer class="site-footer">
+  <footer class="site-footer">
   <div class="footer-wrapper">
    <!-- Contact Details -->
 <div class="footer-col">

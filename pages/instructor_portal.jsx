@@ -1,10 +1,10 @@
 
 import React, { useState } from 'react'
 
-import Header   from '../components/Header'
-import Footer   from '../components/Footer'
-import { Calendar } from '../components/ui/calendar'
-import { Button } from '../components/ui/button'
+import Header   from '@/components/Header'
+import Footer   from '@/components/Footer'
+import { Calendar } from '@/components/ui/calendar'
+import { Button } from '@/components/ui/button'
 
 export default function InstructorPortal() {
   const [selectedDate, setSelectedDate] = useState(null)
@@ -94,31 +94,32 @@ export default function InstructorPortal() {
   return (
     <>
       <Header />
-      <div>
+      <div className="flex-1 py-10 px-2.5 sm:px-5 max-w-7xl w-[90%] mx-auto bg-white rounded-lg shadow-lg">
         {/* Main content of the portal - REMAINS UNTOUCHED */}
       <section>
-        <h2>Your Upcoming Lessons</h2>
+        <h2 className="text-brand-blue text-2xl font-semibold mb-6">Your Upcoming Lessons</h2>
         <div id="lessons-cards"></div>
-        <h2>Submit Progress Update</h2>
-        <form id="progress-form">
-          <label htmlFor="student-select">Select Student:</label>
-          <select id="student-select">
+        <h2 className="text-brand-blue text-2xl font-semibold mb-6">Submit Progress Update</h2>
+        <form id="progress-form" className="mt-7 grid grid-cols-1 md:grid-cols-2 gap-5">
+          <label htmlFor="student-select" className="block font-bold text-brand-blue mb-1">Select Student:</label>
+          <select id="student-select" className="w-full p-2.5 rounded border border-brand-gray box-border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
             <option value="" disabled >Choose a student</option>
           </select>
-          <label htmlFor="feedback">Progress Summary:</label>
-          <textarea id="feedback" rows="5" placeholder="Write progress notes here..."></textarea>
-          <button type="submit">Submit</button>
+          <label htmlFor="feedback" className="block font-bold text-brand-blue mb-1 md:col-span-2">Progress Summary:</label>
+          <textarea id="feedback" rows="5" placeholder="Write progress notes here..." className="w-full p-2.5 rounded border border-brand-gray box-border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 md:col-span-2"></textarea>
+          <button type="submit" className="bg-brand-blue text-white cursor-pointer inline-block w-auto m-1 py-2.5 px-4 rounded hover:bg-brand-blue-hover text-center md:col-span-2">Submit</button>
         </form>
     
-        <h2>Add Lesson</h2>
-        <form id="coach-lesson-form">
+        <h2 className="text-brand-blue text-2xl font-semibold mb-6">Add Lesson</h2>
+        <form id="coach-lesson-form" className="mt-7 grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
-            <label htmlFor="coach-program">Program</label>
+            <label htmlFor="coach-program" className="block font-bold text-brand-blue mb-1">Program</label>
             <select 
               id="coach-program" 
               value={program} 
               onChange={(e) => setProgram(e.target.value)} 
               required
+              className="w-full p-2.5 rounded border border-brand-gray box-border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
             >
               <option value="" disabled >Choose a program</option>
               <option value="Private Lesson">Private Lesson</option>
@@ -130,21 +131,21 @@ export default function InstructorPortal() {
           </div>
           {program === 'Private Lesson' && (
             <div id="coach-student-container" className="mt-4">
-              <label htmlFor="coach-student">Student Name</label>
-              <input type="text" id="coach-student" placeholder="Enter student name" />
+              <label htmlFor="coach-student" className="block font-bold text-brand-blue mb-1">Student Name</label>
+              <input type="text" id="coach-student" placeholder="Enter student name" className="w-full p-2.5 rounded border border-brand-gray box-border focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
             </div>
           )}
           {program === 'Private Lesson' && (
             <div id="session-owner-container" className="mt-4">
-              <label htmlFor="session-owner-select">Session Owner</label>
-              <select id="session-owner-select"> {/* Assuming this select will be controlled or its value read directly */}
+              <label htmlFor="session-owner-select" className="block font-bold text-brand-blue mb-1">Session Owner</label>
+              <select id="session-owner-select" className="w-full p-2.5 rounded border border-brand-gray box-border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"> {/* Assuming this select will be controlled or its value read directly */}
                 <option value="" disabled>Choose session owner</option>
                 {/* Options for session owner would be populated here, possibly from state or props */}
               </select>
             </div>
           )}
-          <div style={{marginTop: '10px'}}>
-            <label htmlFor="coach-date-calendar" className="block mb-1 font-medium">Date</label>
+          <div className="mt-2.5 md:col-span-2">
+            <label htmlFor="coach-date-calendar" className="block font-bold text-brand-blue mb-1">Date</label>
             <Calendar
               mode="single"
               selected={selectedDate}
@@ -154,14 +155,14 @@ export default function InstructorPortal() {
             />
             {selectedDate && <p className="mt-1 text-sm">Selected: {selectedDate.toLocaleDateString()}</p>}
           </div>
-          <div style={{marginTop: '10px'}}>
-            <label htmlFor="coach-time" className="block mb-1 font-medium">Time</label>
+          <div className="mt-2.5">
+            <label htmlFor="coach-time" className="block font-bold text-brand-blue mb-1">Time</label>
             <select
               id="coach-time"
               value={selectedTime}
               onChange={(e) => setSelectedTime(e.target.value)}
               required
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="w-full p-2.5 rounded border border-brand-gray box-border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
             >
               <option value="" disabled>Select a time</option>
               {Array.from({ length: (20 - 8) * 2 + 1 }, (_, i) => { // From 8:00 to 20:00
@@ -172,61 +173,61 @@ export default function InstructorPortal() {
               })}
             </select>
           </div>
-          <div style={{marginTop: '10px'}}>
-            <label htmlFor="coach-price">Price</label>
-            <input type="number" id="coach-price" placeholder="Enter lesson price" />
+          <div className="mt-2.5">
+            <label htmlFor="coach-price" className="block font-bold text-brand-blue mb-1">Price</label>
+            <input type="number" id="coach-price" placeholder="Enter lesson price" className="w-full p-2.5 rounded border border-brand-gray box-border focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
           </div>
 
           <button
             type="button"
             onClick={handleBooking}
             disabled={isBooking}
-            className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
+            className="mt-4 w-full bg-brand-blue hover:bg-brand-blue-hover text-white font-bold py-2.5 px-4 rounded disabled:opacity-50 md:col-span-2"
           >
             {isBooking ? 'Booking...' : 'Book Private Lesson'}
           </button>
 
           {bookingMessage && (
             <div
-              className={`mt-4 p-3 rounded text-center ${
+              className={`mt-4 p-3 rounded text-center md:col-span-2 ${
                 bookingStatus === 'success' ? 'bg-green-100 text-green-700' : ''
               } ${bookingStatus === 'error' ? 'bg-red-100 text-red-700' : ''}`}
             >
               {bookingMessage}
             </div>
           )}
-          <button type="submit" style={{marginTop: '20px'}}>Add Lesson</button>
+          <button type="submit" className="bg-brand-blue text-white cursor-pointer inline-block w-auto mt-5 py-2.5 px-4 rounded hover:bg-brand-blue-hover text-center md:col-span-2">Add Lesson</button>
         </form>
 
-        <button id="viewFinancesBtn">View My Finances</button>
+        <button id="viewFinancesBtn" className="inline-block bg-brand-explore-blue text-white text-base font-normal py-3 px-8 rounded-full shadow-lg hover:bg-brand-blue-hover hover:scale-105 transform transition duration-200 ease-in-out cursor-pointer no-underline text-center mt-8">View My Finances</button>
       </section>
     
       <div className="time-block-section">
-      <h3 style={{color: '#0c3c78'}}>Block Specific Time Slots</h3>
-      <form id="time-block-form">
+      <h3 style={{color: '#0c3c78'}} className="text-brand-blue text-xl font-semibold mb-4">Block Specific Time Slots</h3>
+      <form id="time-block-form" className="mt-7 grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="form-group">
-          <label htmlFor="time-block-date">Date</label>
-         <input type="text" id="time-block-date" placeholder="Select a date" required />
+          <label htmlFor="time-block-date" className="block font-bold text-brand-blue mb-1">Date</label>
+         <input type="text" id="time-block-date" placeholder="Select a date" required className="w-full p-2.5 rounded border border-brand-gray box-border focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
         </div>
         <div className="form-group">
-          <label htmlFor="time-block-start">Start Time</label>
-          <select id="time-block-start" required>
+          <label htmlFor="time-block-start" className="block font-bold text-brand-blue mb-1">Start Time</label>
+          <select id="time-block-start" required className="w-full p-2.5 rounded border border-brand-gray box-border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
             <option value="">-- Select Time --</option>
           </select>
         </div>
         <div className="form-group">
-          <label htmlFor="time-block-end">End Time</label>
-          <select id="time-block-end" required>
+          <label htmlFor="time-block-end" className="block font-bold text-brand-blue mb-1">End Time</label>
+          <select id="time-block-end" required className="w-full p-2.5 rounded border border-brand-gray box-border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
             <option value="">-- Select Time --</option>
           </select>
         </div>
-        <button type="submit" className="full-width-button">Add Time Block</button>
+        <button type="submit" className="full-width-button bg-brand-blue text-white cursor-pointer inline-block w-auto m-1 py-2.5 px-4 rounded hover:bg-brand-blue-hover text-center md:col-span-2">Add Time Block</button>
       </form>
     </div>
       <div className="offdays-section">
-          <h2>Block Off Days / Times (You Are Unavailable)</h2>
-          <div id="coach-availability-calendar" style={{margin: '40px auto', maxWidth: '500px'}}></div>
-          <button id="submit-offdays" style={{display: 'block', margin: '20px auto 0 auto'}}>Submit Off-Days</button>
+          <h2 className="text-brand-blue text-2xl font-semibold mb-6">Block Off Days / Times (You Are Unavailable)</h2>
+          <div id="coach-availability-calendar" style={{margin: '40px auto', maxWidth: '500px'}} className="md:col-span-2"></div>
+          <button id="submit-offdays" style={{display: 'block', margin: '20px auto 0 auto'}} className="bg-brand-blue text-white cursor-pointer inline-block w-auto m-1 py-2.5 px-4 rounded hover:bg-brand-blue-hover text-center">Submit Off-Days</button>
           <small>
             Click on days in the calendar to mark yourself unavailable.<br />
             Blocked days will show a <span style={{color: '#e74c3c', fontWeight: 'bold'}}>❌</span>.<br />
@@ -234,17 +235,17 @@ export default function InstructorPortal() {
           </small>
         </div>
 
-    <div id="viewFinancesModal" className="modal" style={{display: 'none'}}>
-      <div className="modal-content" style={{maxWidth: '550px'}}>
-          <div style={{padding: '15px 20px', borderBottom: '1px solid #ddd', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-              <h4 style={{margin: '0', fontSize: '1.2em', color: '#0c3c78'}}>My Finances</h4>
-              <button type="button" className="close-modal-btn" aria-label="Close" style={{background: 'transparent', border: 'none', fontSize: '1.6em', cursor: 'pointer', color: '#777', padding: '0'}}>&times;</button>
+    <div id="viewFinancesModal" className="hidden fixed z-[1001] inset-0 overflow-y-auto bg-black bg-opacity-40 flex items-center justify-center p-4">
+      <div className="bg-white p-5 border border-brand-gray max-w-[550px] rounded-lg shadow-lg w-full mx-4">
+          <div className="py-3 px-4 border-b border-brand-gray flex justify-between items-center bg-brand-blue text-white rounded-t-lg">
+              <h4 className="text-lg font-semibold text-white">My Finances</h4>
+              <button type="button" className="close-modal-btn text-white hover:text-gray-200 text-2xl font-semibold" aria-label="Close">&times;</button>
           </div>
-          <div id="financesModalBody" style={{padding: '20px'}}>
+          <div id="financesModalBody" className="p-5">
               <p>Loading financial data...</p>
           </div>
-          <div style={{padding: '15px 20px', borderTop: '1px solid #ddd', textAlign: 'right'}}>
-              <button type="button" className="close-modal-btn" style={{padding: '8px 18px', backgroundColor: '#0c3c78', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer'}}>Close</button>
+          <div className="py-3 px-4 border-t border-brand-gray text-right rounded-b-lg">
+              <button type="button" className="close-modal-btn bg-brand-blue text-white py-2 px-[18px] rounded hover:bg-brand-blue-hover">Close</button>
           </div>
       </div>
     </div>

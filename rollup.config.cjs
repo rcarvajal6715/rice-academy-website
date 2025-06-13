@@ -3,6 +3,7 @@ const resolve = require('@rollup/plugin-node-resolve').default;
 const commonjs = require('@rollup/plugin-commonjs');
 const babel = require('@rollup/plugin-babel').default;
 const postcss = require('rollup-plugin-postcss');
+const inject = require('@rollup/plugin-inject');
 
 module.exports = {
   input: 'entry-appointment-picker.js',
@@ -38,6 +39,9 @@ module.exports = {
       presets: ['@babel/preset-react'],
       extensions: ['.js', '.jsx'],
       exclude: 'node_modules/**'
+    }),
+    inject({
+      process: 'process/browser',
     }),
   ],
 };

@@ -534,13 +534,12 @@ ul.nav-links-mobile li a {
             <option value="" disabled selected>Choose session owner</option>
           </select>
         </div>
-        <div style="margin-top:1rem;">
-          <button id="open-picker" type="button">Pick Date & Time</button>
-          <span id="chosen-datetime" style="margin-left:.5rem;"></span>
-        </div>
-    <div id="flatpickr-container" style="margin-top: 10px;"></div>
-    <div id="time-slots-container" style="margin-top: 10px;"></div>
-    <div id="confirmation-message" style="margin-top: 10px; color: green; font-weight: bold;"></div>
+            <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md">
+              <h1 class="text-xl font-bold mb-4">📅 Pick a Date & Time</h1>
+              <input id="datePicker" class="w-full border px-4 py-2 rounded mb-4" placeholder="Select a date" />
+              <div id="timeSlots" class="grid grid-cols-3 gap-2 mb-4 hidden"></div>
+              <p id="confirmation" class="text-green-600 font-medium text-sm"></p>
+            </div>
         <div style="margin-top:10px;">
           <label for="coach-price">Price</label>
           <input type="number" id="coach-price" placeholder="Enter lesson price" />
@@ -1291,124 +1290,83 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </script>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    const openPickerButton = document.getElementById('open-picker');
-    const flatpickrContainer = document.getElementById('flatpickr-container');
-    const timeSlotsContainer = document.getElementById('time-slots-container');
-    const confirmationMessageDiv = document.getElementById('confirmation-message');
-    const chosenDateTimeSpan = document.getElementById('chosen-datetime');
-    const coachDateInput = document.getElementById('coach-date');
-    const coachTimeInput = document.getElementById('coach-time');
-
-    let flatpickrInstance = null;
-    let selectedDateForTimeSlots = null;
-
-    const mockTimeSlots = {
+      const availableSlots = {
         "2025-06-13": ["10:00", "11:00", "14:00"],
         "2025-06-14": ["09:30", "11:30", "13:00"],
         "2025-06-15": ["10:00", "12:00", "14:00"]
-    };
+      };
 
-    openPickerButton.addEventListener('click', () => {
-        confirmationMessageDiv.textContent = ''; // Clear previous confirmation
-        timeSlotsContainer.innerHTML = ''; // Clear previous time slots
-        if (!flatpickrInstance) {
-            flatpickrInstance = flatpickr(flatpickrContainer, {
-                inline: true, // Show the calendar directly
-                dateFormat: "Y-m-d",
-                minDate: "today", // Optional: disable past dates
-                onChange: function(selectedDates, dateStr, instance) {
-                    if (selectedDates.length > 0) {
-                        selectedDateForTimeSlots = selectedDates[0];
-                        displayTimeSlots(dateStr);
-                        // Clear confirmation and chosen date time if date changes
-                        confirmationMessageDiv.textContent = '';
-                        chosenDateTimeSpan.textContent = '';
-                        coachDateInput.value = '';
-                        coachTimeInput.value = '';
-                    }
-                }
-            });
+      const dateInput = document.getElementById("datePicker");
+      const timeSlotsDiv = document.getElementById("timeSlots");
+      const confirmation = document.getElementById("confirmation");
+      // Get references to the hidden input fields for the form
+      const coachDateInput = document.getElementById('coach-date');
+      const coachTimeInput = document.getElementById('coach-time');
+
+      let selectedDate = null;
+      let selectedTime = null;
+
+      function renderTimeSlots(dateStr) {
+        const slots = availableSlots[dateStr] || [];
+        timeSlotsDiv.innerHTML = "";
+        if (slots.length === 0) {
+          timeSlotsDiv.classList.add("hidden");
+          confirmation.textContent = "❌ No slots available for this day.";
+          // Clear hidden inputs if no slots
+          if(coachDateInput) coachDateInput.value = '';
+          if(coachTimeInput) coachTimeInput.value = '';
+          return;
         }
-        flatpickrInstance.open(); // Or toggle if you prefer
-        flatpickrContainer.style.display = 'block'; // Ensure it's visible
-    });
+        timeSlotsDiv.classList.remove("hidden");
+        confirmation.textContent = ""; // Clear previous confirmation
+        slots.forEach(time => {
+          const btn = document.createElement("button");
+          btn.textContent = time;
+          btn.className = "slot-btn w-full text-sm border rounded py-2 hover:bg-blue-100";
+          btn.type = "button"; // Prevent form submission if inside a form
+          btn.onclick = () => {
+            selectedTime = time;
+            document.querySelectorAll(".slot-btn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            confirmation.textContent = `✅ Appointment set for ${formatAppointmentDate(selectedDate)} at ${time}`;
+            // Update hidden form inputs
+            if(coachDateInput) coachDateInput.value = selectedDate;
+            if(coachTimeInput) coachTimeInput.value = selectedTime;
+          };
+          timeSlotsDiv.appendChild(btn);
+        });
+      }
 
-    function displayTimeSlots(dateStr) {
-        timeSlotsContainer.innerHTML = ''; // Clear previous slots
-        const times = mockTimeSlots[dateStr];
+      function formatAppointmentDate(dateStr) {
+        // Ensure dateStr is treated as UTC to prevent off-by-one day errors due to timezone conversion
+        const date = new Date(dateStr + 'T00:00:00Z');
+        return date.toLocaleDateString("en-US", { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+      }
 
-        if (times && times.length > 0) {
-            const gridWrapper = document.createElement('div');
-            gridWrapper.style.display = 'grid';
-            gridWrapper.style.gridTemplateColumns = 'repeat(auto-fill, minmax(100px, 1fr))'; // Responsive grid
-            gridWrapper.style.gap = '10px';
-            gridWrapper.style.marginTop = '10px';
-
-            times.forEach(time => {
-                const timeButton = document.createElement('button');
-                timeButton.type = 'button'; // Important for forms
-                timeButton.textContent = formatTimeForDisplay(time);
-                timeButton.dataset.time = time; // Store machine-readable time
-                timeButton.style.padding = '10px';
-                timeButton.style.border = '1px solid #ccc';
-                timeButton.style.borderRadius = '5px';
-                timeButton.style.cursor = 'pointer';
-                timeButton.style.backgroundColor = '#f0f0f0';
-
-                timeButton.addEventListener('mouseenter', () => timeButton.style.backgroundColor = '#e0e0e0');
-                timeButton.addEventListener('mouseleave', () => timeButton.style.backgroundColor = '#f0f0f0');
-                timeButton.addEventListener('focus', () => timeButton.style.outline = '2px solid #0c3c78');
-                timeButton.addEventListener('blur', () => timeButton.style.outline = 'none');
-
-
-                timeButton.addEventListener('click', () => {
-                    // Remove 'selected-time' class from any previously selected button
-                    document.querySelectorAll('#time-slots-container button').forEach(btn => {
-                        btn.classList.remove('selected-time');
-                        // Optionally reset other styles if they were directly manipulated for non-selected state
-                        // and are not covered by the default button CSS or hover/focus states.
-                        // For instance, if default JS styling was btn.style.backgroundColor = '#f0f0f0';
-                        // it might be good to re-apply it if the class removal doesn't trigger a CSS rule for it.
-                        // However, the CSS provided should handle the default state.
-                    });
-
-                    // Add 'selected-time' class to the clicked button
-                    timeButton.classList.add('selected-time');
-                    // The CSS rule for .selected-time will now apply.
-                    // Remove any direct styles that might conflict with the class, if any were set.
-                    // timeButton.style.backgroundColor = ''; // Example if it was directly set before
-
-                    const friendlyDate = selectedDateForTimeSlots.toLocaleDateString('en-US', {
-                        year: 'numeric', month: 'long', day: 'numeric'
-                    });
-                    const friendlyTime = formatTimeForDisplay(time);
-                    confirmationMessageDiv.textContent = `✅ Appointment set for ${friendlyDate} at ${friendlyTime}`;
-
-                    // Update hidden inputs and display span
-                    coachDateInput.value = dateStr; // dateStr is from the parent Flatpickr onChange scope
-                    coachTimeInput.value = time;
-                    chosenDateTimeSpan.textContent = `${friendlyDate} at ${friendlyTime}`;
-                });
-                gridWrapper.appendChild(timeButton);
-            });
-            timeSlotsContainer.appendChild(gridWrapper);
-        } else {
-            timeSlotsContainer.textContent = 'No available time slots for this date.';
-        }
-    }
-
-    function formatTimeForDisplay(timeStr) { // e.g., "14:00"
-        const [hourStr, minuteStr] = timeStr.split(':');
-        let hour = parseInt(hourStr, 10);
-        const ampm = hour >= 12 ? 'PM' : 'AM';
-        hour = hour % 12 || 12; // Convert 0 or 12 to 12 for AM/PM
-        return `${hour}:${minuteStr} ${ampm}`;
-    }
-});
-</script>
-<!-- placeholder -->
-
-<!-- placeholder -->
+      if (dateInput) {
+        flatpickr(dateInput, {
+          dateFormat: "Y-m-d",
+          disable: [
+            function(date) {
+              // Ensure date comparison is done in UTC
+              const dateUtc = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+              const str = dateUtc.toISOString().split('T')[0];
+              return !availableSlots[str];
+            }
+          ],
+          onChange: function(selectedDates, dateStr) {
+            selectedDate = dateStr;
+            selectedTime = null; 
+            confirmation.textContent = ""; // Clear confirmation message
+            // Clear hidden inputs when date changes before a new time is selected
+            if(coachDateInput) coachDateInput.value = dateStr; // Store selected date
+            if(coachTimeInput) coachTimeInput.value = ''; // Clear time until a slot is picked
+            renderTimeSlots(dateStr);
+          }
+        });
+      } else {
+        console.error("datePicker element not found. Flatpickr initialization skipped.");
+      }
+    </script>
 </body>
 </html>

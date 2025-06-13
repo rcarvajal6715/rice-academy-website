@@ -207,13 +207,16 @@
     }, "Selected: ", time || "none", /*#__PURE__*/React$1.createElement("br", null), "Appointment picker powered by React DayPicker."));
   }
 
-  function mountAppointmentPicker(props, containerElement) {
-    if (!containerElement) {
-      console.error('Mount container element not provided to mountAppointmentPicker.');
+  function mountAppointmentPicker(containerElementId, props) {
+    // Changed signature
+    const container = document.getElementById(containerElementId); // Get element by ID
+    if (!container) {
+      // Check if container was found
+      console.error(`Mount container element with ID '${containerElementId}' not found.`);
       return;
     }
-    // Ensure props are passed to AppointmentPicker
-    ReactDOM.render(/*#__PURE__*/React$1.createElement(AppointmentPicker, props), containerElement);
+    // Ensure props are passed to AppointmentPicker, and container is the actual DOM element
+    ReactDOM.render(/*#__PURE__*/React$1.createElement(AppointmentPicker, props), container);
   }
 
   // Expose the mount function to the global window object

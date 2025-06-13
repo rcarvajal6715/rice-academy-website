@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appointment Picker Test</title>
+    <!-- Tailwind CSS CDN (v3 for better compatibility with potential existing classes) -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.3/dist/tailwind.min.css" rel="stylesheet">
+
+    <style>
+        body { margin: 0; padding: 20px; font-family: sans-serif; background-color: #f4f4f5; }
+        #appointment-picker-container {
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        /* Additional styles that might be needed if Tailwind doesn't cover everything from shadcn/ui if those were the source */
+        :root {
+            --border: #e5e7eb; /* Example border color */
+            --background: #ffffff; /* Example background */
+            --muted-foreground: #6b7280; /* Example muted text */
+        }
+        .border { border-color: var(--border); }
+        .bg-background { background-color: var(--background); }
+        .text-muted-foreground { color: var(--muted-foreground); }
+
+    </style>
+</head>
+<body>
+    <div id="appointment-picker-container">
+        <h1>Book Your Appointment</h1>
+        <div id="appointment-picker"></div>
+    </div>
+
+    <!-- Dependencies (Externals for the UMD bundle) -->
+    <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <!-- date-fns global is `dateFns` -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/date-fns/2.30.0/date-fns.min.js"></script>
+    <!-- react-day-picker global is `ReactDayPicker`. Using v8.10.0 UMD. project has v9.7.0 -->
+    <script src="https://unpkg.com/react-day-picker@8.10.0/dist/index.umd.js"></script>
+
+
+    <!-- Load the UMD bundle -->
+    <script src="./instructor-portal-app/public/js/appointmentPicker.umd.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.React && window.ReactDOM && window.dateFns && window.ReactDayPicker && window.mountAppointmentPicker) {
+                // Pass any initial props here if needed
+                window.mountAppointmentPicker('appointment-picker', {});
+            } else {
+                console.error('One or more dependencies or the mount function is missing.');
+                console.log('React:', typeof window.React);
+                console.log('ReactDOM:', typeof window.ReactDOM);
+                console.log('dateFns:', typeof window.dateFns);
+                console.log('ReactDayPicker:', typeof window.ReactDayPicker);
+                console.log('mountAppointmentPicker:', typeof window.mountAppointmentPicker);
+                const targetDiv = document.getElementById('appointment-picker');
+                if(targetDiv) {
+                    targetDiv.innerHTML = '<p style="color: red;">Error: Could not load Appointment Picker. Dependencies missing. See console.</p>';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

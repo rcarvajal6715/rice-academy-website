@@ -13,7 +13,7 @@ module.exports = {
     'date-fns'
   ],
   output: {
-    file: 'public/js/appointmentPicker.umd.js',
+    file: 'instructor-portal-app/public/js/appointmentPicker.umd.js',
     format: 'umd',
     name: 'mountAppointmentPicker',
     globals: {

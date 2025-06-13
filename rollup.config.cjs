@@ -25,8 +25,10 @@ module.exports = {
   },
   plugins: [
     replace({
-      'process.env.NODE_ENV': JSON.stringify('production'),
-      preventAssignment: true
+      preventAssignment: true,
+      values: {
+        'process.env.NODE_ENV': JSON.stringify('production')
+      }
     }),
     postcss({ minimize: true }),
     resolve({ extensions: ['.js', '.jsx'] }),

@@ -230,6 +230,8 @@ app.use((req, res, next) => {
 // Static file serving (typically after other middleware, before specific routes)
 app.use(express.static(__dirname, { extensions: ['html'] }));
 
+app.get('/instructor_portal', (req, res) => { res.sendFile(path.join(__dirname, 'instructor_portal.html')); });
+
 app.get('/favicon.ico', (req, res) => {
   res.status(204).end();
 });

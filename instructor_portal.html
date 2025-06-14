@@ -449,12 +449,30 @@ ul.nav-links-mobile li a {
             <option value="" disabled selected>Choose session owner</option>
           </select>
         </div>
-      <div>
-        <label>Date & Time</label>
+      <div class="picker-container">
+        <div class="calendar-view">
+          <div class="calendar-header">
+            <button id="prevMonth" type="button"><</button>
+            <span id="monthYear"></span>
+            <button id="nextMonth" type="button">></button>
+          </div>
+          <div class="calendar-grid" id="calendarGrid"></div>
+        </div>
+        <div class="time-slots">
+          <div class="date-display" id="dateDisplay">Select a date</div>
+          <div class="slots-container">
+            <div class="slots" id="timeSlots"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Hidden date and time inputs are preserved here -->
+      <div style="display: none;"> <!-- Or simply remove the parent div if no other styling needed -->
         <input type="hidden" id="hiddenDate" name="hiddenDate">
         <input type="hidden" id="hiddenTime" name="hiddenTime">
-            <input type="text" id="dateTimeDisplay" placeholder="Click to select date and time" readonly style="cursor: pointer; background-color: #fff; border: 1px solid #ccc; padding: 10px; border-radius: 5px; width: 100%; box-sizing: border-box;">
       </div>
+  <!-- The div containing dateTimeDisplay and its label has been removed. -->
+  <!-- The picker-container div that was here has been removed. -->
+  <!-- The commented-out picker-container is left untouched as per interpretation. -->
   <!-- <div class="picker-container" style="display: none;">
     <div class="calendar-view">
       <div class="calendar-header">
@@ -472,23 +490,6 @@ ul.nav-links-mobile li a {
       <div class="output" id="output">Select a date</div>
     </div>
   </div> -->
-  <div class="picker-container">
-    <div class="calendar-view">
-      <div class="calendar-header">
-        <button id="prevMonth"><</button>
-        <span id="monthYear"></span>
-        <button id="nextMonth">></button>
-      </div>
-      <div class="calendar-grid" id="calendarGrid"></div>
-    </div>
-
-    <div class="time-slots">
-      <div class="date-display" id="dateDisplay">Select a date</div>
-      <div class="slots-container">
-        <div class="slots" id="timeSlots"></div>
-      </div>
-    </div>
-  </div>
         <div style="margin-top:10px;">
           <label for="coach-price">Price</label>
           <input type="number" id="coach-price" placeholder="Enter lesson price" />
@@ -1157,6 +1158,186 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     /* End of New Calendar Picker CSS */
+
+    /* User's Provided Picker CSS - START */
+    :root {
+      --primary-color: #0c3c78; /* Matches existing theme */
+      --accent-color: #1252a8; /* Derived from primary */
+      --bg-color: #f9fafb;
+      --text-color: #111827;
+      --border-color: #e5e7eb;
+      --selected-bg: #bfdbfe; /* Lighter blue for selection */
+      --hover-bg: #e0e7ff; /* Even lighter for hover */
+    }
+
+    .picker-container {
+      max-width: 900px;
+      width: 100%;
+      margin: 20px auto; /* Added top/bottom margin for consistency */
+      background: white;
+      border-radius: 0.75rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      display: flex;
+      overflow: hidden; /* Base overflow, mobile will override */
+      height: 500px; /* Base height from user, mobile will override */
+      position: relative; /* Added for z-index context if needed, good practice */
+      z-index: 10; /* Basic z-index in case of overlaps, less than modals */
+    }
+
+    .calendar-view {
+      width: 70%;
+      padding: 1.5rem;
+      border-right: 1px solid var(--border-color);
+      overflow-y: auto;
+    }
+
+    .time-slots {
+      width: 30%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden; /* Relies on .slots-container for y-scroll */
+    }
+
+    .date-display {
+      padding: 1.5rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+      text-align: center;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--primary-color);
+    }
+
+    .slots-container {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding: 1rem 1.5rem;
+    }
+
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .calendar-header button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 1rem;
+      color: var(--primary-color); /* Explicitly set color */
+      padding: 0.5rem; /* Add some padding for easier clicking */
+    }
+    .calendar-header button:hover {
+      background-color: var(--hover-bg); /* Add hover for buttons */
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0.5rem;
+      text-align: center;
+    }
+
+    .day-name,
+    .date-cell {
+      font-weight: 500;
+      padding: 0.5rem;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .day-name {
+      opacity: 0.6;
+      font-size: 0.9em; /* Slightly adjusted for clarity */
+    }
+
+    .date-cell:hover {
+      background-color: var(--hover-bg);
+    }
+
+    .date-cell.selected {
+      background-color: var(--primary-color);
+      color: white !important; /* ensure text is white */
+    }
+    
+    /* Style for past dates in the new picker */
+    .date-cell.past-date {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none; /* Make them unclickable */
+    }
+    .date-cell.past-date:hover {
+        background-color: transparent; /* No hover effect for past dates */
+    }
+
+
+    .slots {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .slot {
+      padding: 0.75rem; /* Increased padding for better touch targets */
+      border-radius: 0.375rem;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      border: 1px solid var(--border-color);
+      text-align: center; /* Center text in slot */
+    }
+
+    .slot:hover {
+      background-color: var(--hover-bg);
+    }
+
+    .slot.selected {
+      background-color: var(--accent-color);
+      color: white !important; /* ensure text is white */
+    }
+
+    @media (max-width: 768px) {
+        .picker-container {
+            flex-direction: column;
+            height: auto; 
+            max-height: 80vh; 
+            overflow-y: auto; 
+        }
+        .calendar-view {
+            width: 100%;
+            border-right: none;
+            border-bottom: 1px solid var(--border-color);
+            max-height: 45vh; 
+            padding: 1rem; /* Adjust padding for mobile */
+        }
+        .time-slots {
+            width: 100%;
+            max-height: none; /* Allow it to take remaining space in flex column */
+            border-bottom: none; /* No bottom border needed if it's the last item or followed by slots-container */
+        }
+        .date-display {
+            padding: 1rem; /* Adjust padding */
+            font-size: 1rem; /* Adjust font size */
+        }
+        .slots-container {
+            padding: 1rem;
+            max-height: 28vh; /* Give it a max height to ensure it scrolls within its parent */
+        }
+        .calendar-header button {
+            padding: 0.4rem; /* Slightly smaller padding for mobile */
+        }
+        .day-name, .date-cell {
+            padding: 0.4rem; /* Adjust padding */
+            font-size: 0.85em; /* Adjust font size */
+        }
+        .slot {
+            padding: 0.6rem; /* Adjust padding */
+            font-size: 0.9em; /* Adjust font size */
+        }
+    }
+    /* User's Provided Picker CSS - END */
 </style>
 <!-- Picker JS -->
 <!--
@@ -1599,6 +1780,179 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCalendar(currentDate);
         renderTimeSlots(); // Render empty slots initially or based on current selection
         updateDateDisplay(); // Update display based on initial state (likely empty)
+    });
+</script>
+<script>
+    // New self-contained picker script
+    document.addEventListener('DOMContentLoaded', () => {
+        const monthYear = document.getElementById('monthYear');
+        const calendarGrid = document.getElementById('calendarGrid');
+        const timeSlotsContainer = document.getElementById('timeSlots');
+        const dateDisplay = document.getElementById('dateDisplay'); // Picker's internal display
+        
+        // Get references to the hidden input fields from the form
+        const hiddenDateInput = document.getElementById('hiddenDate');
+        const hiddenTimeInput = document.getElementById('hiddenTime');
+
+        let currentDate = new Date();
+        let selectedDate = null;
+        let selectedTime = null; // This will store HH:MM
+
+        const months = [
+          'January', 'February', 'March', 'April', 'May', 'June',
+          'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+
+        function renderCalendar(date) {
+          const year = date.getFullYear();
+          const month = date.getMonth();
+          monthYear.textContent = `${months[month]} ${year}`;
+          calendarGrid.innerHTML = '';
+
+          ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(dayText => {
+            const cell = document.createElement('div');
+            cell.className = 'day-name';
+            cell.textContent = dayText;
+            calendarGrid.appendChild(cell);
+          });
+
+          const firstDayOfMonth = new Date(year, month, 1).getDay();
+          const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+          for (let i = 0; i < firstDayOfMonth; i++) {
+            const emptyCell = document.createElement('div');
+            calendarGrid.appendChild(emptyCell);
+          }
+          
+          const today = new Date();
+          today.setHours(0,0,0,0);
+
+          for (let i = 1; i <= daysInMonth; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'date-cell';
+            cell.textContent = i;
+            const fullDate = new Date(year, month, i);
+            fullDate.setHours(0,0,0,0); // Normalize to midnight for comparison
+
+            if (fullDate < today) {
+                cell.classList.add('past-date');
+            } else {
+                if (selectedDate && fullDate.getTime() === selectedDate.getTime()) {
+                  cell.classList.add('selected');
+                }
+                cell.addEventListener('click', () => selectDate(fullDate));
+            }
+            calendarGrid.appendChild(cell);
+          }
+        }
+
+        function selectDate(date) {
+          selectedDate = date;
+          selectedTime = null; 
+          
+          if (hiddenDateInput) {
+            hiddenDateInput.value = selectedDate.toISOString().split('T')[0];
+          }
+          if (hiddenTimeInput) {
+            hiddenTimeInput.value = ''; // Clear time
+          }
+
+          // It's important to render based on 'currentDate' for month view,
+          // but 'selectedDate' dictates the selection.
+          renderCalendar(currentDate); 
+          renderTimeSlots();
+          updateDateDisplay(); 
+        }
+
+        function generateTimeSlots() {
+          // Using user-provided time range: 9 AM to 5 PM (exclusive end hour)
+          const startHour = 9; 
+          const endHour = 17; 
+          const interval = 30;
+          const slots = [];
+
+          for (let hour = startHour; hour < endHour; hour++) {
+            for (let min = 0; min < 60; min += interval) {
+              const timeValue = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+              
+              let displayHour = hour % 12;
+              if (displayHour === 0) displayHour = 12; 
+              const ampm = hour < 12 ? 'AM' : (hour === 24 ? 'AM' : 'PM'); // hour 24 is AM (midnight)
+              if (hour === 12) ampm = 'PM'; // Noon is PM
+
+              const displayTime = `${displayHour}:${String(min).padStart(2, '0')} ${ampm}`;
+              slots.push({ value: timeValue, display: displayTime });
+            }
+          }
+          return slots;
+        }
+
+        function renderTimeSlots() {
+          timeSlotsContainer.innerHTML = '';
+          if (!selectedDate) {
+            // Optional: timeSlotsContainer.innerHTML = '<p style="text-align:center; font-size:0.9em; opacity:0.7;">Select a date</p>';
+            return;
+          }
+
+          const slots = generateTimeSlots();
+          slots.forEach(slotData => {
+            const slotEl = document.createElement('div');
+            slotEl.className = 'slot';
+            slotEl.textContent = slotData.display;
+            slotEl.dataset.time = slotData.value;
+
+            if (selectedTime && slotEl.dataset.time === selectedTime) {
+              slotEl.classList.add('selected');
+            }
+
+            slotEl.addEventListener('click', () => {
+              selectedTime = slotEl.dataset.time;
+              if (hiddenTimeInput) {
+                hiddenTimeInput.value = selectedTime;
+              }
+              renderTimeSlots(); 
+              updateDateDisplay(); 
+            });
+            timeSlotsContainer.appendChild(slotEl);
+          });
+        }
+
+        function updateDateDisplay() { 
+          if (!selectedDate) {
+            dateDisplay.textContent = 'Select a date';
+            return;
+          }
+          const options = { weekday: 'long', month: 'long', day: 'numeric' };
+          const formattedDate = selectedDate.toLocaleDateString('en-US', options);
+          dateDisplay.textContent = formattedDate;
+        }
+
+        document.getElementById('prevMonth').addEventListener('click', () => {
+          currentDate.setMonth(currentDate.getMonth() - 1);
+          selectedDate = null; // As per user's code, reset selection when changing month
+          selectedTime = null;
+          if (hiddenDateInput) hiddenDateInput.value = '';
+          if (hiddenTimeInput) hiddenTimeInput.value = '';
+          renderCalendar(currentDate);
+          renderTimeSlots();
+          updateDateDisplay();
+        });
+
+        document.getElementById('nextMonth').addEventListener('click', () => {
+          currentDate.setMonth(currentDate.getMonth() + 1);
+          selectedDate = null; // As per user's code, reset selection
+          selectedTime = null;
+          if (hiddenDateInput) hiddenDateInput.value = '';
+          if (hiddenTimeInput) hiddenTimeInput.value = '';
+          renderCalendar(currentDate);
+          renderTimeSlots();
+          updateDateDisplay();
+        });
+        
+        // Initial render calls
+        renderCalendar(currentDate);
+        updateDateDisplay(); // Update picker's date display
+        renderTimeSlots();   // Render time slots (will be empty initially if no date selected)
     });
 </script>
 <!-- SCRIPT FOR MOBILE MENU TOGGLE, CHECK SESSION, LOGOUT - REMAINS UNTOUCHED -->

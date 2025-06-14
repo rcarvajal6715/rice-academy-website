@@ -2440,6 +2440,7 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
         // Show the picker when the button is clicked
         if (showPickerBtn) {
             showPickerBtn.addEventListener('click', () => {
+                showPickerBtn.textContent = 'Clicked!';
                 if (pickerContainer) {
                     pickerContainer.style.display = 'flex'; // Show the picker
                 }

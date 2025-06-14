@@ -6,6 +6,17 @@
   <title>Lesson History - Admin Portal - C2 Tennis Academy</title>
 
   <style>
+    :root {
+      --primary-color: #0c3c78;
+      --accent-color: #1252a8;
+      --bg-color: #f9fafb;
+      --card-bg: #ffffff;
+      --text-color: #111827;
+      --border-color: #e5e7eb;
+      --header-bg: #e8f0fc;
+      --hover-bg: #f3f4f6;
+    }
+
     .student-marked-for-deletion {
       text-decoration: line-through;
       color: #999; /* Optional: change color to indicate deletion */
@@ -53,16 +64,131 @@
       color: white;
     }
 
-    html, body { height: 100%; margin: 0; display: flex; flex-direction: column; font-family: Arial, sans-serif; }
-    header, footer { background-color: #0c3c78; color: white; text-align: center; padding: 20px; }
+    body {
+      font-family: 'Segoe UI', sans-serif; /* Match sample */
+      background-color: var(--bg-color);
+      margin: 0;
+      padding: 2rem; /* Match sample */
+      color: var(--text-color);
+    }
+    html { height: 100%; } /* Ensure html also takes full height if body is flex column */
+
+    header, footer { background-color: var(--primary-color); color: white; text-align: center; padding: 20px; }
     nav { background-color: #092e5e; display: flex; justify-content: center; }
     nav a { color: white; padding: 14px 20px; text-decoration: none; }
-    nav a:hover { background-color: #0f4fa0; }
-    section { flex: 1; padding: 40px 20px; max-width: 1400px; width: 90%; margin: auto; background: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    h2 { color: #0c3c78; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { padding: 8px; border:1px solid #ddd; }
-    thead th { background: #0c3c78; color: white; }
+    nav a:hover { background-color: var(--accent-color); }
+    section { 
+      flex: 1; 
+      /* padding: 40px 20px;  Original padding */
+      /* max-width: 1400px; Original max-width */
+      width: 90%; 
+      /* margin: auto; Original margin */
+      /* background: white; Original background */
+      /* border-radius: 10px; Original border-radius */
+      /* box-shadow: 0 0 10px rgba(0,0,0,0.1); Original box-shadow */
+
+      /* New styles from dashboard-card */
+      max-width: 1200px;
+      margin: auto;
+      background-color: var(--card-bg);
+      border-radius: 0.75rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      overflow: hidden; /* Important if table has rounded corners and background */
+      padding: 1.5rem; /* Match sample */
+    }
+    h2 {
+      /* color: #0c3c78; Original color */
+      margin-top: 0;
+      color: var(--primary-color);
+      font-size: 1.5rem; /* Match sample */
+      margin-bottom: 1rem; /* Match sample */
+    }
+    /* table { width: 100%; border-collapse: collapse; margin-top: 20px; } */
+    /* th, td { padding: 8px; border:1px solid #ddd; } */
+    /* thead th { background: #0c3c78; color: white; } */
+
+    .responsive-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 600px; /* Ensures table is scrollable on small screens if needed */
+    }
+
+    .responsive-table caption {
+      caption-side: top;
+      font-size: 1.1rem;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+      color: var(--primary-color);
+      text-align: left; /* Assuming caption should align with table content */
+    }
+
+    .responsive-table thead {
+      background-color: var(--header-bg);
+      color: var(--primary-color);
+    }
+
+    .responsive-table th,
+    .responsive-table td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .responsive-table th {
+      font-weight: bold; /* Explicitly set for headers */
+      white-space: nowrap;
+    }
+
+    .responsive-table tr:nth-child(even) {
+      background-color: #f9f9f9; /* Or var(--bg-color) if it matches the desired shade */
+    }
+
+    .responsive-table tr:hover {
+      background-color: var(--hover-bg);
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .responsive-table thead {
+        display: none;
+      }
+
+      .responsive-table,
+      .responsive-table tbody,
+      .responsive-table tr,
+      .responsive-table td {
+        display: block;
+        width: 100%;
+      }
+
+      .responsive-table tr {
+        margin-bottom: 1rem;
+        border: 1px solid var(--border-color); /* Add border to each "card" */
+        border-radius: 0.5rem; /* Rounded corners for the card effect */
+        background-color: var(--card-bg); /* Ensure cards have a background */
+        box-shadow: 0 1px 4px rgba(0,0,0,0.05); /* Subtle shadow for cards */
+      }
+
+      .responsive-table td {
+        display: flex; /* Use flex for label and value alignment */
+        justify-content: space-between; /* Pushes value to the right */
+        padding: 0.6rem 1rem; /* Adjust padding for mobile */
+        font-size: 0.95rem;
+        border-bottom: 1px solid var(--border-color); /* Separator line between fields */
+      }
+      
+      .responsive-table td:last-child {
+        border-bottom: none; /* No border for the last cell in a card */
+      }
+
+      .responsive-table td::before {
+        content: attr(data-label);
+        font-weight: bold;
+        color: #6b7280; /* Or a variable like --text-secondary-color if defined */
+        /* flex-basis: 40%; */ /* Optional: control label width */
+        /* margin-right: 10px; */ /* Optional: space between label and value */
+      }
+    }
 
 /* Styling for Enable Editing and Save All History buttons */
 #enable-history-editing-btn,
@@ -301,29 +427,35 @@ ul.nav-links-mobile li a {
 
 /* Modal Styles */
 .modal {
-  display: none; 
-  position: fixed; 
-  z-index: 1001; /* Sit on top */
-  left: 0;
+  display: none;
+  position: fixed;
   top: 0;
-  width: 100%; 
-  height: 100%; 
-  overflow: auto; 
-  background-color: rgba(0,0,0,0.4); 
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5);
+  z-index: 1000; /* Keep it lower than admin_history.html's own modal z-index if necessary */
+  justify-content: center;
+  align-items: center;
 }
+
 .modal-content {
-  background-color: #fefefe;
-  margin: 10% auto; 
+  /* background-color: #fefefe; */
+  background-color: #fff;
+  /* margin: 10% auto; */ 
+  margin: auto; /* Center it */
   padding: 20px;
-  border: 1px solid #888;
-  width: 80%;
-  max-width: 500px;
+  /* border: 1px solid #888; */
   border-radius: 8px;
-  box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
+  /* width: 80%; */
+  /* max-width: 500px; */
+  max-width: 400px; /* Or adjust as needed */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
+
 .modal-header {
   padding: 10px 16px;
-  background-color: #0c3c78;
+  background-color: var(--primary-color); /* Use variable */
   color: white;
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
@@ -349,6 +481,47 @@ ul.nav-links-mobile li a {
 .modal-footer button.cancel-btn:hover {
   background-color: #bbb; /* Keep existing distinct hover */
 }
+
+    /* Styles for contact items within the new modal design */
+    .contact-item {
+      margin-bottom: 15px;
+    }
+
+    .contact-name {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .contact-info {
+      font-size: 0.9em;
+      color: #555;
+    }
+    
+    /* Close button for the new modal design */
+    .close-modal-btn {
+      float: right;
+      cursor: pointer;
+      font-size: 1.5em;
+      color: #888;
+    }
+    .close-modal-btn:hover {
+      color: #333;
+    }
+
+    /* Contact button style from the new design */
+    .contact-btn {
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 5px 10px; /* Adjust padding to match desired look */
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9em; /* Match other buttons or set as desired */
+    }
+
+    .contact-btn:hover {
+      background: var(--accent-color);
+    }
   </style>
 </head>
 <body>
@@ -571,19 +744,20 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
   // };
 
   let tableHTML = `
-    <table style="width:100%; border-collapse:collapse; margin-top:10px;">
+    <table class="responsive-table">
+      <caption>Recent Lessons</caption>
       <thead>
-        <tr style="background:#0c3c78; color:white;">
-          <th style="padding:8px; border:1px solid #ddd;">Program</th>
-          <th style="padding:8px; border:1px solid #ddd;">Coach</th>
-          <th style="padding:8px; border:1px solid #ddd;">Date</th>
-          <th style="padding:8px; border:1px solid #ddd;">Time</th>
-          <th style="padding:8px; border:1px solid #ddd;">Student</th>
-          <th style="padding:8px; border:1px solid #ddd;">Contact</th>
-          <th style="padding:8px; border:1px solid #ddd;">Lesson Cost</th>
-          <th style="padding:8px; border:1px solid #ddd;">Referral Source</th>
-          <th style="padding:8px; border:1px solid #ddd;">Paid</th>
-          <th style="padding:8px; border:1px solid #ddd;">Actions</th>
+        <tr>
+          <th>Program</th>
+          <th>Coach</th>
+          <th>Date</th>
+          <th>Time</th>
+          <th>Student</th>
+          <th>Contact</th>
+          <th>Lesson Cost</th>
+          <th>Referral Source</th>
+          <th>Paid</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -720,16 +894,16 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
           data-time="${group.time || ''}" /* Original full time, e.g., HH:MM:SS or HH:MM */
           data-student="${originalStudentDisplayValue}" // This studentDisplay is for the "Student" column's original value
           data-lesson-cost="${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}">
-        <td class="history-cell" data-id="${rowDataId}" data-field="program" data-original-value="${group.program || ''}" style="padding:8px; border:1px solid #ddd;">${group.program || '—'}</td>
-        <td class="history-cell" data-id="${rowDataId}" data-field="coach" data-original-value="${coachesDisplay}" style="padding:8px; border:1px solid #ddd;">${coachesDisplay || '—'}</td>
-        <td class="history-cell" data-id="${rowDataId}" data-field="date" data-original-value="${group.date}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
-        <td class="history-cell" data-id="${rowDataId}" data-field="time" data-original-value="${group.time ? group.time.substring(0,5) : ''}" style="padding:8px; border:1px solid #ddd;">${formattedTime}</td>
-        <td class="history-cell" data-id="${rowDataId}" data-field="student" data-original-value="${originalStudentDisplayValue}" style="padding:8px; border:1px solid #ddd;">${studentDisplay}</td>
-        <td style="padding:8px; border:1px solid #ddd;"><button class="view-contact-btn" data-students='${studentDetailsJSON.replace(/'/g, "&apos;")}'>View Contact (${studentCount})</button></td>
-        <td class="history-cell" data-id="${rowDataId}" data-field="lesson_cost" data-original-value="${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}</td>
-        <td class="history-cell" data-id="${rowDataId}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
-        <td class="history-cell" data-id="${rowDataId}" data-field="paid" data-original-value="${String(group.paid)}" style="padding:8px; border:1px solid #ddd;">${group.paid ? 'Yes' : 'No'}</td>
-        <td style="padding:8px; border:1px solid #ddd;">
+        <td data-label="Program" class="history-cell" data-id="${rowDataId}" data-field="program" data-original-value="${group.program || ''}">${group.program || '—'}</td>
+        <td data-label="Coach" class="history-cell" data-id="${rowDataId}" data-field="coach" data-original-value="${coachesDisplay}">${coachesDisplay || '—'}</td>
+        <td data-label="Date" class="history-cell" data-id="${rowDataId}" data-field="date" data-original-value="${group.date}">${dateStr}</td>
+        <td data-label="Time" class="history-cell" data-id="${rowDataId}" data-field="time" data-original-value="${group.time ? group.time.substring(0,5) : ''}">${formattedTime}</td>
+        <td data-label="Student" class="history-cell" data-id="${rowDataId}" data-field="student" data-original-value="${originalStudentDisplayValue}">${studentDisplay}</td>
+        <td data-label="Contact"><button class="view-contact-btn" data-students='${studentDetailsJSON.replace(/'/g, "&apos;")}'>View Contact (${studentCount})</button></td>
+        <td data-label="Lesson Cost" class="history-cell" data-id="${rowDataId}" data-field="lesson_cost" data-original-value="${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}">${group.lesson_cost !== null && group.lesson_cost !== undefined ? group.lesson_cost : ''}</td>
+        <td data-label="Referral Source" class="history-cell" data-id="${rowDataId}" data-field="referral_source" data-original-value="${referralSourceDisplay}">${referralSourceDisplay}</td>
+        <td data-label="Paid" class="history-cell" data-id="${rowDataId}" data-field="paid" data-original-value="${String(group.paid)}">${group.paid ? 'Yes' : 'No'}</td>
+        <td data-label="Actions">
           <button onclick="deleteAdminLesson(${rowDataId}, true)">Delete Group</button>
         </td>
       </tr>
@@ -755,16 +929,16 @@ function renderPastLessonsTable(lessonsArray, containerId, placeholderMessage) {
 
     tableHTML += `
       <tr data-id="${les.id}" data-is-grouped="false">
-        <td class="history-cell" data-id="${les.id}" data-field="program" data-original-value="${les.program || ''}" style="padding:8px; border:1px solid #ddd;">${les.program || '—'}</td>
-        <td class="history-cell" data-id="${les.id}" data-field="coach" data-original-value="${originalCoachesValue}" style="padding:8px; border:1px solid #ddd;">${coaches || '—'}</td>
-        <td class="history-cell" data-id="${les.id}" data-field="date" data-original-value="${originalDate}" style="padding:8px; border:1px solid #ddd;">${dateStr}</td>
-        <td id="${timeSelectPlaceholderId}" style="padding:8px; border:1px solid #ddd;"></td>
-        <td class="history-cell" data-id="${les.id}" data-field="student" data-original-value="${les.student || ''}" style="padding:8px; border:1px solid #ddd;">${les.student || '—'}</td>
-        <td style="padding:8px; border:1px solid #ddd;"><button class="view-contact-btn" data-students='${studentDetailsJSON.replace(/'/g, "&apos;")}'>View Contact (${studentCount})</button></td>
-        <td class="history-cell" data-id="${les.id}" data-field="lesson_cost" data-original-value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}" style="padding:8px; border:1px solid #ddd;">${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}</td>
-        <td class="history-cell" data-id="${les.id}" data-field="referral_source" data-original-value="${referralSourceDisplay}" style="padding:8px; border:1px solid #ddd;">${referralSourceDisplay}</td>
-        <td class="history-cell" data-id="${les.id}" data-field="paid" data-original-value="${String(isPaid)}" style="padding:8px; border:1px solid #ddd;">${isPaid ? 'Yes' : 'No'}</td>
-        <td style="padding:8px; border:1px solid #ddd;">
+        <td data-label="Program" class="history-cell" data-id="${les.id}" data-field="program" data-original-value="${les.program || ''}">${les.program || '—'}</td>
+        <td data-label="Coach" class="history-cell" data-id="${les.id}" data-field="coach" data-original-value="${originalCoachesValue}">${coaches || '—'}</td>
+        <td data-label="Date" class="history-cell" data-id="${les.id}" data-field="date" data-original-value="${originalDate}">${dateStr}</td>
+        <td data-label="Time" id="${timeSelectPlaceholderId}"></td>
+        <td data-label="Student" class="history-cell" data-id="${les.id}" data-field="student" data-original-value="${les.student || ''}">${les.student || '—'}</td>
+        <td data-label="Contact"><button class="view-contact-btn" data-students='${studentDetailsJSON.replace(/'/g, "&apos;")}'>View Contact (${studentCount})</button></td>
+        <td data-label="Lesson Cost" class="history-cell" data-id="${les.id}" data-field="lesson_cost" data-original-value="${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}">${les.lesson_cost !== null && les.lesson_cost !== undefined ? les.lesson_cost : ''}</td>
+        <td data-label="Referral Source" class="history-cell" data-id="${les.id}" data-field="referral_source" data-original-value="${referralSourceDisplay}">${referralSourceDisplay}</td>
+        <td data-label="Paid" class="history-cell" data-id="${les.id}" data-field="paid" data-original-value="${String(isPaid)}">${isPaid ? 'Yes' : 'No'}</td>
+        <td data-label="Actions">
           ${editing ? `<button onclick="deleteAdminLesson(${les.id}, false)">Delete</button>` : '—'}
         </td>
       </tr>

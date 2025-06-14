@@ -752,8 +752,7 @@ ul.nav-links-mobile li a {
       </div>
 
       <div>
-        <label for="showPickerBtn">Date & Time</label>
-        <button type="button" id="showPickerBtn" style="padding: 10px; width: auto;">Pick date and time</button>
+        <label>Date & Time</label>
         <input type="hidden" id="hiddenDate" name="hiddenDate">
         <input type="hidden" id="hiddenTime" name="hiddenTime">
       </div>
@@ -801,7 +800,7 @@ ul.nav-links-mobile li a {
     </div>
   </section>
 
-  <div class="picker-container" style="display: none;">
+  <div class="picker-container" style="display: flex;">
     <div class="calendar-view">
       <div class="calendar-header">
         <button id="prevMonth"><</button>
@@ -2427,31 +2426,14 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
     // --- Integration JavaScript ---
     document.addEventListener('DOMContentLoaded', () => {
         const pickerContainer = document.querySelector('.picker-container');
-        const showPickerBtn = document.getElementById('showPickerBtn');
         const hiddenDateInput = document.getElementById('hiddenDate');
         const hiddenTimeInput = document.getElementById('hiddenTime');
 
         // Ensure all elements are found
         if (!pickerContainer) console.error('Picker container not found');
-        if (!showPickerBtn) console.error('Show picker button not found');
         if (!hiddenDateInput) console.error('Hidden date input not found');
         if (!hiddenTimeInput) console.error('Hidden time input not found');
         
-        // Show the picker when the button is clicked
-        if (showPickerBtn) {
-            showPickerBtn.addEventListener('click', () => {
-                // It's good practice to check if pickerContainer exists before trying to access its style.
-                if (pickerContainer) { 
-                    if (pickerContainer.style.display === 'none' || pickerContainer.style.display === '') {
-                        pickerContainer.style.display = 'flex';
-                        showPickerBtn.textContent = 'Hide date and time picker'; // Update button text
-                    } else {
-                        pickerContainer.style.display = 'none';
-                        showPickerBtn.textContent = 'Pick date and time'; // Reset button text
-                    }
-                }
-            });
-        }
 
         // Store the original updateOutput function from the picker script
         const originalPickerUpdateOutput = window.updateOutput; 

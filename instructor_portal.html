@@ -1026,9 +1026,9 @@ document.addEventListener('DOMContentLoaded', () => {
       background: white;
       border-radius: 0.75rem;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-      display: none; /* Initially hidden */
-      overflow: hidden;
-      height: 500px;
+      display: flex; 
+      overflow-y: auto; /* Changed from hidden */
+      max-height: 550px; /* Changed from height: 500px */
       z-index: 1002; 
       position: relative; 
     }
@@ -1134,6 +1134,27 @@ document.addEventListener('DOMContentLoaded', () => {
     .slot.selected {
       background-color: var(--accent-color);
       color: white !important; 
+    }
+
+    @media (max-width: 768px) {
+      .picker-container {
+        flex-direction: column;
+        height: auto;
+        max-height: 80vh;
+      }
+      .calendar-view {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        max-height: 45vh;
+      }
+      .time-slots {
+        width: 100%;
+        max-height: 30vh;
+      }
+      .slots-container {
+        padding: 1rem; /* Adjusted padding for mobile */
+      }
     }
     /* End of New Calendar Picker CSS */
 </style>

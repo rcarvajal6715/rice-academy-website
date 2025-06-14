@@ -1343,10 +1343,13 @@ ul.nav-links-mobile li a {
           <td style="padding:8px; border:1px solid #ddd;">${timeCellContent}</td>
           <td style="padding:8px; border:1px solid #ddd;">${
             (() => {
-              if (les.students_data && Array.isArray(les.students_data) && les.students_data.length > 0) {
+              if (les.student && typeof les.student === 'string' && les.student.trim() !== '') {
+                return les.student; // Directly display the content of the student field
+              } else if (les.students_data && Array.isArray(les.students_data) && les.students_data.length > 0) {
+                // Fallback or alternative way students might be represented (e.g., for specific camp structures)
                 return les.students_data.map(student => student.name).join(', ');
               } else {
-                return isCampTable ? 'N/A' : (les.student || '—');
+                return '—'; // Default fallback if neither is available
               }
             })()
           }</td>

@@ -1,6 +1,5 @@
 require('dotenv').config();
 const express = require('express');
-const next = require('next'); // Added for Next.js
 const path = require('path');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
@@ -10,10 +9,6 @@ const PDFKit = require('pdfkit');
 const nodemailer = require('nodemailer');
 const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
-
-const dev = process.env.NODE_ENV !== 'production'; // Added for Next.js
-const nextApp = next({ dev }); // Added for Next.js
-const nextHandler = nextApp.getRequestHandler(); // Added for Next.js
 
 const app = express();
 app.set('trust proxy', 1); // Early middleware

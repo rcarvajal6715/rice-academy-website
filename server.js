@@ -3043,56 +3043,13 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// nextApp.prepare() should be called before we try to use nextHandler or start the server.
-nextApp.prepare().then(() => {
-  console.log('Next.js app prepared.');
-
-  // The generic /:page route is problematic for Next.js.
-  // Next.js will handle its own pages. Other static HTMLs should be
-  // in public/ or explicitly routed if not handled by Next.js.
-  // Commenting out the original generic catch-all.
-  /*
-  app.get('/:page', (req, res, nextFn) => { 
-    const pageName = req.params.page;
-    if (pageName.includes('..') || pageName.includes('/')) {
-      return res.status(404).send('Page not found');
-    }
-    const filePath = path.join(__dirname, `${pageName}.html`);
-    res.sendFile(filePath, err => {
-      if (err) {
-        if (err.status === 404) {
-          // If Next.js is handling pages, this specific 404 might not be desired.
-          // Let Next.js handle it.
-          // For now, just send 404. If problems, can try nextHandler(req, res) here.
-          res.status(404).send('Page not found (custom handler)');
-        } else {
-          console.error(`Error sending file ${filePath}:`, err);
-          res.status(500).send('Error loading page');
-        }
-      }
-    });
+// ─── Server Listen ────────────────────────────────────────────────────
+const PORT = process.env.PORT || 3000;
+if (require.main === module) {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`✅ Server running on http://0.0.0.0:${PORT}`);
   });
-  */
-
-  // Next.js catch-all handler. This must be AFTER all other API routes
-  // and ideally after static file serving if Express is serving some static files
-  // that Next.js shouldn't handle.
-  app.all('*', (req, res) => {
-    return nextHandler(req, res);
-  });
-
-  // ─── Server Listen ────────────────────────────────────────────────────
-  const PORT = process.env.PORT || 8080;
-  if (require.main === module) {
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`✅ Server (with Next.js) running on http://0.0.0.0:${PORT}`);
-    });
-  }
-
-}).catch(ex => {
-  console.error('Error preparing Next.js app:', ex.stack);
-  process.exit(1);
-});
+}
 
 // module.exports should remain accessible.
 // If app.listen is conditional (as it is here with require.main === module),

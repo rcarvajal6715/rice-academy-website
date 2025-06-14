@@ -2440,9 +2440,15 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
         // Show the picker when the button is clicked
         if (showPickerBtn) {
             showPickerBtn.addEventListener('click', () => {
-                showPickerBtn.textContent = 'Clicked!';
-                if (pickerContainer) {
-                    pickerContainer.style.display = 'flex'; // Show the picker
+                // It's good practice to check if pickerContainer exists before trying to access its style.
+                if (pickerContainer) { 
+                    if (pickerContainer.style.display === 'none' || pickerContainer.style.display === '') {
+                        pickerContainer.style.display = 'flex';
+                        showPickerBtn.textContent = 'Hide date and time picker'; // Update button text
+                    } else {
+                        pickerContainer.style.display = 'none';
+                        showPickerBtn.textContent = 'Pick date and time'; // Reset button text
+                    }
                 }
             });
         }

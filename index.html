@@ -258,6 +258,24 @@
 /* Page-specific responsive styles for index.html (Hero section) */
 /* Hero Section specific responsive styles from old rules */
 @media (max-width: 768px) {
+    .hero-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        box-sizing: border-box;
+        text-align: center;
+    }
+
+    .hero .hero-logo {
+        max-width: 240px;
+        width: 70%;
+        height: auto;
+        margin-top: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
     .hero {
         padding: 20px 15px; /* Adjusted padding for full vh */
         min-height: 100vh; /* Make hero section full viewport height */
@@ -287,15 +305,14 @@
     }
 
     .hero h1 {
-        font-size: 2.8em; /* Adjusted font size */
+        font-size: 3.0em; /* Adjusted font size */
         color: white; /* Adjusted color */
-        position: absolute;
-        top: 25%; /* Adjusted top position */
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 90%; /* Adjusted width */
-        max-width: 600px; /* Max-width for safety */
+        position: static;
+        width: 100%; /* Adjusted width */
+        max-width: 100%; /* Max-width for safety */
         text-align: center; /* Ensure text is centered */
+        margin-top: 1rem;
+        margin-bottom: 1rem;
     }
     .hero p {
         font-size: 1.1em; 
@@ -314,6 +331,13 @@
   .hero-cta {
     padding: 0.5rem 1rem;
     font-size: 0.8rem;
+  }
+  .hero .hero-logo {
+    max-width: 200px;
+    width: 60%;
+    height: auto;
+    margin-top: 0.75rem;
+    margin-bottom: 1.25rem;
   }
 }
 /* Make desktop nav links more pill-shaped */

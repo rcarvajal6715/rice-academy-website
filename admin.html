@@ -755,7 +755,25 @@ ul.nav-links-mobile li a {
         <label>Date & Time</label>
         <input type="hidden" id="hiddenDate" name="hiddenDate">
         <input type="hidden" id="hiddenTime" name="hiddenTime">
+            <input type="text" id="dateTimeDisplay" placeholder="Click to select date and time" readonly style="cursor: pointer; background-color: #fff; border: 1px solid #ccc; padding: 10px; border-radius: 5px; width: 100%; box-sizing: border-box;">
       </div>
+  <div class="picker-container" style="display: none;">
+    <div class="calendar-view">
+      <div class="calendar-header">
+        <button id="prevMonth"><</button>
+        <span id="monthYear"></span>
+        <button id="nextMonth">></button>
+      </div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
+    <div class="time-slots">
+      <h3>Select a Time Slot</h3>
+      <div class="slots-container">
+        <div class="slots" id="timeSlots"></div>
+      </div>
+      <div class="output" id="output">Select a date</div>
+    </div>
+  </div>
 
       <!-- Price -->
       <div>
@@ -799,24 +817,6 @@ ul.nav-links-mobile li a {
       <a href="schedule_change.html" class="explore-button" style="margin-left: 10px;">Modify Schedule</a>
     </div>
   </section>
-
-  <div class="picker-container" style="display: flex;">
-    <div class="calendar-view">
-      <div class="calendar-header">
-        <button id="prevMonth"><</button>
-        <span id="monthYear"></span>
-        <button id="nextMonth">></button>
-      </div>
-      <div class="calendar-grid" id="calendarGrid"></div>
-    </div>
-    <div class="time-slots">
-      <h3>Select a Time Slot</h3>
-      <div class="slots-container">
-        <div class="slots" id="timeSlots"></div>
-      </div>
-      <div class="output" id="output">Select a date</div>
-    </div>
-  </div>
 
   <footer>
     <p>&copy; 2025 C2 Tennis Academy. All rights reserved.</p>
@@ -2428,24 +2428,24 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
         const pickerContainer = document.querySelector('.picker-container');
         const hiddenDateInput = document.getElementById('hiddenDate');
         const hiddenTimeInput = document.getElementById('hiddenTime');
+        const dateTimeDisplayInput = document.getElementById('dateTimeDisplay');
 
         // Ensure all elements are found
         if (!pickerContainer) console.error('Picker container not found');
         if (!hiddenDateInput) console.error('Hidden date input not found');
         if (!hiddenTimeInput) console.error('Hidden time input not found');
+        if (!dateTimeDisplayInput) console.error('dateTimeDisplayInput not found');
         
 
         // Store the original updateOutput function from the picker script
         const originalPickerUpdateOutput = window.updateOutput; 
 
         window.updateOutput = function() {
-            // Call the original picker's updateOutput function if it exists
+            // 1. Preserve the call to originalPickerUpdateOutput() or its fallback
             if (typeof originalPickerUpdateOutput === 'function') {
                 originalPickerUpdateOutput();
             } else {
-                // Fallback: If the original picker's updateOutput was not found (e.g., due to script load order or scope issues)
-                // attempt to replicate its core logic. This is a defensive measure.
-                const pickerOutputDiv = document.getElementById('output'); // ID of the picker's own output display
+                const pickerOutputDiv = document.getElementById('output');
                  if (!pickerOutputDiv) {
                     console.error("Picker's output element (ID: output) not found by integration script.");
                 } else if (!selectedDate) {
@@ -2466,15 +2466,13 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
                 }
             }
 
-            // Update hidden inputs for the form
+            // 3. Preserve existing logic that updates hiddenDateInput and hiddenTimeInput
             if (selectedDate) {
                 const year = selectedDate.getFullYear();
                 const month = (selectedDate.getMonth() + 1).toString().padStart(2, '0');
                 const day = selectedDate.getDate().toString().padStart(2, '0');
                 if (hiddenDateInput) {
                     hiddenDateInput.value = `${year}-${month}-${day}`;
-                } else {
-                    console.error("Hidden date input (ID: hiddenDate) not found for form.");
                 }
             } else {
                 if (hiddenDateInput) hiddenDateInput.value = '';
@@ -2483,36 +2481,75 @@ function handleAttendanceChange(bookingId, dayIndex, isChecked) {
             if (selectedTime) { // selectedTime is in "HH:MM" format from the picker
                 if (hiddenTimeInput) {
                     hiddenTimeInput.value = selectedTime;
-                } else {
-                     console.error("Hidden time input (ID: hiddenTime) not found for form.");
                 }
             } else {
                 if (hiddenTimeInput) hiddenTimeInput.value = '';
             }
             
-            // Optional: Hide picker after selection
-            if (selectedDate && selectedTime && pickerContainer) {
+            // 4. Add new logic for dateTimeDisplayInput
+            if (dateTimeDisplayInput) {
+                if (selectedDate) {
+                    const dateOptions = { weekday: 'long', month: 'long', day: 'numeric' };
+                    let displayValue = selectedDate.toLocaleDateString('en-US', dateOptions);
+                    if (selectedTime) {
+                        const timeParts = selectedTime.split(':');
+                        let hours = parseInt(timeParts[0], 10);
+                        const minutes = timeParts[1];
+                        const period = hours >= 12 ? (hours === 24 ? 'AM' : 'PM') : 'AM'; // Corrected period for midnight
+                        hours = hours % 12;
+                        hours = hours ? hours : 12; // Convert 0 to 12 for display
+                        displayValue += ` at ${hours}:${minutes} ${period}`;
+                    }
+                    dateTimeDisplayInput.value = displayValue;
+                } else {
+                    dateTimeDisplayInput.value = ''; // Show placeholder
+                }
+            }
+
+            // 5. Add new logic: After all inputs are updated, if selectedDate, selectedTime, and dateTimeDisplayInput.value are present, then hide picker.
+            if (selectedDate && selectedTime && dateTimeDisplayInput && dateTimeDisplayInput.value && pickerContainer) {
                  pickerContainer.style.display = 'none';
             }
         };
 
+        // Add event listener to dateTimeDisplayInput
+        if (dateTimeDisplayInput && pickerContainer) {
+            dateTimeDisplayInput.addEventListener('click', () => {
+                if (pickerContainer.style.display === 'none' || pickerContainer.style.display === '') {
+                    pickerContainer.style.display = 'flex';
+                    // Crucially, refresh calendar and time slots
+                    if (typeof renderCalendar === 'function' && typeof currentDate !== 'undefined') {
+                        renderCalendar(currentDate); // Ensure currentDate is from the picker's scope
+                    } else {
+                        console.error("renderCalendar function or currentDate not available to refresh picker.");
+                    }
+                    if (typeof renderTimeSlots === 'function') {
+                        renderTimeSlots(); // This will use selectedDate from picker's scope
+                    } else {
+                        console.error("renderTimeSlots function not available to refresh picker.");
+                    }
+                } else {
+                    pickerContainer.style.display = 'none';
+                }
+            });
+        }
+
         // Initial rendering calls for the picker
-        // These assume renderCalendar and renderTimeSlots are globally available from the picker script
-        if (typeof renderCalendar === 'function') {
+        if (typeof renderCalendar === 'function' && typeof currentDate !== 'undefined') {
             renderCalendar(currentDate);
         } else {
-            console.error("Picker's renderCalendar function not found globally.");
+            console.error("Picker's renderCalendar function or currentDate not found globally for initial render.");
         }
         if (typeof renderTimeSlots === 'function') {
             renderTimeSlots();
         } else {
-            console.error("Picker's renderTimeSlots function not found globally.");
+            console.error("Picker's renderTimeSlots function not found globally for initial render.");
         }
         // Call the (now augmented) updateOutput to set initial state of hidden fields and picker display
         if (typeof window.updateOutput === 'function') {
             window.updateOutput();
         } else {
-             console.error("Combined updateOutput function is not defined on window.");
+             console.error("Combined updateOutput function is not defined on window for initial call.");
         }
 
     }); // End of DOMContentLoaded

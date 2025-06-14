@@ -1,0 +1,129 @@
+/* footer.css — Unified C2 Tennis Academy footer styles */
+
+/* Base footer */
+footer {
+  background-color: #0c3c78;
+  color: white;
+  text-align: center;
+  padding: 20px;
+  margin: 0;
+}
+
+/* Inner container padding override */
+.site-footer {
+  padding: 20px 10px;
+}
+
+/* Layout */
+.footer-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Columns */
+.footer-col {
+  flex: 1 1 200px;
+  margin: 10px;
+}
+
+/* Logo */
+.footer-logo {
+  display: block;
+  max-width: 120px;
+  margin: 0 auto 12px;
+}
+
+/* Contact items */
+.contact-item {
+  display: flex;
+  align-items: center;
+  margin: 6px 0;
+}
+.contact-icon {
+  width: 20px;
+  height: 20px;
+  fill: white;
+  margin-right: 8px;
+}
+
+/* Footer link lists */
+.footer-links {
+  list-style: none;
+  padding: 0;
+}
+.footer-links li {
+  margin-bottom: 4px;
+}
+.footer-links a {
+  color: white;
+  text-decoration: none;
+}
+.footer-links a:hover {
+  text-decoration: underline;
+}
+
+/* Newsletter signup */
+.newsletter-signup input[type="email"] {
+  width: calc(100% - 90px);
+  padding: 10px;
+  margin-right: 5px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+.newsletter-signup button[type="submit"] {
+  width: 80px;
+  padding: 10px;
+  background-color: #d8f352;
+  color: #0c3c78;
+  border: none;
+  border-radius: 3px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.newsletter-signup button[type="submit"]:hover {
+  background-color: #c1da3b;
+}
+.newsletter-message {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+.newsletter-message.success {
+  background-color: #e6ffed;
+  color: #006421;
+  border: 1px solid #c3e6cb;
+}
+.newsletter-message.error {
+  background-color: #ffe6e6;
+  color: #800000;
+  border: 1px solid #f5c6cb;
+}
+
+/* Social icons */
+.social-icon {
+  width: 24px;
+  height: 24px;
+  filter: brightness(0) invert(1);
+  margin-right: 8px;
+  transition: opacity 0.2s;
+}
+.social-icon:hover {
+  opacity: 0.7;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .footer-wrapper {
+    flex-direction: column;
+    text-align: center;
+  }
+  .footer-col {
+    margin: 15px 0;
+  }
+}

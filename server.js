@@ -1976,6 +1976,50 @@ app.get('/api/parent/remaining-lessons', async (req, res) => {
   }
 });
 
+// NEW ENDPOINT STARTS HERE
+app.get('/api/parent/upcoming-lessons', async (req, res) => {
+  // 1. Authentication checks
+  if (!req.session.user || !req.session.user.id || !req.session.user.email) {
+    return res.status(401).json({ message: 'Unauthorized: Please log in.' });
+  }
+  // Check if the user is an admin or coach (assuming coachId is set in session for coaches)
+  if (req.session.user.isAdmin || req.session.coachId) {
+    return res.status(403).json({ message: 'Forbidden: This endpoint is for parent users only.' });
+  }
+
+  const userEmail = req.session.user.email;
+
+  try {
+    // 2. Fetch data from the bookings table
+    const query = `
+      SELECT
+        TO_CHAR(date, 'YYYY-MM-DD') AS date, 
+        TO_CHAR(time, 'HH12:MI AM') AS time, 
+        student AS student_name, 
+        program
+      FROM bookings
+      WHERE
+        email = $1 AND
+        date >= CURRENT_DATE
+      ORDER BY
+        date ASC,
+        time ASC;
+    `;
+    // 3. Filter by email and date
+    // 4. Select and format columns
+    // 5. Order results
+    const { rows: lessons } = await pool.query(query, [userEmail]);
+    
+    // 6. Return lessons as JSON
+    res.status(200).json(lessons);
+  } catch (err) {
+    // 7. Error handling
+    console.error('Error fetching upcoming lessons for parent:', err);
+    res.status(500).json({ message: 'Failed to fetch upcoming lessons due to a server error.' });
+  }
+});
+// NEW ENDPOINT ENDS HERE
+
 // ---- Admin Lesson Management Routes ----
 app.post('/api/admin/lessons', async (req, res) => {
   if (!req.session?.user?.isAdmin) {

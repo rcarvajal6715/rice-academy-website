@@ -243,6 +243,10 @@ ul.nav-links-mobile li a {
       <h2>Your Lesson Packages</h2>
       <p>Loading remaining lessons...</p>
     </div>
+    <div class="info-box" id="upcoming-lessons-container">
+        <h2>Upcoming Lessons</h2>
+        <p>Loading upcoming lessons...</p>
+    </div>
     <div class="info-box">
       <p><strong>Latest Updates:</strong> View your child’s recent lesson summaries, attendance, and coach feedback here.</p>
     </div>
@@ -264,6 +268,59 @@ ul.nav-links-mobile li a {
   document.addEventListener('DOMContentLoaded', () => {
       // --- Mobile Menu Toggle Script --- 
       let remainingLessonsIntervalId = null; // Variable to store interval ID for lesson polling
+      let upcomingLessonsIntervalId = null; // Variable to store interval ID for upcoming lessons polling
+
+      async function fetchAndDisplayUpcomingLessons() {
+        const container = document.getElementById('upcoming-lessons-container');
+        if (!container) {
+            console.error('Upcoming lessons container not found.');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/parent/upcoming-lessons', { credentials: 'include' });
+            if (!response.ok) {
+                let errorMsg = 'Failed to load upcoming lessons.';
+                try {
+                    const errorData = await response.json();
+                    errorMsg = errorData.message || response.statusText || errorMsg;
+                } catch(e) { /* Ignore if response not JSON */ }
+                container.innerHTML = `<h2>Upcoming Lessons</h2><p style="color: red;">Error: ${errorMsg}</p>`;
+                return;
+            }
+
+            const lessons = await response.json();
+            container.innerHTML = '<h2>Upcoming Lessons</h2>'; 
+
+            if (lessons.length === 0) {
+                container.innerHTML += '<p>You have no upcoming lessons.</p>';
+            } else {
+                lessons.forEach(lesson => {
+                    const lessonDiv = document.createElement('div');
+                    lessonDiv.style.marginBottom = '15px';
+                    lessonDiv.style.paddingBottom = '10px';
+                    lessonDiv.style.borderBottom = '1px solid #eee';
+
+                    // Ensure values are displayed safely, defaulting if null/undefined
+                    const studentName = lesson.student_name || 'N/A';
+                    const programName = lesson.program || 'N/A';
+                    const lessonDate = lesson.date || 'N/A';
+                    const lessonTime = lesson.time || 'N/A';
+
+                    lessonDiv.innerHTML = `
+                        <p><strong>Student:</strong> ${studentName}</p>
+                        <p><strong>Program:</strong> ${programName}</p>
+                        <p><strong>Date:</strong> ${lessonDate}</p>
+                        <p><strong>Time:</strong> ${lessonTime}</p>
+                    `;
+                    container.appendChild(lessonDiv);
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching upcoming lessons:', error);
+            container.innerHTML = `<h2>Upcoming Lessons</h2><p style="color: red;">Could not load upcoming lessons due to a network or server error.</p>`;
+        }
+      }
 
       async function fetchAndDisplayRemainingLessons() {
         const container = document.getElementById('remaining-lessons-container');
@@ -412,17 +469,25 @@ ul.nav-links-mobile li a {
                   }
                   // Initial call to fetch lessons
                   fetchAndDisplayRemainingLessons();
+                  fetchAndDisplayUpcomingLessons(); // Initial call for upcoming lessons
 
                   // Clear any existing interval before setting a new one
                   if (remainingLessonsIntervalId) {
                       clearInterval(remainingLessonsIntervalId);
                   }
+                  if (upcomingLessonsIntervalId) { // Clear upcoming lessons interval
+                      clearInterval(upcomingLessonsIntervalId);
+                  }
                   // Start polling
                   remainingLessonsIntervalId = setInterval(fetchAndDisplayRemainingLessons, 20000); // 20 seconds
+                  upcomingLessonsIntervalId = setInterval(fetchAndDisplayUpcomingLessons, 30000); // 30 seconds
               } else {
                   // Not logged in or not the correct role for this portal
                   if (remainingLessonsIntervalId) { // Clear interval if redirecting
                       clearInterval(remainingLessonsIntervalId);
+                  }
+                  if (upcomingLessonsIntervalId) { // Clear upcoming lessons interval if redirecting
+                      clearInterval(upcomingLessonsIntervalId);
                   }
                   window.location.href = 'login.html'; // Redirect if not properly authenticated for a portal
               }
@@ -430,6 +495,9 @@ ul.nav-links-mobile li a {
               console.error('Session check failed, redirecting to login:', err);
               if (remainingLessonsIntervalId) { // Clear interval on error too
                   clearInterval(remainingLessonsIntervalId);
+              }
+              if (upcomingLessonsIntervalId) { // Clear upcoming lessons interval on error too
+                  clearInterval(upcomingLessonsIntervalId);
               }
               window.location.href = 'login.html'; // Redirect on error
               // Fallback for auth buttons if redirect somehow fails
@@ -444,6 +512,9 @@ ul.nav-links-mobile li a {
       function logout() {
           if (remainingLessonsIntervalId) { // Clear interval on logout
               clearInterval(remainingLessonsIntervalId);
+          }
+          if (upcomingLessonsIntervalId) { // Clear upcoming lessons interval on logout
+              clearInterval(upcomingLessonsIntervalId);
           }
           fetch('/api/logout', { method: 'POST', credentials: 'include' })
               .then(() => {

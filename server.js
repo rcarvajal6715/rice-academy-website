@@ -1959,7 +1959,7 @@ app.get('/api/parent/remaining-lessons', async (req, res) => {
         used_lessons
       FROM bookings
       WHERE
-        email = $1 AND
+        student = $1 AND
         total_lessons IS NOT NULL AND
         total_lessons > 0
       ORDER BY student_name, program;
